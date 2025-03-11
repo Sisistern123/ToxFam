@@ -1,0 +1,136 @@
+{
+    "numeric_metrics": {
+        "Validation_Family_Accuracy": 0.7952380952380952,
+        "Validation_Family_MCC": 0.7629074099985789,
+        "Validation_Avg_Loss": 0.689531996846199
+    },
+    "classification_report": {
+        "antimicrobial_peptide": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1-score": 0.0,
+            "support": 1.0
+        },
+        "bradykinin_related": {
+            "precision": 0.7777777777777778,
+            "recall": 1.0,
+            "f1-score": 0.875,
+            "support": 7.0
+        },
+        "cationic_peptide": {
+            "precision": 0.6666666666666666,
+            "recall": 0.6666666666666666,
+            "f1-score": 0.6666666666666666,
+            "support": 3.0
+        },
+        "conotoxin": {
+            "precision": 0.8823529411764706,
+            "recall": 0.9375,
+            "f1-score": 0.9090909090909091,
+            "support": 48.0
+        },
+        "crisp_related": {
+            "precision": 1.0,
+            "recall": 0.25,
+            "f1-score": 0.4,
+            "support": 4.0
+        },
+        "mcd_related": {
+            "precision": 1.0,
+            "recall": 0.9,
+            "f1-score": 0.9473684210526315,
+            "support": 10.0
+        },
+        "metalloproteinase": {
+            "precision": 0.6666666666666666,
+            "recall": 1.0,
+            "f1-score": 0.8,
+            "support": 8.0
+        },
+        "neurotoxin": {
+            "precision": 0.8928571428571429,
+            "recall": 0.8333333333333334,
+            "f1-score": 0.8620689655172413,
+            "support": 30.0
+        },
+        "other": {
+            "precision": 0.64,
+            "recall": 0.7272727272727273,
+            "f1-score": 0.6808510638297872,
+            "support": 44.0
+        },
+        "peptidase": {
+            "precision": 0.5,
+            "recall": 1.0,
+            "f1-score": 0.6666666666666666,
+            "support": 1.0
+        },
+        "phospholipase_a2": {
+            "precision": 0.8333333333333334,
+            "recall": 0.5555555555555556,
+            "f1-score": 0.6666666666666666,
+            "support": 9.0
+        },
+        "phospholipase_other": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1-score": 0.0,
+            "support": 2.0
+        },
+        "scoloptoxin": {
+            "precision": 1.0,
+            "recall": 0.45454545454545453,
+            "f1-score": 0.625,
+            "support": 11.0
+        },
+        "scorpion_ktx": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1-score": 1.0,
+            "support": 4.0
+        },
+        "scorpion_long_toxin": {
+            "precision": 0.6,
+            "recall": 0.5,
+            "f1-score": 0.5454545454545454,
+            "support": 6.0
+        },
+        "scorpion_short_toxin": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1-score": 0.0,
+            "support": 1.0
+        },
+        "snaclec": {
+            "precision": 0.5,
+            "recall": 0.75,
+            "f1-score": 0.6,
+            "support": 4.0
+        },
+        "three_finger_toxin": {
+            "precision": 0.9444444444444444,
+            "recall": 1.0,
+            "f1-score": 0.9714285714285714,
+            "support": 17.0
+        },
+        "venom_kunitz": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1-score": 0.0,
+            "support": 0.0
+        },
+        "accuracy": 0.7952380952380952,
+        "macro avg": {
+            "precision": 0.626531524890658,
+            "recall": 0.6092038809144072,
+            "f1-score": 0.5903296040196677,
+            "support": 210.0
+        },
+        "weighted avg": {
+            "precision": 0.803485660931039,
+            "recall": 0.7952380952380952,
+            "f1-score": 0.7846821108314166,
+            "support": 210.0
+        }
+    }
+}
