@@ -1,8 +1,8 @@
 {
     "numeric_metrics": {
-        "Test_Family_Accuracy": 0.5371900826446281,
-        "Test_Family_MCC": 0.5263491476725054,
-        "Test_Avg_Loss": 0.9776319265365601
+        "Test_Family_Accuracy": 0.5454545454545454,
+        "Test_Family_MCC": 0.533107693313939,
+        "Test_Avg_Loss": 0.9589985013008118
     },
     "classification_report": {
         "Arthropod phospholipase D family": {
@@ -30,27 +30,27 @@
             "support": 3.0
         },
         "Cationic peptide 04 (cupiennin) family": {
-            "precision": 0.16666666666666666,
+            "precision": 0.25,
             "recall": 1.0,
-            "f1-score": 0.2857142857142857,
+            "f1-score": 0.4,
             "support": 1.0
         },
         "Conotoxin A superfamily": {
-            "precision": 0.625,
+            "precision": 0.7142857142857143,
             "recall": 0.625,
-            "f1-score": 0.625,
+            "f1-score": 0.6666666666666666,
             "support": 8.0
         },
         "Conotoxin I1 superfamily": {
-            "precision": 0.6666666666666666,
+            "precision": 0.8,
             "recall": 0.5714285714285714,
-            "f1-score": 0.6153846153846154,
+            "f1-score": 0.6666666666666666,
             "support": 7.0
         },
         "Conotoxin M superfamily": {
-            "precision": 0.6923076923076923,
-            "recall": 0.6923076923076923,
-            "f1-score": 0.6923076923076923,
+            "precision": 0.6666666666666666,
+            "recall": 0.7692307692307693,
+            "f1-score": 0.7142857142857143,
             "support": 13.0
         },
         "Conotoxin O1 superfamily": {
@@ -66,9 +66,9 @@
             "support": 3.0
         },
         "Conotoxin T superfamily": {
-            "precision": 0.3333333333333333,
+            "precision": 0.5,
             "recall": 0.5,
-            "f1-score": 0.4,
+            "f1-score": 0.5,
             "support": 2.0
         },
         "Flavin monoamine oxidase family": {
@@ -78,33 +78,33 @@
             "support": 2.0
         },
         "Formicidae venom precursor-01 superfamily": {
-            "precision": 0.375,
+            "precision": 0.5,
             "recall": 1.0,
-            "f1-score": 0.5454545454545454,
+            "f1-score": 0.6666666666666666,
             "support": 3.0
         },
         "Long (3 C-C) scorpion toxin superfamily": {
-            "precision": 0.46153846153846156,
+            "precision": 0.375,
             "recall": 0.6666666666666666,
-            "f1-score": 0.5454545454545454,
+            "f1-score": 0.48,
             "support": 9.0
         },
         "Long (4 C-C) scorpion toxin superfamily": {
-            "precision": 0.631578947368421,
-            "recall": 0.7058823529411765,
-            "f1-score": 0.6666666666666666,
+            "precision": 0.6428571428571429,
+            "recall": 0.5294117647058824,
+            "f1-score": 0.5806451612903226,
             "support": 17.0
         },
         "Long chain scorpion toxin family": {
-            "precision": 0.0,
-            "recall": 0.0,
-            "f1-score": 0.0,
+            "precision": 0.2,
+            "recall": 1.0,
+            "f1-score": 0.3333333333333333,
             "support": 1.0
         },
         "MCD family": {
-            "precision": 0.6666666666666666,
-            "recall": 0.6666666666666666,
-            "f1-score": 0.6666666666666666,
+            "precision": 0.75,
+            "recall": 1.0,
+            "f1-score": 0.8571428571428571,
             "support": 6.0
         },
         "Natriuretic peptide family": {
@@ -114,9 +114,9 @@
             "support": 2.0
         },
         "Neurotoxin 02 (plectoxin) family": {
-            "precision": 0.25,
+            "precision": 0.2,
             "recall": 1.0,
-            "f1-score": 0.4,
+            "f1-score": 0.3333333333333333,
             "support": 1.0
         },
         "Neurotoxin 03 (Tx2) family": {
@@ -162,9 +162,9 @@
             "support": 5.0
         },
         "Phospholipase A2 family": {
-            "precision": 0.7142857142857143,
+            "precision": 0.625,
             "recall": 0.7142857142857143,
-            "f1-score": 0.7142857142857143,
+            "f1-score": 0.6666666666666666,
             "support": 7.0
         },
         "Short scorpion toxin superfamily": {
@@ -192,28 +192,28 @@
             "support": 7.0
         },
         "Venom metalloproteinase (M12B) family": {
-            "precision": 0.4666666666666667,
+            "precision": 0.5,
             "recall": 0.7777777777777778,
-            "f1-score": 0.5833333333333334,
+            "f1-score": 0.6086956521739131,
             "support": 9.0
         },
         "other": {
-            "precision": 0.8571428571428571,
-            "recall": 0.25,
-            "f1-score": 0.3870967741935484,
+            "precision": 0.8333333333333334,
+            "recall": 0.2604166666666667,
+            "f1-score": 0.3968253968253968,
             "support": 96.0
         },
-        "accuracy": 0.5371900826446281,
+        "accuracy": 0.5454545454545454,
         "macro avg": {
-            "precision": 0.4995850005575406,
-            "recall": 0.6509950289362054,
-            "f1-score": 0.5234709056556563,
+            "precision": 0.5192907334211682,
+            "recall": 0.688698134654017,
+            "f1-score": 0.5460031261280783,
             "support": 242.0
         },
         "weighted avg": {
-            "precision": 0.6961766373145611,
-            "recall": 0.5371900826446281,
-            "f1-score": 0.5351878215981122,
+            "precision": 0.694350692127372,
+            "recall": 0.5454545454545454,
+            "f1-score": 0.5428030557876513,
             "support": 242.0
         }
     }

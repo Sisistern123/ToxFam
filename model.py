@@ -420,9 +420,9 @@ def analyze_data_splits(df):
     missing_from_test = all_families - test_families if not test_df.empty else set()
 
     print("Missing from Train:", sorted(missing_from_train) if missing_from_train else "None")
-    print("Missing from Val:", sorted(missing_from_val) if missing_from_val else "None")
+    print("\nMissing from Val:", sorted(missing_from_val) if missing_from_val else "None")
     if not test_df.empty:
-        print("Missing from Test:", sorted(missing_from_test) if missing_from_test else "None")
+        print("\nMissing from Test:", sorted(missing_from_test) if missing_from_test else "None")
 
     return train_df, val_df, test_df
 
@@ -511,11 +511,26 @@ def main():
         weights_dict, weights_tensor, encoded_to_label = get_class_weights(train_dataset)
 
         # Print class labels, counts, and weights
-        print("\nClass Label | Count | Normalized Weight")
-        class_counts = Counter(train_dataset.df["family_encoded"])
-        for encoded, count in class_counts.items():
+        train_counts = len(train_dataset.df["family_encoded"])
+        val_counts = len(val_dataset.df["family_encoded"])
+        test_counts = len(test_dataset.df["family_encoded"])
+
+        total_class_counts = train_counts + val_counts + test_counts
+
+        print(f"\nTotal samples: {total_class_counts}\n")
+        print(f"Train samples: {train_counts}\n")
+        print(f"Val samples: {val_counts}\n")
+        print(f"Test samples: {test_counts}\n")
+
+        total_class_counts = Counter(train_dataset.df["family_encoded"]) + \
+                             Counter(val_dataset.df["family_encoded"]) + \
+                             Counter(test_dataset.df["family_encoded"])
+
+        # Print class labels, total counts, and weights (based on train set)
+        print("\nClass Label | Total Count | Normalized Weight\n")
+        for encoded, count in total_class_counts.items():
             label = encoded_to_label[encoded]
-            weight = weights_dict[label]
+            weight = weights_dict[label]  # Use weights calculated from train set
             print(f"{label}:\n {count} samples \t Weight: {weight:.4f}\n")
 
         # Build model
@@ -537,7 +552,6 @@ def main():
 
         # Evaluate on test set
         test_metrics, test_labels, test_preds = evaluate_model(model, test_loader, loss_fn_family, device, dataset_type="Test")
-        print("\nFinal Test metrics:", test_metrics)
 
         # Generate test classification report
         test_class_report = classification_report(
@@ -564,12 +578,6 @@ def main():
         }
         with open(f"{CONFIG['output_dir']}/test_metrics.json", "w") as f:
             json.dump(test_save_dict, f, indent=4)
-
-        print(f"\nValidation confusion matrix saved to: {CONFIG['output_dir']}/val_confusion_matrix.png")
-        print(f"Validation metrics + classification report saved to {CONFIG['output_dir']}/val_metrics.json")
-        print(f"\nTest confusion matrix saved to: {CONFIG['output_dir']}/test_confusion_matrix.png")
-        print(f"Test metrics + classification report saved to {CONFIG['output_dir']}/test_metrics.json")
-        print("Done!")
 
         # Clean up datasets
         train_dataset.close()
