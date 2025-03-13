@@ -16,6 +16,10 @@ import contextlib
 import seaborn as sns
 import math
 from matplotlib.colors import LinearSegmentedColormap, BoundaryNorm
+import yaml
+
+with open('config.yaml', 'r') as file:
+    CONFIG = yaml.safe_load(file)
 
 # Configuration parameters
 CONFIG = {
