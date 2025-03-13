@@ -1,0 +1,71 @@
+Missing from Train: NoneMissing from Val: ['Conotoxin I1 superfamily', 'Long chain scorpion toxin family', 'Venom Kunitz-type family']Missing from Test: ['Neurotoxin 04 (omega-agtx) family', 'Neurotoxin 14 (magi-1) family']
+Class Label | Count | Normalized WeightArthropod phospholipase D family:
+ 11 samples 	 Weight: 0.6364
+Snake three-finger toxin family:
+ 41 samples 	 Weight: 0.1707
+Neurotoxin 19 (CSTX) family:
+ 9 samples 	 Weight: 0.7778
+Short scorpion toxin superfamily:
+ 63 samples 	 Weight: 0.1111
+other:
+ 288 samples 	 Weight: 0.0243
+Long chain scorpion toxin family:
+ 11 samples 	 Weight: 0.6364
+Formicidae venom precursor-01 superfamily:
+ 8 samples 	 Weight: 0.8750
+Conotoxin M superfamily:
+ 21 samples 	 Weight: 0.3333
+Conotoxin A superfamily:
+ 18 samples 	 Weight: 0.3889
+Flavin monoamine oxidase family:
+ 12 samples 	 Weight: 0.5833
+Venom metalloproteinase (M12B) family:
+ 46 samples 	 Weight: 0.1522
+Venom Kunitz-type family:
+ 16 samples 	 Weight: 0.4375
+Peptidase S1 family:
+ 14 samples 	 Weight: 0.5000
+Phospholipase A2 family:
+ 24 samples 	 Weight: 0.2917
+Neurotoxin 04 (omega-agtx) family:
+ 12 samples 	 Weight: 0.5833
+Long (4 C-C) scorpion toxin superfamily:
+ 39 samples 	 Weight: 0.1795
+Neurotoxin 10 (Hwtx-1) family:
+ 38 samples 	 Weight: 0.1842
+Cationic peptide 04 (cupiennin) family:
+ 16 samples 	 Weight: 0.4375
+MCD family:
+ 26 samples 	 Weight: 0.2692
+Bradykinin-potentiating peptide family:
+ 26 samples 	 Weight: 0.2692
+Non-disulfide-bridged peptide (NDBP) superfamily:
+ 14 samples 	 Weight: 0.5000
+Conotoxin O2 superfamily:
+ 25 samples 	 Weight: 0.2800
+Neurotoxin 02 (plectoxin) family:
+ 19 samples 	 Weight: 0.3684
+Neurotoxin 14 (magi-1) family:
+ 14 samples 	 Weight: 0.5000
+Neurotoxin 03 (Tx2) family:
+ 11 samples 	 Weight: 0.6364
+Conotoxin O1 superfamily:
+ 41 samples 	 Weight: 0.1707
+Snaclec family:
+ 19 samples 	 Weight: 0.3684
+Conotoxin I1 superfamily:
+ 7 samples 	 Weight: 1.0000
+Natriuretic peptide family:
+ 8 samples 	 Weight: 0.8750
+Bradykinin-related peptide family:
+ 8 samples 	 Weight: 0.8750
+CRISP family:
+ 12 samples 	 Weight: 0.5833
+Long (3 C-C) scorpion toxin superfamily:
+ 8 samples 	 Weight: 0.8750
+Conotoxin T superfamily:
+ 15 samples 	 Weight: 0.4667
+Early stopping triggered.Validation Metrics and Classification Report saved to: model_output/validation_metrics.json
+Final Test metrics: {'Test_Family_Accuracy': 0.5371900826446281, 'Test_Family_MCC': np.float64(0.5263491476725054), 'Test_Avg_Loss': 0.9776319265365601}
+Validation confusion matrix saved to: model_output/val_confusion_matrix.pngValidation metrics + classification report saved to model_output/val_metrics.json
+Test confusion matrix saved to: model_output/test_confusion_matrix.pngTest metrics + classification report saved to model_output/test_metrics.jsonDone!
