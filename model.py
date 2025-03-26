@@ -21,19 +21,6 @@ import yaml
 with open('config.yaml', 'r') as file:
     CONFIG = yaml.safe_load(file)
 
-# Configuration parameters
-# CONFIG = {
-#     'input_csv': "data/model_input.csv",
-#     'h5_path': "data/toxins_no_na.h5",
-#     'output_dir': "model_output",
-#     'embedding_dim': 1024,
-#     'hidden_dim': 128,
-#     'batch_size': 64,
-#     'num_epochs': 500,
-#     'learning_rate': 0.0001,
-#     'early_stopping_patience': 5,
-# }
-
 
 class ToxDataset(Dataset):
     def __init__(self, df, h5_path, label_encoder=None, is_train=True):

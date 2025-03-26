@@ -1,76 +1,44 @@
 Missing from Train: None
-Missing from Val: ['Conotoxin I1 superfamily', 'Long chain scorpion toxin family', 'Venom Kunitz-type family']
-Missing from Test: ['Neurotoxin 04 (omega-agtx) family', 'Neurotoxin 14 (magi-1) family']
-Total samples: 1392
-Train samples: 940
-Val samples: 210
-Test samples: 242
+Missing from Val: ['Venom Kunitz-type family']
+Missing from Test: ['Formicidae venom family', 'Phospholipase family']
+Total samples: 1045
+Train samples: 757
+Val samples: 164
+Test samples: 124
 
 Class Label | Total Count | Normalized Weight
-Arthropod phospholipase D family:
- 14 samples 	 Weight: 0.6364
-Snake three-finger toxin family:
- 64 samples 	 Weight: 0.1707
-Neurotoxin 19 (CSTX) family:
- 11 samples 	 Weight: 0.7778
-Short scorpion toxin superfamily:
- 81 samples 	 Weight: 0.1111
-other:
- 445 samples 	 Weight: 0.0243
-Long chain scorpion toxin family:
- 12 samples 	 Weight: 0.6364
-Formicidae venom precursor-01 superfamily:
- 12 samples 	 Weight: 0.8750
-Conotoxin M superfamily:
- 44 samples 	 Weight: 0.3333
-Conotoxin A superfamily:
- 42 samples 	 Weight: 0.3889
-Flavin monoamine oxidase family:
- 16 samples 	 Weight: 0.5833
+Phospholipase family:
+ 16 samples 	 Weight: 0.2667
+Scoloptoxin family:
+ 83 samples 	 Weight: 0.0755
 Venom metalloproteinase (M12B) family:
- 63 samples 	 Weight: 0.1522
+ 15 samples 	 Weight: 0.3077
+Natriuretic, Bradykinin potentiating peptide family:
+ 52 samples 	 Weight: 0.1290
+Neurotoxin family:
+ 167 samples 	 Weight: 0.0315
+Snake three-finger toxin family:
+ 38 samples 	 Weight: 0.3333
+Short scorpion toxin superfamily:
+ 69 samples 	 Weight: 0.0769
+other:
+ 199 samples 	 Weight: 0.0265
 Venom Kunitz-type family:
- 23 samples 	 Weight: 0.4375
-Peptidase S1 family:
- 20 samples 	 Weight: 0.5000
-Phospholipase A2 family:
- 40 samples 	 Weight: 0.2917
-Neurotoxin 04 (omega-agtx) family:
- 16 samples 	 Weight: 0.5833
+ 18 samples 	 Weight: 0.2667
+Conotoxin family:
+ 215 samples 	 Weight: 0.0238
+Formicidae venom family:
+ 16 samples 	 Weight: 0.2857
 Long (4 C-C) scorpion toxin superfamily:
- 61 samples 	 Weight: 0.1795
-Neurotoxin 10 (Hwtx-1) family:
- 43 samples 	 Weight: 0.1842
-Cationic peptide 04 (cupiennin) family:
- 19 samples 	 Weight: 0.4375
+ 39 samples 	 Weight: 0.1250
 MCD family:
- 42 samples 	 Weight: 0.2692
-Bradykinin-potentiating peptide family:
- 38 samples 	 Weight: 0.2692
+ 41 samples 	 Weight: 0.1538
+Cationic peptide family:
+ 31 samples 	 Weight: 0.1538
+Limacoditoxin family:
+ 12 samples 	 Weight: 0.4000
 Non-disulfide-bridged peptide (NDBP) superfamily:
- 20 samples 	 Weight: 0.5000
-Conotoxin O2 superfamily:
- 29 samples 	 Weight: 0.2800
-Neurotoxin 02 (plectoxin) family:
- 26 samples 	 Weight: 0.3684
-Neurotoxin 14 (magi-1) family:
- 16 samples 	 Weight: 0.5000
-Neurotoxin 03 (Tx2) family:
- 17 samples 	 Weight: 0.6364
-Conotoxin O1 superfamily:
- 48 samples 	 Weight: 0.1707
-Snaclec family:
- 24 samples 	 Weight: 0.3684
-Conotoxin I1 superfamily:
- 14 samples 	 Weight: 1.0000
-Natriuretic peptide family:
- 15 samples 	 Weight: 0.8750
-Bradykinin-related peptide family:
- 12 samples 	 Weight: 0.8750
-CRISP family:
- 19 samples 	 Weight: 0.5833
+ 19 samples 	 Weight: 0.5000
 Long (3 C-C) scorpion toxin superfamily:
- 18 samples 	 Weight: 0.8750
-Conotoxin T superfamily:
- 28 samples 	 Weight: 0.4667
+ 15 samples 	 Weight: 1.0000
 Early stopping triggered.Validation Metrics and Classification Report saved to: model_output/validation_metrics.json

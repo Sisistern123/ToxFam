@@ -1,8 +1,8 @@
 {
     "numeric_metrics": {
-        "Test_Family_Accuracy": 0.75,
-        "Test_Family_MCC": 0.7260756443872576,
-        "Test_Avg_Loss": 0.8617013990879059
+        "Test_Accuracy": 0.7338709677419355,
+        "Test_MCC": 0.707661136756984,
+        "Test_Avg_Loss": 0.8678866028785706
     },
     "classification_report": {
         "Cationic peptide family": {
@@ -12,9 +12,9 @@
             "support": 1.0
         },
         "Conotoxin family": {
-            "precision": 0.7894736842105263,
-            "recall": 0.7142857142857143,
-            "f1-score": 0.75,
+            "precision": 0.8,
+            "recall": 0.7619047619047619,
+            "f1-score": 0.7804878048780488,
             "support": 21.0
         },
         "Formicidae venom family": {
@@ -30,9 +30,9 @@
             "support": 1.0
         },
         "Long (3 C-C) scorpion toxin superfamily": {
-            "precision": 1.0,
+            "precision": 0.75,
             "recall": 0.375,
-            "f1-score": 0.5454545454545454,
+            "f1-score": 0.5,
             "support": 8.0
         },
         "Long (4 C-C) scorpion toxin superfamily": {
@@ -48,15 +48,15 @@
             "support": 8.0
         },
         "Natriuretic, Bradykinin potentiating peptide family": {
-            "precision": 0.75,
-            "recall": 0.6,
-            "f1-score": 0.6666666666666666,
+            "precision": 0.6666666666666666,
+            "recall": 0.4,
+            "f1-score": 0.5,
             "support": 5.0
         },
         "Neurotoxin family": {
-            "precision": 0.75,
+            "precision": 0.8,
             "recall": 0.8,
-            "f1-score": 0.7741935483870968,
+            "f1-score": 0.8,
             "support": 15.0
         },
         "Non-disulfide-bridged peptide (NDBP) superfamily": {
@@ -72,9 +72,9 @@
             "support": 0.0
         },
         "Scoloptoxin family": {
-            "precision": 0.625,
-            "recall": 0.8333333333333334,
-            "f1-score": 0.7142857142857143,
+            "precision": 0.5625,
+            "recall": 0.75,
+            "f1-score": 0.6428571428571429,
             "support": 12.0
         },
         "Short scorpion toxin superfamily": {
@@ -102,22 +102,22 @@
             "support": 1.0
         },
         "other": {
-            "precision": 0.7272727272727273,
-            "recall": 0.5333333333333333,
-            "f1-score": 0.6153846153846154,
+            "precision": 0.6363636363636364,
+            "recall": 0.4666666666666667,
+            "f1-score": 0.5384615384615384,
             "support": 15.0
         },
-        "accuracy": 0.75,
+        "accuracy": 0.7338709677419355,
         "macro avg": {
-            "precision": 0.6267278043593834,
-            "recall": 0.6904885483605208,
-            "f1-score": 0.6226786101311718,
+            "precision": 0.6016562685680332,
+            "recall": 0.6727014335145823,
+            "f1-score": 0.6047857510734125,
             "support": 124.0
         },
         "weighted avg": {
-            "precision": 0.7812859066042428,
-            "recall": 0.75,
-            "f1-score": 0.7453852891385409,
+            "precision": 0.7525822743564679,
+            "recall": 0.7338709677419355,
+            "f1-score": 0.7277996598536528,
             "support": 124.0
         }
     }

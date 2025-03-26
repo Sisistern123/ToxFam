@@ -1,0 +1,22 @@
+{
+    "absolute": {
+        "train": 757,
+        "val": 164,
+        "test": 124,
+        "total": 1045
+    },
+    "relative": {
+        "train": 0.724401913875598,
+        "val": 0.1569377990430622,
+        "test": 0.11866028708133972
+    },
+    "missing_info": {
+        "missing_from_train": [],
+        "missing_from_val": [
+            "venom_kunitz"
+        ],
+        "missing_from_test": [
+            "phospholipase_a2"
+        ]
+    }
+}
