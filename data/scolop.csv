@@ -1,0 +1,1048 @@
+identifier,Protein families,Fragment,Scoloptoxin,protein_category
+A0A0D4WV12,other,mature_seq (NO_SP),other,phospholipase_other
+A0A0N7CSQ4,other,full_seq (SP),other,scoloptoxin
+A0A1L4BJ98,other,full_seq (SP),other,phospholipase_other
+A0A5C2A2T2,Phospholipase A2 family,mature_seq (NO_SP),other,phospholipase_a2
+A0A6B7FMR5,Venom metalloproteinase (M12B) family,full_seq (SP),other,metalloproteinase
+A0S864,Snake three-finger toxin family,full_seq (SP),3FTX,three_finger_toxin
+A3R0T9,Venom metalloproteinase (M12B) family,mature_seq (NO_SP),other,metalloproteinase
+A8YPR6,Natriuretic peptide family,full_seq (SP),other,
+A8YPR9,Natriuretic peptide family,full_seq (SP),other,
+B3EWF6,other,mature_seq (NO_SP),other,neurotoxin
+B3EWH0,other,mature_seq (NO_SP),other,neurotoxin
+C0HJD3,Snake three-finger toxin family,mature_seq (NO_SP),3FTX,three_finger_toxin
+C0HJQ2,Short scorpion toxin superfamily,mature_seq (NO_SP),other,scorpion_ktx
+C0HJY4,other,mature_seq (NO_SP),other,
+C0HKG7,other,mature_seq (NO_SP),other,neurotoxin
+C0HLG4,Short scorpion toxin superfamily,full_seq (SP),other,scorpion_ktx
+C6EVG7,Natriuretic peptide family,full_seq (SP),other,
+C7G3K3,other,full_seq (SP),other,scorpion_long_toxin
+G9I930,Phospholipase A2 family,mature_seq (NO_SP),other,phospholipase_a2
+P00982,Venom Kunitz-type family,mature_seq (NO_SP),other,venom_kunitz
+P01501,other,mature_seq (NO_SP),other,
+P04971,other,mature_seq (NO_SP),other,peptidase
+P07231,other,mature_seq (NO_SP),other,conotoxin
+P0C023,Formicidae venom precursor-01 superfamily,mature_seq (NO_SP),other,
+P0C1V7,Conotoxin A superfamily,mature_seq (NO_SP),other,conotoxin
+P0C6E3,Venom metalloproteinase (M12B) family,mature_seq (NO_SP),other,metalloproteinase
+P0C6S4,Venom metalloproteinase (M12B) family,mature_seq (NO_SP),other,metalloproteinase
+P0DJ41,Short scorpion toxin superfamily,full_seq (SP),other,scorpion_ktx
+P0DKU2,Phospholipase A2 family,mature_seq (NO_SP),other,phospholipase_a2
+P0DL39,Conotoxin A superfamily,mature_seq (NO_SP),other,conotoxin
+P0DMB4,other,mature_seq (NO_SP),other,
+P0DW98,other,mature_seq (NO_SP),other,vegf
+P13208,other,full_seq (SP),other,
+P17727,other,full_seq (SP),other,neurotoxin
+P28375,Snake three-finger toxin family,mature_seq (NO_SP),3FTX,three_finger_toxin
+P49126,other,full_seq (SP),other,neurotoxin
+P49268,other,mature_seq (NO_SP),other,neurotoxin
+P56676,Neurotoxin 10 (Hwtx-1) family,mature_seq (NO_SP),other,neurotoxin
+P59888,Phospholipase A2 family,mature_seq (NO_SP),other,phospholipase_a2
+P60214,Long (4 C-C) scorpion toxin superfamily,mature_seq (NO_SP),other,scorpion_long_toxin
+P60244,Venom metalloproteinase (M12B) family,mature_seq (NO_SP),other,metalloproteinase
+P60254,other,mature_seq (NO_SP),other,
+P60513,Conotoxin O1 superfamily,mature_seq (NO_SP),other,conotoxin
+P60590,Neurotoxin 10 (Hwtx-1) family,full_seq (SP),other,neurotoxin
+P61898,other,mature_seq (NO_SP),other,ngf
+P80719,Short scorpion toxin superfamily,mature_seq (NO_SP),other,scorpion_ktx
+P81383,other,mature_seq (NO_SP),other,
+P81694,other,mature_seq (NO_SP),other,neurotoxin
+P82972,Natriuretic peptide family,mature_seq (NO_SP),other,
+P83288,other,full_seq (SP),other,
+P83561,other,full_seq (SP),other,neurotoxin
+P83655,Short scorpion toxin superfamily,mature_seq (NO_SP),other,scorpion_ktx
+P84715,Natriuretic peptide family,full_seq (SP),other,
+P84777,Short scorpion toxin superfamily,full_seq (SP),other,scorpion_ktx
+P86146,MCD family,full_seq (SP),other,mcd_related
+P86716,other,mature_seq (NO_SP),other,
+P86976,Venom metalloproteinase (M12B) family,mature_seq (NO_SP),other,metalloproteinase
+Q0GY40,other,full_seq (SP),other,scorpion_long_toxin
+Q1ELU3,other,full_seq (SP),other,cationic_peptide
+Q1ELU5,other,full_seq (SP),other,cationic_peptide
+Q25338,other,mature_seq (NO_SP),other,cationic_peptide
+Q26464,Formicidae venom precursor-01 superfamily,full_seq (SP),other,
+Q27J49,Bradykinin-potentiating peptide family,mature_seq (NO_SP),other,bradykinin_related
+Q2PE51,Bradykinin-potentiating peptide family,mature_seq (NO_SP),other,bradykinin_related
+Q3C2C1,Phospholipase A2 family,full_seq (SP),other,phospholipase_a2
+Q58L91,other,mature_seq (NO_SP),other,
+Q86QT3,other,full_seq (SP),other,scorpion_ktx
+Q8MMJ7,Non-disulfide-bridged peptide (NDBP) superfamily,full_seq (SP),other,antimicrobial_peptide
+Q8QGR0,Snake three-finger toxin family,mature_seq (NO_SP),3FTX,three_finger_toxin
+Q91132,other,mature_seq (NO_SP),other,
+Q92035,other,full_seq (SP),other,
+Q95P90,Long (3 C-C) scorpion toxin superfamily,full_seq (SP),other,scorpion_long_toxin
+Q9TVX3,Short scorpion toxin superfamily,full_seq (SP),other,scorpion_ktx
+Q9TWL9,Phospholipase A2 family,mature_seq (NO_SP),other,phospholipase_a2
+A0A088BP94,Neurotoxin 10 (Hwtx-1) family,full_seq (SP),other,neurotoxin
+A0A3G5BIB1,other,full_seq (SP),other,
+A0A3G5BIC2,other,full_seq (SP),other,
+A0A6G9KHE4,other,full_seq (SP),other,
+A0A6G9KIR5,Formicidae venom precursor-01 superfamily,full_seq (SP),other,
+A0A6G9KJV6,Formicidae venom precursor-01 superfamily,full_seq (SP),other,
+A0ZSK4,other,mature_seq (NO_SP),other,
+A6MFK7,other,mature_seq (NO_SP),other,peptidase
+A6YR20,Conotoxin O1 superfamily,full_seq (SP),other,conotoxin
+B1P1B7,Neurotoxin 10 (Hwtx-1) family,full_seq (SP),other,neurotoxin
+B1P1E7,Neurotoxin 10 (Hwtx-1) family,full_seq (SP),other,neurotoxin
+B1P1G1,Neurotoxin 10 (Hwtx-1) family,full_seq (SP),other,neurotoxin
+B1P1G8,Neurotoxin 10 (Hwtx-1) family,full_seq (SP),other,neurotoxin
+B2KKW0,other,mature_seq (NO_SP),other,phospholipase_other
+B3EWF2,other,full_seq (SP),other,neurotoxin
+B3EWN3,Neurotoxin 10 (Hwtx-1) family,mature_seq (NO_SP),other,neurotoxin
+B5U2W0,other,full_seq (SP),other,peptidase
+B7SNV8,Long (4 C-C) scorpion toxin superfamily,full_seq (SP),other,scorpion_long_toxin
+C0HJV6,other,full_seq (SP),other,cationic_peptide
+C0HKB2,Short scorpion toxin superfamily,mature_seq (NO_SP),other,scorpion_ktx
+C0HKB3,Short scorpion toxin superfamily,mature_seq (NO_SP),other,scorpion_ktx
+C0HLB2,Venom Kunitz-type family,mature_seq (NO_SP),other,venom_kunitz
+C0HLM2,Conotoxin A superfamily,mature_seq (NO_SP),other,conotoxin
+C4PWC4,other,mature_seq (NO_SP),other,conotoxin
+D1MEI6,MCD family,mature_seq (NO_SP),other,mcd_related
+D5J6X1,Neurotoxin 10 (Hwtx-1) family,full_seq (SP),other,neurotoxin
+E7BLC7,Long (4 C-C) scorpion toxin superfamily,full_seq (SP),other,scorpion_long_toxin
+F1CGT6,Long (4 C-C) scorpion toxin superfamily,full_seq (SP),other,scorpion_long_toxin
+I1SB07,Conotoxin M superfamily,mature_seq (NO_SP),other,conotoxin
+I6S7G5,other,full_seq (SP),other,scoloptoxin
+J3SEZ3,other,mature_seq (NO_SP),other,
+O46028,Short scorpion toxin superfamily,full_seq (SP),other,scorpion_ktx
+O46168,other,mature_seq (NO_SP),other,
+O73795,Venom metalloproteinase (M12B) family,full_seq (SP),other,metalloproteinase
+O77091,Long (4 C-C) scorpion toxin superfamily,full_seq (SP),other,scorpion_long_toxin
+P01491,Long (4 C-C) scorpion toxin superfamily,full_seq (SP),other,scorpion_long_toxin
+P01514,MCD family,mature_seq (NO_SP),other,mcd_related
+P01518,MCD family,mature_seq (NO_SP),other,mcd_related
+P0C022,MCD family,mature_seq (NO_SP),other,mcd_related
+P0C166,Short scorpion toxin superfamily,mature_seq (NO_SP),other,scorpion_ktx
+P0C194,Short scorpion toxin superfamily,full_seq (SP),other,scorpion_ktx
+P0C1N7,Conotoxin M superfamily,mature_seq (NO_SP),other,conotoxin
+P0C1W3,other,full_seq (SP),other,conotoxin
+P0C1W7,other,mature_seq (NO_SP),other,conotoxin
+P0C1X2,Venom Kunitz-type family,full_seq (SP),other,venom_kunitz
+P0C201,Neurotoxin 10 (Hwtx-1) family,full_seq (SP),other,neurotoxin
+P0C249,Conotoxin O2 superfamily,mature_seq (NO_SP),other,
+P0C2C5,Conotoxin A superfamily,mature_seq (NO_SP),other,conotoxin
+P0C8E1,other,mature_seq (NO_SP),other,conotoxin
+P0C8E2,other,mature_seq (NO_SP),other,conotoxin
+P0C8L9,Phospholipase A2 family,full_seq (SP),other,phospholipase_a2
+P0C8M0,other,mature_seq (NO_SP),other,
+P0C8W3,Venom Kunitz-type family,full_seq (SP),other,scorpion_ktx
+P0CD70,other,mature_seq (NO_SP),other,
+P0CF38,Non-disulfide-bridged peptide (NDBP) superfamily,mature_seq (NO_SP),other,
+P0CG45,Conotoxin M superfamily,mature_seq (NO_SP),other,conotoxin
+P0CH43,other,mature_seq (NO_SP),other,neurotoxin
+P0DJ45,Venom Kunitz-type family,mature_seq (NO_SP),other,scorpion_ktx
+P0DJE3,other,mature_seq (NO_SP),other,cationic_peptide
+P0DJK0,other,full_seq (SP),other,
+P0DL36,other,full_seq (SP),other,scoloptoxin
+P0DL38,Neurotoxin 02 (plectoxin) family,full_seq (SP),other,neurotoxin
+P0DL42,other,mature_seq (NO_SP),other,vegf
+P0DL62,Short scorpion toxin superfamily,mature_seq (NO_SP),other,scorpion_ktx
+P0DL71,other,mature_seq (NO_SP),other,
+P0DL75,other,full_seq (SP),other,
+P0DL76,other,mature_seq (NO_SP),other,
+P0DM14,Neurotoxin 10 (Hwtx-1) family,mature_seq (NO_SP),other,neurotoxin
+P0DMD2,other,mature_seq (NO_SP),other,scoloptoxin
+P0DPT3,Long (4 C-C) scorpion toxin superfamily,mature_seq (NO_SP),other,scorpion_long_toxin
+P0DQH8,other,mature_seq (NO_SP),other,
+P0DQO1,Neurotoxin 10 (Hwtx-1) family,mature_seq (NO_SP),other,neurotoxin
+P0DQQ6,Conotoxin A superfamily,mature_seq (NO_SP),other,conotoxin
+P0DQY7,Conotoxin A superfamily,mature_seq (NO_SP),other,conotoxin
+P0DRA0,MCD family,mature_seq (NO_SP),other,mcd_related
+P0DRA1,MCD family,mature_seq (NO_SP),other,mcd_related
+P0DRB0,Long (4 C-C) scorpion toxin superfamily,mature_seq (NO_SP),other,scorpion_long_toxin
+P0DUC3,Conotoxin O2 superfamily,mature_seq (NO_SP),other,
+P0DUJ6,other,full_seq (SP),other,
+P0DUS6,other,full_seq (SP),other,
+P0DUT1,other,mature_seq (NO_SP),other,
+P0DUT2,other,full_seq (SP),other,hormone_related
+P0DUT6,other,full_seq (SP),other,
+P0DUV2,other,mature_seq (NO_SP),other,
+P0DV32,Neurotoxin 14 (magi-1) family,full_seq (SP),other,neurotoxin
+P0DV95,Neurotoxin 10 (Hwtx-1) family,full_seq (SP),other,neurotoxin
+P0DV96,Neurotoxin 10 (Hwtx-1) family,full_seq (SP),other,neurotoxin
+P11057,other,mature_seq (NO_SP),other,neurotoxin
+P15969,other,full_seq (SP),other,neurotoxin
+P17684,other,mature_seq (NO_SP),other,conotoxin
+P18329,Snake three-finger toxin family,mature_seq (NO_SP),3FTX,three_finger_toxin
+P23027,Phospholipase A2 family,mature_seq (NO_SP),other,phospholipase_a2
+P24160,Conotoxin O2 superfamily,mature_seq (NO_SP),other,conotoxin
+P26349,other,mature_seq (NO_SP),other,hormone_related
+P29425,other,full_seq (SP),other,neurotoxin
+P30811,Phospholipase A2 family,mature_seq (NO_SP),other,phospholipase_a2
+P31328,other,mature_seq (NO_SP),other,neurotoxin
+P34079,Neurotoxin 02 (plectoxin) family,mature_seq (NO_SP),other,neurotoxin
+P37045,Neurotoxin 02 (plectoxin) family,full_seq (SP),other,neurotoxin
+P43685,other,mature_seq (NO_SP),other,peptidase
+P49343,other,mature_seq (NO_SP),other,
+P49344,other,mature_seq (NO_SP),other,
+P56219,Short scorpion toxin superfamily,full_seq (SP),other,scorpion_ktx
+P56708,Conotoxin O1 superfamily,mature_seq (NO_SP),other,conotoxin
+P56852,Neurotoxin 10 (Hwtx-1) family,full_seq (SP),other,neurotoxin
+P58328,Long (4 C-C) scorpion toxin superfamily,mature_seq (NO_SP),other,scorpion_long_toxin
+P58425,Neurotoxin 10 (Hwtx-1) family,mature_seq (NO_SP),other,neurotoxin
+P58427,Neurotoxin 10 (Hwtx-1) family,mature_seq (NO_SP),other,neurotoxin
+P58809,Conotoxin T superfamily,full_seq (SP),other,conotoxin
+P59936,Short scorpion toxin superfamily,full_seq (SP),other,scorpion_ktx
+P60179,Conotoxin O1 superfamily,mature_seq (NO_SP),other,conotoxin
+P60211,Short scorpion toxin superfamily,full_seq (SP),other,scorpion_ktx
+P60245,Conotoxin M superfamily,mature_seq (NO_SP),other,conotoxin
+P60976,other,full_seq (SP),other,neurotoxin
+P60980,Neurotoxin 10 (Hwtx-1) family,full_seq (SP),other,neurotoxin
+P61409,other,full_seq (SP),other,neurotoxin
+P69940,other,mature_seq (NO_SP),other,scorpion_long_toxin
+P81398,other,mature_seq (NO_SP),other,snaclec
+P81790,other,full_seq (SP),other,neurotoxin
+P82428,Non-disulfide-bridged peptide (NDBP) superfamily,mature_seq (NO_SP),other,antimicrobial_peptide
+P82811,Long (4 C-C) scorpion toxin superfamily,mature_seq (NO_SP),other,scorpion_long_toxin
+P83047,Conotoxin O2 superfamily,mature_seq (NO_SP),other,
+P83228,Natriuretic peptide family,mature_seq (NO_SP),other,
+P83312,Non-disulfide-bridged peptide (NDBP) superfamily,mature_seq (NO_SP),other,
+P83558,Neurotoxin 14 (magi-1) family,full_seq (SP),other,neurotoxin
+P83560,other,full_seq (SP),other,neurotoxin
+P83580,other,full_seq (SP),other,neurotoxin
+P83911,Neurotoxin 02 (plectoxin) family,mature_seq (NO_SP),other,neurotoxin
+P84034,other,mature_seq (NO_SP),other,neurotoxin
+P84190,Non-disulfide-bridged peptide (NDBP) superfamily,mature_seq (NO_SP),other,
+P84701,other,mature_seq (NO_SP),other,
+P84915,MCD family,mature_seq (NO_SP),other,mcd_related
+P85117,other,mature_seq (NO_SP),other,neurotoxin
+P85141,other,mature_seq (NO_SP),other,
+P85162,Bradykinin-potentiating peptide family,mature_seq (NO_SP),other,bradykinin_related
+P85505,other,mature_seq (NO_SP),other,neurotoxin
+P85871,other,mature_seq (NO_SP),other,
+P85874,MCD family,mature_seq (NO_SP),other,mcd_related
+P86110,Short scorpion toxin superfamily,full_seq (SP),other,scorpion_ktx
+P86193,other,mature_seq (NO_SP),other,
+P86259,Conotoxin T superfamily,mature_seq (NO_SP),other,conotoxin
+Q0GY42,other,mature_seq (NO_SP),other,scorpion_long_toxin
+Q1ELU8,other,mature_seq (NO_SP),other,cationic_peptide
+Q1ELU9,other,full_seq (SP),other,cationic_peptide
+Q1ZY03,Phospholipase A2 family,full_seq (SP),other,phospholipase_a2
+Q2I2R5,other,full_seq (SP),other,conotoxin
+Q5MJP5,Long (4 C-C) scorpion toxin superfamily,mature_seq (NO_SP),other,scorpion_long_toxin
+Q5Y4V8,other,mature_seq (NO_SP),other,neurotoxin
+Q66S03,other,full_seq (SP),other,
+Q75WF2,other,full_seq (SP),other,
+Q7T2Q0,other,full_seq (SP),other,snaclec
+Q7Z096,Conotoxin I1 superfamily,full_seq (SP),other,conotoxin
+Q7ZT99,other,mature_seq (NO_SP),other,crisp_related
+Q8AYA3,other,mature_seq (NO_SP),other,snaclec
+Q8JFX7,Snake three-finger toxin family,full_seq (SP),3FTX,three_finger_toxin
+Q90W38,other,full_seq (SP),other,ngf
+Q90Y44,Venom metalloproteinase (M12B) family,mature_seq (NO_SP),other,metalloproteinase
+Q95NJ8,Short scorpion toxin superfamily,full_seq (SP),other,scorpion_ktx
+Q95NK7,Short scorpion toxin superfamily,mature_seq (NO_SP),other,scorpion_ktx
+Q9BPA9,Conotoxin O2 superfamily,mature_seq (NO_SP),other,conotoxin
+Q9GU58,other,mature_seq (NO_SP),other,conotoxin
+Q9NII5,Short scorpion toxin superfamily,mature_seq (NO_SP),other,scorpion_ktx
+Q9NJP7,Short scorpion toxin superfamily,full_seq (SP),other,scorpion_ktx
+R4GUQ3,Short scorpion toxin superfamily,full_seq (SP),other,scorpion_ktx
+W5U5X5,other,full_seq (SP),other,
+A0A023W145,other,mature_seq (NO_SP),other,scoloptoxin
+A0A023W157,other,mature_seq (NO_SP),other,scoloptoxin
+A0A0B5A7M7,other,full_seq (SP),other,hormone_related
+A0A0B5A8P8,other,full_seq (SP),other,hormone_related
+A0A0B5ABE6,other,full_seq (SP),other,hormone_related
+A0A1D0BRB0,other,full_seq (SP),other,neurotoxin
+A0A1D0BZF5,other,full_seq (SP),other,neurotoxin
+A0A1E1WVX2,Venom metalloproteinase (M12B) family,full_seq (SP),other,metalloproteinase
+A0A218QX08,Long (3 C-C) scorpion toxin superfamily,full_seq (SP),other,scorpion_long_toxin
+A0A346CED7,other,full_seq (SP),other,conotoxin
+A0A346CIB0,Snake three-finger toxin family,full_seq (SP),3FTX,three_finger_toxin
+A0A348G5V8,Formicidae venom precursor-01 superfamily,full_seq (SP),other,
+A0A348G5W2,Formicidae venom precursor-01 superfamily,full_seq (SP),other,
+A0A4P1LYC9,Snake three-finger toxin family,mature_seq (NO_SP),3FTX,three_finger_toxin
+A0A6B9KZ83,other,full_seq (SP),other,
+A0A6B9KZA1,other,full_seq (SP),other,
+A0A6B9L3U7,other,full_seq (SP),other,
+A0A6B9L6D3,other,full_seq (SP),other,
+A0A6M3Z4D9,Formicidae venom precursor-01 superfamily,full_seq (SP),other,
+A0A7S8MVN3,Long (4 C-C) scorpion toxin superfamily,full_seq (SP),other,scorpion_long_toxin
+A0A8U0LTF0,other,mature_seq (NO_SP),other,
+B1P1A7,other,mature_seq (NO_SP),other,neurotoxin
+B1P1B0,other,mature_seq (NO_SP),other,neurotoxin
+B1P1B4,other,full_seq (SP),other,neurotoxin
+B1P1C7,Neurotoxin 10 (Hwtx-1) family,full_seq (SP),other,neurotoxin
+B1P1D4,Neurotoxin 10 (Hwtx-1) family,full_seq (SP),other,neurotoxin
+B1P1F0,Neurotoxin 10 (Hwtx-1) family,full_seq (SP),other,neurotoxin
+B1P1F2,Neurotoxin 10 (Hwtx-1) family,mature_seq (NO_SP),other,neurotoxin
+B1P1F9,Neurotoxin 10 (Hwtx-1) family,mature_seq (NO_SP),other,neurotoxin
+B1P1G9,Neurotoxin 10 (Hwtx-1) family,full_seq (SP),other,neurotoxin
+B1P1H0,Neurotoxin 10 (Hwtx-1) family,mature_seq (NO_SP),other,neurotoxin
+B1P1H3,other,full_seq (SP),other,neurotoxin
+B1P1H6,Neurotoxin 14 (magi-1) family,mature_seq (NO_SP),other,neurotoxin
+B1P1H8,Neurotoxin 14 (magi-1) family,full_seq (SP),other,neurotoxin
+B1P1I0,other,full_seq (SP),other,neurotoxin
+B1P1I1,other,full_seq (SP),other,neurotoxin
+B1P1I6,other,mature_seq (NO_SP),other,neurotoxin
+B3A0L5,Short scorpion toxin superfamily,mature_seq (NO_SP),other,scorpion_ktx
+B3A0P0,other,mature_seq (NO_SP),other,neurotoxin
+B3EWQ0,other,mature_seq (NO_SP),other,neurotoxin
+B3EWT0,other,mature_seq (NO_SP),other,neurotoxin
+B3EWT1,other,mature_seq (NO_SP),other,neurotoxin
+B3EWT2,Neurotoxin 02 (plectoxin) family,mature_seq (NO_SP),other,neurotoxin
+B3EWT3,Neurotoxin 02 (plectoxin) family,mature_seq (NO_SP),other,neurotoxin
+B3EWT4,Neurotoxin 02 (plectoxin) family,mature_seq (NO_SP),other,neurotoxin
+B3EWV4,Cationic peptide 04 (cupiennin) family,mature_seq (NO_SP),other,cationic_peptide
+B3EWV5,Cationic peptide 04 (cupiennin) family,mature_seq (NO_SP),other,cationic_peptide
+B3EWV8,Cationic peptide 04 (cupiennin) family,mature_seq (NO_SP),other,cationic_peptide
+B3EWW0,Cationic peptide 04 (cupiennin) family,mature_seq (NO_SP),other,cationic_peptide
+B3EWW4,Cationic peptide 04 (cupiennin) family,mature_seq (NO_SP),other,cationic_peptide
+B3EWW7,Cationic peptide 04 (cupiennin) family,mature_seq (NO_SP),other,cationic_peptide
+B3EWX9,Short scorpion toxin superfamily,mature_seq (NO_SP),other,scorpion_ktx
+B3EWY3,Natriuretic peptide family,mature_seq (NO_SP),other,
+B3FIA5,other,full_seq (SP),other,conotoxin
+B3SVF1,Conotoxin M superfamily,mature_seq (NO_SP),other,conotoxin
+B4YSU8,other,full_seq (SP),other,conotoxin
+B5AJT2,Venom metalloproteinase (M12B) family,full_seq (SP),other,metalloproteinase
+C0HJA8,Conotoxin A superfamily,mature_seq (NO_SP),other,conotoxin
+C0HJK5,other,mature_seq (NO_SP),other,neurotoxin
+C0HJU9,Cationic peptide 04 (cupiennin) family,mature_seq (NO_SP),other,cationic_peptide
+C0HJV3,other,mature_seq (NO_SP),other,cationic_peptide
+C0HJV5,other,mature_seq (NO_SP),other,cationic_peptide
+C0HJY5,other,mature_seq (NO_SP),other,
+C0HJY7,other,mature_seq (NO_SP),other,
+C0HJY8,other,mature_seq (NO_SP),other,
+C0HJY9,other,mature_seq (NO_SP),other,
+C0HKD0,other,mature_seq (NO_SP),other,
+C0HKY6,Conotoxin M superfamily,mature_seq (NO_SP),other,conotoxin
+C0HKZ1,Conotoxin M superfamily,mature_seq (NO_SP),other,conotoxin
+C0HLR8,other,mature_seq (NO_SP),other,neurotoxin
+C0HLT7,other,mature_seq (NO_SP),other,bradykinin_related
+C0HLZ0,Long (4 C-C) scorpion toxin superfamily,mature_seq (NO_SP),other,scorpion_long_toxin
+C0HLZ7,other,mature_seq (NO_SP),other,disintegrin
+C0HM60,Short scorpion toxin superfamily,mature_seq (NO_SP),other,scorpion_short_toxin
+C0LNR2,Venom Kunitz-type family,full_seq (SP),other,venom_kunitz
+C5H5D5,Venom metalloproteinase (M12B) family,mature_seq (NO_SP),other,metalloproteinase
+C9X4K7,Long (4 C-C) scorpion toxin superfamily,full_seq (SP),other,scorpion_long_toxin
+D0PX84,other,mature_seq (NO_SP),other,conotoxin
+D1MEJ3,MCD family,full_seq (SP),other,mcd_related
+D2DGD3,other,full_seq (SP),other,conotoxin
+D2Y2C7,other,mature_seq (NO_SP),other,hainantoxin
+D2Y2H0,other,full_seq (SP),other,hainantoxin
+D2Y2Q6,Venom Kunitz-type family,mature_seq (NO_SP),other,venom_kunitz
+D5J9S0,Natriuretic peptide family,mature_seq (NO_SP),other,
+D8KY58,Venom Kunitz-type family,full_seq (SP),other,venom_kunitz
+D8VNS9,other,mature_seq (NO_SP),other,ficolin
+D9U2A2,Long (3 C-C) scorpion toxin superfamily,mature_seq (NO_SP),other,scorpion_long_toxin
+E2E4E4,other,full_seq (SP),other,
+E2E4L2,other,full_seq (SP),other,
+E4VP07,Non-disulfide-bridged peptide (NDBP) superfamily,full_seq (SP),other,antimicrobial_peptide
+J7JU64,other,mature_seq (NO_SP),other,conotoxin
+L0GBR1,other,mature_seq (NO_SP),other,
+O76200,Neurotoxin 02 (plectoxin) family,full_seq (SP),other,neurotoxin
+P01380,Snake three-finger toxin family,mature_seq (NO_SP),3FTX,three_finger_toxin
+P01393,Snake three-finger toxin family,mature_seq (NO_SP),3FTX,three_finger_toxin
+P01409,Snake three-finger toxin family,mature_seq (NO_SP),3FTX,three_finger_toxin
+P01414,Snake three-finger toxin family,mature_seq (NO_SP),3FTX,three_finger_toxin
+P01477,other,full_seq (SP),other,
+P01504,other,mature_seq (NO_SP),other,
+P01517,MCD family,mature_seq (NO_SP),other,mcd_related
+P01520,Conotoxin A superfamily,mature_seq (NO_SP),other,conotoxin
+P01524,Conotoxin M superfamily,mature_seq (NO_SP),other,conotoxin
+P04203,other,mature_seq (NO_SP),other,hormone_related
+P05487,other,mature_seq (NO_SP),other,
+P07493,MCD family,mature_seq (NO_SP),other,mcd_related
+P07495,MCD family,mature_seq (NO_SP),other,mcd_related
+P07496,MCD family,mature_seq (NO_SP),other,mcd_related
+P0C168,Short scorpion toxin superfamily,mature_seq (NO_SP),other,scorpion_ktx
+P0C176,Short scorpion toxin superfamily,mature_seq (NO_SP),other,scorpion_ktx
+P0C1B8,Long (3 C-C) scorpion toxin superfamily,mature_seq (NO_SP),other,scorpion_long_toxin
+P0C1C8,Conotoxin O1 superfamily,mature_seq (NO_SP),other,conotoxin
+P0C1C9,Conotoxin O1 superfamily,mature_seq (NO_SP),other,conotoxin
+P0C1M2,MCD family,mature_seq (NO_SP),other,mcd_related
+P0C1M3,MCD family,mature_seq (NO_SP),other,mcd_related
+P0C1M5,MCD family,mature_seq (NO_SP),other,mcd_related
+P0C1Q9,MCD family,mature_seq (NO_SP),other,mcd_related
+P0C1R1,MCD family,mature_seq (NO_SP),other,mcd_related
+P0C1W9,Conotoxin A superfamily,mature_seq (NO_SP),other,conotoxin
+P0C1X5,Short scorpion toxin superfamily,mature_seq (NO_SP),other,scorpion_ktx
+P0C1X6,Short scorpion toxin superfamily,full_seq (SP),other,scorpion_ktx
+P0C1Y9,Snake three-finger toxin family,mature_seq (NO_SP),3FTX,three_finger_toxin
+P0C1Z4,Short scorpion toxin superfamily,mature_seq (NO_SP),other,scorpion_ktx
+P0C2F2,Conotoxin T superfamily,mature_seq (NO_SP),other,conotoxin
+P0C2F3,other,mature_seq (NO_SP),other,scorpion_long_toxin
+P0C2U8,Cationic peptide 04 (cupiennin) family,mature_seq (NO_SP),other,cationic_peptide
+P0C2V1,other,mature_seq (NO_SP),other,neurotoxin
+P0C351,Conotoxin A superfamily,mature_seq (NO_SP),other,conotoxin
+P0C5G7,MCD family,mature_seq (NO_SP),other,mcd_related
+P0C615,other,mature_seq (NO_SP),other,conotoxin
+P0C642,Conotoxin T superfamily,mature_seq (NO_SP),other,conotoxin
+P0C6B5,other,mature_seq (NO_SP),other,disintegrin
+P0C6S2,other,mature_seq (NO_SP),other,conotoxin
+P0C7J7,Bradykinin-potentiating peptide family,mature_seq (NO_SP),other,bradykinin_related
+P0C7J8,Bradykinin-potentiating peptide family,mature_seq (NO_SP),other,bradykinin_related
+P0C7J9,Bradykinin-potentiating peptide family,mature_seq (NO_SP),other,bradykinin_related
+P0C7K0,Bradykinin-potentiating peptide family,mature_seq (NO_SP),other,bradykinin_related
+P0C7K1,Bradykinin-potentiating peptide family,mature_seq (NO_SP),other,bradykinin_related
+P0C7K2,Bradykinin-potentiating peptide family,mature_seq (NO_SP),other,bradykinin_related
+P0C7K3,Bradykinin-potentiating peptide family,mature_seq (NO_SP),other,bradykinin_related
+P0C7S4,Bradykinin-potentiating peptide family,mature_seq (NO_SP),other,bradykinin_related
+P0C7S5,Bradykinin-potentiating peptide family,mature_seq (NO_SP),other,bradykinin_related
+P0C7S7,Bradykinin-potentiating peptide family,mature_seq (NO_SP),other,bradykinin_related
+P0C844,other,mature_seq (NO_SP),other,
+P0C8U9,Conotoxin A superfamily,full_seq (SP),other,conotoxin
+P0C8V2,Conotoxin M superfamily,mature_seq (NO_SP),other,conotoxin
+P0C8W2,Non-disulfide-bridged peptide (NDBP) superfamily,full_seq (SP),other,antimicrobial_peptide
+P0C8X9,Short scorpion toxin superfamily,full_seq (SP),other,scorpion_short_toxin
+P0C910,Long (4 C-C) scorpion toxin superfamily,mature_seq (NO_SP),other,scorpion_long_toxin
+P0C931,MCD family,mature_seq (NO_SP),other,mcd_related
+P0CD67,MCD family,mature_seq (NO_SP),other,mcd_related
+P0CF39,Long (4 C-C) scorpion toxin superfamily,mature_seq (NO_SP),other,scorpion_long_toxin
+P0CH16,Conotoxin M superfamily,mature_seq (NO_SP),other,conotoxin
+P0CH39,Conotoxin A superfamily,full_seq (SP),other,conotoxin
+P0CH50,Neurotoxin 10 (Hwtx-1) family,mature_seq (NO_SP),other,neurotoxin
+P0CH52,Neurotoxin 10 (Hwtx-1) family,mature_seq (NO_SP),other,neurotoxin
+P0CH57,other,mature_seq (NO_SP),other,scorpion_long_toxin
+P0CH71,Neurotoxin 10 (Hwtx-1) family,mature_seq (NO_SP),other,neurotoxin
+P0CI22,Conotoxin T superfamily,mature_seq (NO_SP),other,conotoxin
+P0CI24,Conotoxin M superfamily,mature_seq (NO_SP),other,conotoxin
+P0CI44,Long (3 C-C) scorpion toxin superfamily,mature_seq (NO_SP),other,scorpion_long_toxin
+P0CJ22,other,mature_seq (NO_SP),other,
+P0CJ24,Short scorpion toxin superfamily,full_seq (SP),other,scorpion_short_toxin
+P0CJ36,MCD family,mature_seq (NO_SP),other,mcd_related
+P0CJ39,MCD family,mature_seq (NO_SP),other,mcd_related
+P0CY88,Conotoxin A superfamily,full_seq (SP),other,conotoxin
+P0DJ47,Venom Kunitz-type family,mature_seq (NO_SP),other,scorpion_ktx
+P0DJ48,Venom Kunitz-type family,mature_seq (NO_SP),other,scorpion_ktx
+P0DJ50,Venom Kunitz-type family,full_seq (SP),other,scorpion_ktx
+P0DJK3,Bradykinin-potentiating peptide family,mature_seq (NO_SP),other,bradykinin_related
+P0DJK4,Bradykinin-potentiating peptide family,mature_seq (NO_SP),other,bradykinin_related
+P0DJK6,Bradykinin-potentiating peptide family,mature_seq (NO_SP),other,bradykinin_related
+P0DJK7,Bradykinin-potentiating peptide family,mature_seq (NO_SP),other,bradykinin_related
+P0DJL6,Conotoxin T superfamily,mature_seq (NO_SP),other,conotoxin
+P0DJO5,Short scorpion toxin superfamily,full_seq (SP),other,scorpion_ktx
+P0DKM7,other,mature_seq (NO_SP),other,conotoxin
+P0DKQ8,other,full_seq (SP),other,
+P0DKS3,Snake three-finger toxin family,mature_seq (NO_SP),3FTX,three_finger_toxin
+P0DKZ3,Bradykinin-potentiating peptide family,mature_seq (NO_SP),other,bradykinin_related
+P0DKZ4,Bradykinin-potentiating peptide family,mature_seq (NO_SP),other,bradykinin_related
+P0DKZ8,Bradykinin-potentiating peptide family,mature_seq (NO_SP),other,bradykinin_related
+P0DL01,Bradykinin-potentiating peptide family,mature_seq (NO_SP),other,bradykinin_related
+P0DL02,Bradykinin-potentiating peptide family,mature_seq (NO_SP),other,bradykinin_related
+P0DL03,Bradykinin-potentiating peptide family,mature_seq (NO_SP),other,bradykinin_related
+P0DL04,Bradykinin-potentiating peptide family,mature_seq (NO_SP),other,bradykinin_related
+P0DL05,Bradykinin-potentiating peptide family,mature_seq (NO_SP),other,bradykinin_related
+P0DL32,other,mature_seq (NO_SP),other,bradykinin_related
+P0DL65,Short scorpion toxin superfamily,full_seq (SP),other,scorpion_ktx
+P0DL82,Snake three-finger toxin family,mature_seq (NO_SP),3FTX,three_finger_toxin
+P0DM29,other,full_seq (SP),other,
+P0DM70,other,mature_seq (NO_SP),other,bradykinin_related
+P0DM71,other,mature_seq (NO_SP),other,bradykinin_related
+P0DMD6,Natriuretic peptide family,mature_seq (NO_SP),other,
+P0DMR9,Short scorpion toxin superfamily,mature_seq (NO_SP),other,scorpion_ktx
+P0DOW6,Conotoxin O2 superfamily,mature_seq (NO_SP),other,conotoxin
+P0DOZ2,other,mature_seq (NO_SP),other,
+P0DOZ7,other,full_seq (SP),other,
+P0DP11,Conotoxin M superfamily,mature_seq (NO_SP),other,conotoxin
+P0DP13,Conotoxin O2 superfamily,mature_seq (NO_SP),other,
+P0DP14,Conotoxin O2 superfamily,mature_seq (NO_SP),other,
+P0DP17,Conotoxin O2 superfamily,mature_seq (NO_SP),other,
+P0DP18,Conotoxin O2 superfamily,mature_seq (NO_SP),other,
+P0DP36,Short scorpion toxin superfamily,full_seq (SP),other,scorpion_ktx
+P0DP54,Phospholipase A2 family,full_seq (SP),other,phospholipase_a2
+P0DP56,other,full_seq (SP),other,
+P0DPJ5,Conotoxin M superfamily,mature_seq (NO_SP),other,conotoxin
+P0DPJ6,Conotoxin M superfamily,mature_seq (NO_SP),other,conotoxin
+P0DPJ7,Conotoxin M superfamily,mature_seq (NO_SP),other,conotoxin
+P0DPQ1,Conotoxin O2 superfamily,mature_seq (NO_SP),other,
+P0DPQ2,Conotoxin O2 superfamily,mature_seq (NO_SP),other,
+P0DPU1,other,mature_seq (NO_SP),other,crisp_related
+P0DPU7,other,full_seq (SP),other,neurotoxin
+P0DPV3,other,full_seq (SP),other,scoloptoxin
+P0DPV4,other,full_seq (SP),other,scoloptoxin
+P0DPV6,other,full_seq (SP),other,scoloptoxin
+P0DQA3,other,full_seq (SP),other,scoloptoxin
+P0DQB8,other,full_seq (SP),other,scoloptoxin
+P0DQE1,other,full_seq (SP),other,scoloptoxin
+P0DQH2,Snake three-finger toxin family,mature_seq (NO_SP),3FTX,three_finger_toxin
+P0DQM6,other,mature_seq (NO_SP),other,
+P0DQM7,other,mature_seq (NO_SP),other,
+P0DQM8,Conotoxin M superfamily,mature_seq (NO_SP),other,conotoxin
+P0DQN5,Short scorpion toxin superfamily,full_seq (SP),other,scorpion_ktx
+P0DQQ3,Snake three-finger toxin family,mature_seq (NO_SP),3FTX,three_finger_toxin
+P0DQQ5,Conotoxin A superfamily,mature_seq (NO_SP),other,conotoxin
+P0DQU9,other,mature_seq (NO_SP),other,disintegrin
+P0DQZ2,Neurotoxin 10 (Hwtx-1) family,mature_seq (NO_SP),other,neurotoxin
+P0DRA5,MCD family,mature_seq (NO_SP),other,mcd_related
+P0DRA6,MCD family,mature_seq (NO_SP),other,mcd_related
+P0DRA7,MCD family,mature_seq (NO_SP),other,mcd_related
+P0DRB2,other,mature_seq (NO_SP),other,
+P0DRD7,Neurotoxin 14 (magi-1) family,mature_seq (NO_SP),other,neurotoxin
+P0DSI4,Formicidae venom precursor-01 superfamily,full_seq (SP),other,
+P0DTJ2,other,mature_seq (NO_SP),other,
+P0DTJ7,other,full_seq (SP),other,conotoxin
+P0DUC4,Conotoxin O2 superfamily,mature_seq (NO_SP),other,
+P0DUC5,Conotoxin O2 superfamily,mature_seq (NO_SP),other,
+P0DUC6,Conotoxin O2 superfamily,mature_seq (NO_SP),other,
+P0DUC7,Conotoxin O2 superfamily,mature_seq (NO_SP),other,
+P0DUC8,Conotoxin O2 superfamily,mature_seq (NO_SP),other,
+P0DUI0,Long (4 C-C) scorpion toxin superfamily,full_seq (SP),other,scorpion_long_toxin
+P0DUQ6,Conotoxin A superfamily,full_seq (SP),other,conotoxin
+P0DUQ9,Conotoxin O2 superfamily,mature_seq (NO_SP),other,
+P0DUR1,Conotoxin A superfamily,mature_seq (NO_SP),other,conotoxin
+P0DUR2,Conotoxin A superfamily,mature_seq (NO_SP),other,conotoxin
+P0DUS2,other,full_seq (SP),other,
+P0DUS4,other,full_seq (SP),other,
+P0DUS5,other,full_seq (SP),other,
+P0DUS7,other,full_seq (SP),other,
+P0DUS8,other,full_seq (SP),other,
+P0DUS9,other,full_seq (SP),other,
+P0DUT0,other,full_seq (SP),other,
+P0DUT3,other,mature_seq (NO_SP),other,
+P0DUT5,other,full_seq (SP),other,
+P0DV16,other,mature_seq (NO_SP),other,
+P0DV17,other,mature_seq (NO_SP),other,
+P0DW84,Short scorpion toxin superfamily,full_seq (SP),other,scorpion_ktx
+P0DX31,MCD family,mature_seq (NO_SP),other,mcd_related
+P0DX32,MCD family,mature_seq (NO_SP),other,mcd_related
+P0DX46,MCD family,mature_seq (NO_SP),other,mcd_related
+P0DX47,other,full_seq (SP),other,
+P0DX48,other,full_seq (SP),other,
+P0DX49,other,full_seq (SP),other,
+P0DX60,Formicidae venom precursor-01 superfamily,full_seq (SP),other,
+P0DXW7,other,full_seq (SP),other,
+P0DXX1,other,mature_seq (NO_SP),other,
+P0DXZ6,Phospholipase A2 family,full_seq (SP),other,phospholipase_a2
+P12797,other,mature_seq (NO_SP),other,bradykinin_related
+P15220,Short scorpion toxin superfamily,mature_seq (NO_SP),other,scorpion_short_toxin
+P17231,MCD family,mature_seq (NO_SP),other,mcd_related
+P17232,MCD family,mature_seq (NO_SP),other,mcd_related
+P17234,MCD family,mature_seq (NO_SP),other,mcd_related
+P17235,MCD family,mature_seq (NO_SP),other,mcd_related
+P17236,MCD family,mature_seq (NO_SP),other,mcd_related
+P17237,MCD family,mature_seq (NO_SP),other,mcd_related
+P19856,Long (4 C-C) scorpion toxin superfamily,mature_seq (NO_SP),other,scorpion_long_toxin
+P22030,other,mature_seq (NO_SP),other,snaclec
+P25687,other,mature_seq (NO_SP),other,
+P28374,Natriuretic peptide family,mature_seq (NO_SP),other,
+P29426,Neurotoxin 10 (Hwtx-1) family,mature_seq (NO_SP),other,neurotoxin
+P30288,Neurotoxin 02 (plectoxin) family,mature_seq (NO_SP),other,neurotoxin
+P30424,Bradykinin-potentiating peptide family,mature_seq (NO_SP),other,bradykinin_related
+P30426,Bradykinin-potentiating peptide family,mature_seq (NO_SP),other,bradykinin_related
+P31351,Bradykinin-potentiating peptide family,mature_seq (NO_SP),other,bradykinin_related
+P34076,Snake three-finger toxin family,mature_seq (NO_SP),3FTX,three_finger_toxin
+P36988,Neurotoxin 02 (plectoxin) family,mature_seq (NO_SP),other,neurotoxin
+P42716,MCD family,mature_seq (NO_SP),other,mcd_related
+P42717,other,mature_seq (NO_SP),other,bradykinin_related
+P45667,Long (4 C-C) scorpion toxin superfamily,mature_seq (NO_SP),other,scorpion_long_toxin
+P45696,Short scorpion toxin superfamily,full_seq (SP),other,scorpion_ktx
+P46066,Long (4 C-C) scorpion toxin superfamily,mature_seq (NO_SP),other,scorpion_long_toxin
+P49269,other,mature_seq (NO_SP),other,neurotoxin
+P49271,Neurotoxin 14 (magi-1) family,mature_seq (NO_SP),other,neurotoxin
+P55816,other,mature_seq (NO_SP),other,neurotoxin
+P55817,other,mature_seq (NO_SP),other,neurotoxin
+P56854,Neurotoxin 10 (Hwtx-1) family,mature_seq (NO_SP),other,neurotoxin
+P57672,other,mature_seq (NO_SP),other,bradykinin_related
+P58504,Short scorpion toxin superfamily,mature_seq (NO_SP),other,scorpion_ktx
+P58783,Conotoxin A superfamily,mature_seq (NO_SP),other,conotoxin
+P58785,Conotoxin O2 superfamily,mature_seq (NO_SP),other,
+P58805,other,mature_seq (NO_SP),other,
+P58807,Conotoxin T superfamily,mature_seq (NO_SP),other,conotoxin
+P58844,other,full_seq (SP),other,conotoxin
+P58914,Conotoxin O1 superfamily,mature_seq (NO_SP),other,conotoxin
+P58915,Conotoxin O1 superfamily,mature_seq (NO_SP),other,conotoxin
+P58918,Conotoxin O1 superfamily,mature_seq (NO_SP),other,conotoxin
+P58926,Conotoxin M superfamily,mature_seq (NO_SP),other,conotoxin
+P58930,other,mature_seq (NO_SP),other,
+P58990,other,mature_seq (NO_SP),other,
+P59870,Short scorpion toxin superfamily,mature_seq (NO_SP),other,scorpion_ktx
+P59925,Short scorpion toxin superfamily,mature_seq (NO_SP),other,scorpion_ktx
+P60165,Short scorpion toxin superfamily,mature_seq (NO_SP),other,scorpion_ktx
+P60272,other,full_seq (SP),other,neurotoxin
+P60978,other,mature_seq (NO_SP),other,neurotoxin
+P61232,other,mature_seq (NO_SP),other,neurotoxin
+P61233,other,mature_seq (NO_SP),other,neurotoxin
+P61789,Neurotoxin 10 (Hwtx-1) family,mature_seq (NO_SP),other,neurotoxin
+P61790,Neurotoxin 10 (Hwtx-1) family,mature_seq (NO_SP),other,neurotoxin
+P63019,Long (4 C-C) scorpion toxin superfamily,mature_seq (NO_SP),other,scorpion_long_toxin
+P68725,Long (4 C-C) scorpion toxin superfamily,full_seq (SP),other,scorpion_long_toxin
+P69034,MCD family,mature_seq (NO_SP),other,mcd_related
+P69035,MCD family,mature_seq (NO_SP),other,mcd_related
+P81727,other,mature_seq (NO_SP),other,conotoxin
+P81744,other,mature_seq (NO_SP),other,neurotoxin
+P81782,Snake three-finger toxin family,mature_seq (NO_SP),3FTX,three_finger_toxin
+P81791,Neurotoxin 02 (plectoxin) family,full_seq (SP),other,neurotoxin
+P82227,other,mature_seq (NO_SP),other,neurotoxin
+P82425,Non-disulfide-bridged peptide (NDBP) superfamily,mature_seq (NO_SP),other,antimicrobial_peptide
+P82426,Non-disulfide-bridged peptide (NDBP) superfamily,mature_seq (NO_SP),other,antimicrobial_peptide
+P82427,Non-disulfide-bridged peptide (NDBP) superfamily,mature_seq (NO_SP),other,antimicrobial_peptide
+P82852,other,mature_seq (NO_SP),other,neurotoxin
+P83224,Natriuretic peptide family,mature_seq (NO_SP),other,
+P83234,other,mature_seq (NO_SP),other,
+P83244,Short scorpion toxin superfamily,mature_seq (NO_SP),other,scorpion_ktx
+P83247,other,mature_seq (NO_SP),other,cationic_peptide
+P83251,other,mature_seq (NO_SP),other,cationic_peptide
+P83258,other,mature_seq (NO_SP),other,neurotoxin
+P83390,other,mature_seq (NO_SP),other,conotoxin
+P83557,Neurotoxin 14 (magi-1) family,mature_seq (NO_SP),other,neurotoxin
+P83559,Neurotoxin 02 (plectoxin) family,mature_seq (NO_SP),other,neurotoxin
+P83588,other,mature_seq (NO_SP),other,neurotoxin
+P83620,Cationic peptide 04 (cupiennin) family,mature_seq (NO_SP),other,cationic_peptide
+P83660,other,mature_seq (NO_SP),other,bradykinin_related
+P83892,Neurotoxin 10 (Hwtx-1) family,mature_seq (NO_SP),other,neurotoxin
+P83895,Neurotoxin 02 (plectoxin) family,mature_seq (NO_SP),other,neurotoxin
+P83902,other,mature_seq (NO_SP),other,neurotoxin
+P83904,other,mature_seq (NO_SP),other,neurotoxin
+P83909,Neurotoxin 02 (plectoxin) family,mature_seq (NO_SP),other,neurotoxin
+P83998,other,mature_seq (NO_SP),other,
+P84062,other,mature_seq (NO_SP),other,neurotoxin
+P84197,Conotoxin I1 superfamily,mature_seq (NO_SP),other,conotoxin
+P84630,Short scorpion toxin superfamily,mature_seq (NO_SP),other,scorpion_ktx
+P84698,other,mature_seq (NO_SP),other,conotoxin
+P84706,other,mature_seq (NO_SP),other,conotoxin
+P84707,other,mature_seq (NO_SP),other,conotoxin
+P84756,other,mature_seq (NO_SP),other,
+P84835,Neurotoxin 10 (Hwtx-1) family,mature_seq (NO_SP),other,neurotoxin
+P85009,Conotoxin A superfamily,mature_seq (NO_SP),other,conotoxin
+P85012,Conotoxin A superfamily,mature_seq (NO_SP),other,conotoxin
+P85014,other,mature_seq (NO_SP),other,
+P85015,other,mature_seq (NO_SP),other,
+P85025,other,mature_seq (NO_SP),other,bradykinin_related
+P85159,other,mature_seq (NO_SP),other,
+P85160,Bradykinin-potentiating peptide family,mature_seq (NO_SP),other,bradykinin_related
+P85163,Bradykinin-potentiating peptide family,mature_seq (NO_SP),other,bradykinin_related
+P85168,Bradykinin-potentiating peptide family,mature_seq (NO_SP),other,bradykinin_related
+P85169,Bradykinin-potentiating peptide family,mature_seq (NO_SP),other,bradykinin_related
+P85506,other,mature_seq (NO_SP),other,neurotoxin
+P85873,other,mature_seq (NO_SP),other,bradykinin_related
+P86094,Snake three-finger toxin family,mature_seq (NO_SP),3FTX,three_finger_toxin
+P86255,other,mature_seq (NO_SP),other,
+P86257,Conotoxin T superfamily,mature_seq (NO_SP),other,conotoxin
+P86262,Conotoxin M superfamily,mature_seq (NO_SP),other,conotoxin
+P86264,Conotoxin T superfamily,mature_seq (NO_SP),other,conotoxin
+P86269,other,mature_seq (NO_SP),other,neurotoxin
+P86270,Short scorpion toxin superfamily,full_seq (SP),other,scorpion_ktx
+P86271,Short scorpion toxin superfamily,full_seq (SP),other,scorpion_ktx
+P86362,Conotoxin A superfamily,mature_seq (NO_SP),other,conotoxin
+P86421,Snake three-finger toxin family,mature_seq (NO_SP),3FTX,three_finger_toxin
+P86721,Bradykinin-potentiating peptide family,mature_seq (NO_SP),other,bradykinin_related
+P86828,Non-disulfide-bridged peptide (NDBP) superfamily,mature_seq (NO_SP),other,antimicrobial_peptide
+Q0GY41,other,full_seq (SP),other,scorpion_long_toxin
+Q1ELU0,other,full_seq (SP),other,cationic_peptide
+Q1RPS9,Venom Kunitz-type family,mature_seq (NO_SP),other,venom_kunitz
+Q2I2P8,Conotoxin M superfamily,full_seq (SP),other,conotoxin
+Q2I2R7,Conotoxin A superfamily,full_seq (SP),other,conotoxin
+Q2XXL8,Natriuretic peptide family,full_seq (SP),other,
+Q4JHE2,other,mature_seq (NO_SP),other,
+Q589G4,Venom Kunitz-type family,full_seq (SP),other,venom_kunitz
+Q5I4E6,other,mature_seq (NO_SP),other,conotoxin
+Q66S08,other,full_seq (SP),other,
+Q66S13,other,full_seq (SP),other,
+Q66S25,other,mature_seq (NO_SP),other,
+Q6B4T5,other,mature_seq (NO_SP),other,neurotoxin
+Q6T6T2,other,mature_seq (NO_SP),other,disintegrin
+Q75WG5,other,mature_seq (NO_SP),other,neurotoxin
+Q75WH3,Neurotoxin 02 (plectoxin) family,full_seq (SP),other,neurotoxin
+Q75WH6,Neurotoxin 14 (magi-1) family,full_seq (SP),other,neurotoxin
+Q7LZK8,other,mature_seq (NO_SP),other,snaclec
+Q7M3T3,other,mature_seq (NO_SP),other,bradykinin_related
+Q7M4K5,Conotoxin I1 superfamily,mature_seq (NO_SP),other,conotoxin
+Q86BX0,Short scorpion toxin superfamily,full_seq (SP),other,scorpion_ktx
+Q9BJW4,Short scorpion toxin superfamily,full_seq (SP),other,scorpion_short_toxin
+Q9BPB2,Conotoxin O2 superfamily,mature_seq (NO_SP),other,conotoxin
+Q9DEA2,other,mature_seq (NO_SP),other,snaclec
+Q9GQV6,Long (4 C-C) scorpion toxin superfamily,mature_seq (NO_SP),other,scorpion_long_toxin
+Q9PSM9,other,mature_seq (NO_SP),other,snaclec
+S0F1M9,other,mature_seq (NO_SP),other,neurotoxin
+S4UJW3,Conotoxin A superfamily,mature_seq (NO_SP),other,conotoxin
+U6BLN5,Venom metalloproteinase (M12B) family,full_seq (SP),other,metalloproteinase
+V5V893,other,full_seq (SP),other,conotoxin
+V9Z7R6,Venom metalloproteinase (M12B) family,mature_seq (NO_SP),other,metalloproteinase
+V9ZAY0,Venom metalloproteinase (M12B) family,mature_seq (NO_SP),other,metalloproteinase
+W4VSH9,Venom Kunitz-type family,full_seq (SP),other,venom_kunitz
+A0A023VZM6,other,mature_seq (NO_SP),other,scoloptoxin
+A0A023VZR2,other,full_seq (SP),other,scoloptoxin
+A0A023W0C3,other,full_seq (SP),other,scoloptoxin
+A0A023W0V6,other,full_seq (SP),other,scoloptoxin
+A0A023W0W9,other,full_seq (SP),other,scoloptoxin
+A0A0F7YZI5,other,full_seq (SP),other,hormone_related
+A0A0F7Z3J2,other,full_seq (SP),other,hormone_related
+A0A125S9D8,other,mature_seq (NO_SP),other,conotoxin
+A0A125S9D9,other,full_seq (SP),other,conotoxin
+A0A125S9E0,Conotoxin I1 superfamily,full_seq (SP),other,conotoxin
+A0A125S9E1,other,full_seq (SP),other,conotoxin
+A0A125S9E9,Conotoxin M superfamily,full_seq (SP),other,conotoxin
+A0A125S9F0,other,full_seq (SP),other,conotoxin
+A0A125S9F2,Conotoxin O2 superfamily,full_seq (SP),other,conotoxin
+A0A1D0BNA3,Neurotoxin 14 (magi-1) family,full_seq (SP),other,neurotoxin
+A0A1D0BND9,Venom Kunitz-type family,full_seq (SP),other,venom_kunitz
+A0A1D0BPK9,other,full_seq (SP),other,neurotoxin
+A0A1D0BZZ2,Neurotoxin 14 (magi-1) family,full_seq (SP),other,neurotoxin
+A0A1P8NVS8,Conotoxin O2 superfamily,mature_seq (NO_SP),other,
+A0A218QWY4,Long (4 C-C) scorpion toxin superfamily,full_seq (SP),other,scorpion_long_toxin
+A0A218QWY8,Non-disulfide-bridged peptide (NDBP) superfamily,full_seq (SP),other,
+A0A218QWZ7,Short scorpion toxin superfamily,mature_seq (NO_SP),other,scorpion_ktx
+A0A2P1BSU3,Snake three-finger toxin family,mature_seq (NO_SP),3FTX,three_finger_toxin
+A0A6B9KZ66,other,full_seq (SP),other,
+A0A6B9KZ90,other,full_seq (SP),other,
+A0A6B9L4Z7,other,full_seq (SP),other,
+A0A6B9L900,other,full_seq (SP),other,
+A0A7S8MU59,Long (3 C-C) scorpion toxin superfamily,full_seq (SP),other,scorpion_long_toxin
+A0A7S8MU78,Long (4 C-C) scorpion toxin superfamily,full_seq (SP),other,scorpion_long_toxin
+A0A7S8MU86,Long (3 C-C) scorpion toxin superfamily,full_seq (SP),other,scorpion_long_toxin
+A0A7S8MUG8,Long (4 C-C) scorpion toxin superfamily,full_seq (SP),other,scorpion_long_toxin
+A0A7S8MV32,Long (3 C-C) scorpion toxin superfamily,full_seq (SP),other,scorpion_long_toxin
+A0A7S8MVA6,Long (4 C-C) scorpion toxin superfamily,full_seq (SP),other,scorpion_long_toxin
+A0A7S8MVF3,Long (3 C-C) scorpion toxin superfamily,full_seq (SP),other,scorpion_long_toxin
+A0A7S8RFI7,Long (4 C-C) scorpion toxin superfamily,full_seq (SP),other,scorpion_long_toxin
+A0A7S8RGC8,Long (4 C-C) scorpion toxin superfamily,full_seq (SP),other,scorpion_long_toxin
+A0A8U0LTM5,other,full_seq (SP),other,egf
+A0F0C2,Long (3 C-C) scorpion toxin superfamily,full_seq (SP),other,scorpion_long_toxin
+A3F7X2,other,full_seq (SP),other,neurotoxin
+A5X2W8,Snake three-finger toxin family,full_seq (SP),3FTX,three_finger_toxin
+A6YR42,Conotoxin O1 superfamily,mature_seq (NO_SP),other,conotoxin
+A7X3M9,Snake three-finger toxin family,full_seq (SP),3FTX,three_finger_toxin
+A7X3R6,Snake three-finger toxin family,full_seq (SP),3FTX,three_finger_toxin
+A7X3W6,other,mature_seq (NO_SP),other,
+A7X3X3,other,mature_seq (NO_SP),other,
+A8HDK2,Snake three-finger toxin family,mature_seq (NO_SP),3FTX,three_finger_toxin
+A9XDG2,other,mature_seq (NO_SP),other,neurotoxin
+B0KZ78,Conotoxin O2 superfamily,full_seq (SP),other,conotoxin
+B1P1H9,Neurotoxin 10 (Hwtx-1) family,full_seq (SP),other,neurotoxin
+B1P1I7,Neurotoxin 10 (Hwtx-1) family,mature_seq (NO_SP),other,neurotoxin
+B1P1J1,other,full_seq (SP),other,neurotoxin
+B1P1J2,other,full_seq (SP),other,neurotoxin
+B3EWT5,other,mature_seq (NO_SP),other,neurotoxin
+B3EWT6,Cationic peptide 04 (cupiennin) family,mature_seq (NO_SP),other,cationic_peptide
+B3EWU4,Cationic peptide 04 (cupiennin) family,mature_seq (NO_SP),other,cationic_peptide
+B3EWU7,Cationic peptide 04 (cupiennin) family,mature_seq (NO_SP),other,cationic_peptide
+B3EWU8,Cationic peptide 04 (cupiennin) family,mature_seq (NO_SP),other,cationic_peptide
+B3EWU9,Cationic peptide 04 (cupiennin) family,mature_seq (NO_SP),other,cationic_peptide
+B3EWV0,Cationic peptide 04 (cupiennin) family,mature_seq (NO_SP),other,cationic_peptide
+B3EWW2,Cationic peptide 04 (cupiennin) family,mature_seq (NO_SP),other,cationic_peptide
+B3EWX3,Cationic peptide 04 (cupiennin) family,mature_seq (NO_SP),other,cationic_peptide
+B3EWX4,Cationic peptide 04 (cupiennin) family,mature_seq (NO_SP),other,cationic_peptide
+B3FIP2,other,full_seq (SP),other,neurotoxin
+B3FIQ7,Neurotoxin 14 (magi-1) family,full_seq (SP),other,neurotoxin
+B5KF99,Short scorpion toxin superfamily,full_seq (SP),other,scorpion_ktx
+B6DCN9,other,mature_seq (NO_SP),other,neurotoxin
+B6DCV6,other,mature_seq (NO_SP),other,neurotoxin
+B6DD13,other,mature_seq (NO_SP),other,neurotoxin
+B6DD26,other,mature_seq (NO_SP),other,neurotoxin
+B6DD29,other,mature_seq (NO_SP),other,neurotoxin
+B6DD39,other,mature_seq (NO_SP),other,venom_protein_other
+B6DD55,Neurotoxin 02 (plectoxin) family,full_seq (SP),other,neurotoxin
+B6DD61,other,full_seq (SP),other,venom_protein_other
+B6V6L0,Conotoxin M superfamily,full_seq (SP),other,conotoxin
+B8K1V9,Natriuretic peptide family,mature_seq (NO_SP),other,
+B8XH22,other,full_seq (SP),other,
+C0HJT2,Non-disulfide-bridged peptide (NDBP) superfamily,mature_seq (NO_SP),other,
+C0HKY3,Conotoxin T superfamily,mature_seq (NO_SP),other,conotoxin
+C0HKY5,Conotoxin T superfamily,mature_seq (NO_SP),other,conotoxin
+C0HKY7,Conotoxin M superfamily,mature_seq (NO_SP),other,conotoxin
+C0KYC4,Conotoxin T superfamily,full_seq (SP),other,conotoxin
+C5J893,Short scorpion toxin superfamily,mature_seq (NO_SP),other,scorpion_ktx
+C5J895,other,full_seq (SP),other,
+C5J896,Short scorpion toxin superfamily,full_seq (SP),other,scorpion_ktx
+C6EVG2,other,mature_seq (NO_SP),other,hormone_related
+C7DQB9,other,full_seq (SP),other,conotoxin
+D2CFI7,other,full_seq (SP),other,
+D2DGD8,other,full_seq (SP),other,conotoxin
+D2DGD9,other,full_seq (SP),other,conotoxin
+D2X5W3,other,full_seq (SP),other,antimicrobial_peptide
+D2Y170,Conotoxin T superfamily,mature_seq (NO_SP),other,conotoxin
+D2Y172,Conotoxin T superfamily,full_seq (SP),other,conotoxin
+D2Y174,Conotoxin T superfamily,full_seq (SP),other,conotoxin
+D2Y282,Neurotoxin 14 (magi-1) family,full_seq (SP),other,neurotoxin
+D2Y2B2,Neurotoxin 10 (Hwtx-1) family,mature_seq (NO_SP),other,neurotoxin
+D2Y2C1,Neurotoxin 10 (Hwtx-1) family,mature_seq (NO_SP),other,neurotoxin
+D2Y2E4,other,mature_seq (NO_SP),other,
+D2Y2P1,other,mature_seq (NO_SP),other,neurotoxin
+D2Y488,Venom Kunitz-type family,full_seq (SP),other,venom_kunitz
+D2Y495,Conotoxin O1 superfamily,full_seq (SP),other,conotoxin
+D5KR59,Conotoxin O1 superfamily,full_seq (SP),other,conotoxin
+D5KXH0,other,mature_seq (NO_SP),other,
+D6C4H5,Conotoxin T superfamily,full_seq (SP),other,conotoxin
+D6C4H9,Conotoxin I1 superfamily,full_seq (SP),other,conotoxin
+D6C4I0,Conotoxin I1 superfamily,full_seq (SP),other,conotoxin
+D6C4J0,other,mature_seq (NO_SP),other,conotoxin
+D6C4J7,other,full_seq (SP),other,conotoxin
+D6C4J9,Conotoxin T superfamily,mature_seq (NO_SP),other,conotoxin
+D6C4K5,Conotoxin I1 superfamily,full_seq (SP),other,conotoxin
+D6C4K9,Conotoxin O1 superfamily,full_seq (SP),other,conotoxin
+D6C4L4,Conotoxin O1 superfamily,mature_seq (NO_SP),other,conotoxin
+D6C4L5,Conotoxin O1 superfamily,mature_seq (NO_SP),other,conotoxin
+D6C4L8,Conotoxin M superfamily,full_seq (SP),other,conotoxin
+D9IX98,Natriuretic peptide family,full_seq (SP),other,
+D9U2A3,Long (3 C-C) scorpion toxin superfamily,full_seq (SP),other,scorpion_long_toxin
+D9U2A5,Long (4 C-C) scorpion toxin superfamily,full_seq (SP),other,scorpion_long_toxin
+D9U2A8,Short scorpion toxin superfamily,mature_seq (NO_SP),other,scorpion_ktx
+D9U2B0,Short scorpion toxin superfamily,full_seq (SP),other,scorpion_short_toxin
+D9U2B1,other,mature_seq (NO_SP),other,scorpion_long_toxin
+D9U2B2,Short scorpion toxin superfamily,full_seq (SP),other,scorpion_ktx
+D9U2B5,Non-disulfide-bridged peptide (NDBP) superfamily,full_seq (SP),other,
+E4VP04,Short scorpion toxin superfamily,full_seq (SP),other,scorpion_short_toxin
+F1CJ80,Short scorpion toxin superfamily,mature_seq (NO_SP),other,scorpion_ktx
+F8J2D7,Snake three-finger toxin family,mature_seq (NO_SP),3FTX,three_finger_toxin
+F8S101,other,mature_seq (NO_SP),other,phospholipase_other
+H1ZZI2,Long (4 C-C) scorpion toxin superfamily,full_seq (SP),other,scorpion_long_toxin
+H1ZZI8,Long (4 C-C) scorpion toxin superfamily,mature_seq (NO_SP),other,scorpion_long_toxin
+H2CYP1,other,mature_seq (NO_SP),other,
+H8Y1U0,Conotoxin T superfamily,full_seq (SP),other,conotoxin
+I6RA76,other,mature_seq (NO_SP),other,neurotoxin
+I6RU46,other,mature_seq (NO_SP),other,scoloptoxin
+I6RU51,other,full_seq (SP),other,neurotoxin
+I6S3A9,other,mature_seq (NO_SP),other,neurotoxin
+I6S7H3,other,mature_seq (NO_SP),other,scoloptoxin
+M1INJ1,Long (4 C-C) scorpion toxin superfamily,mature_seq (NO_SP),other,scorpion_long_toxin
+M1J7U4,Long (4 C-C) scorpion toxin superfamily,mature_seq (NO_SP),other,scorpion_long_toxin
+O76198,other,full_seq (SP),other,neurotoxin
+P01406,Snake three-finger toxin family,mature_seq (NO_SP),3FTX,three_finger_toxin
+P01516,MCD family,mature_seq (NO_SP),other,mcd_related
+P0C1R2,other,mature_seq (NO_SP),other,
+P0C251,Conotoxin I1 superfamily,full_seq (SP),other,conotoxin
+P0C299,Long (3 C-C) scorpion toxin superfamily,mature_seq (NO_SP),other,scorpion_long_toxin
+P0C2L4,other,mature_seq (NO_SP),other,neurotoxin
+P0C2S6,Neurotoxin 02 (plectoxin) family,full_seq (SP),other,neurotoxin
+P0C2S8,other,mature_seq (NO_SP),other,neurotoxin
+P0C608,Conotoxin I1 superfamily,mature_seq (NO_SP),other,conotoxin
+P0C609,Conotoxin I1 superfamily,mature_seq (NO_SP),other,conotoxin
+P0C612,Conotoxin I1 superfamily,mature_seq (NO_SP),other,conotoxin
+P0C613,Conotoxin I1 superfamily,mature_seq (NO_SP),other,conotoxin
+P0C830,Conotoxin A superfamily,mature_seq (NO_SP),other,conotoxin
+P0C8U3,Conotoxin A superfamily,mature_seq (NO_SP),other,conotoxin
+P0C8V0,Conotoxin A superfamily,full_seq (SP),other,conotoxin
+P0C8W5,other,full_seq (SP),other,scorpion_long_toxin
+P0C8X8,Short scorpion toxin superfamily,full_seq (SP),other,scorpion_short_toxin
+P0C901,Conotoxin A superfamily,mature_seq (NO_SP),other,conotoxin
+P0C903,Conotoxin O1 superfamily,full_seq (SP),other,conotoxin
+P0C905,Conotoxin O1 superfamily,mature_seq (NO_SP),other,conotoxin
+P0CAZ9,other,full_seq (SP),other,cationic_peptide
+P0CD68,MCD family,mature_seq (NO_SP),other,mcd_related
+P0CH55,Neurotoxin 10 (Hwtx-1) family,mature_seq (NO_SP),other,neurotoxin
+P0CH58,Non-disulfide-bridged peptide (NDBP) superfamily,mature_seq (NO_SP),other,
+P0CH72,Neurotoxin 10 (Hwtx-1) family,mature_seq (NO_SP),other,neurotoxin
+P0CI13,other,full_seq (SP),other,conotoxin
+P0CI46,Short scorpion toxin superfamily,full_seq (SP),other,scorpion_ktx
+P0CI47,Short scorpion toxin superfamily,full_seq (SP),other,scorpion_ktx
+P0CI50,Long (4 C-C) scorpion toxin superfamily,full_seq (SP),other,scorpion_long_toxin
+P0CI54,Long (4 C-C) scorpion toxin superfamily,mature_seq (NO_SP),other,scorpion_long_toxin
+P0CI56,Long (4 C-C) scorpion toxin superfamily,mature_seq (NO_SP),other,scorpion_long_toxin
+P0CI86,Short scorpion toxin superfamily,mature_seq (NO_SP),other,scorpion_ktx
+P0CI91,Non-disulfide-bridged peptide (NDBP) superfamily,full_seq (SP),other,antimicrobial_peptide
+P0CI92,Non-disulfide-bridged peptide (NDBP) superfamily,full_seq (SP),other,antimicrobial_peptide
+P0CI98,Long (3 C-C) scorpion toxin superfamily,full_seq (SP),other,scorpion_long_toxin
+P0CJ00,Long (3 C-C) scorpion toxin superfamily,mature_seq (NO_SP),other,scorpion_long_toxin
+P0CY63,Conotoxin O1 superfamily,full_seq (SP),other,conotoxin
+P0CY64,Conotoxin O1 superfamily,full_seq (SP),other,conotoxin
+P0CY80,Conotoxin A superfamily,mature_seq (NO_SP),other,conotoxin
+P0CY87,Conotoxin A superfamily,full_seq (SP),other,conotoxin
+P0DJ33,Short scorpion toxin superfamily,full_seq (SP),other,scorpion_ktx
+P0DKN0,other,full_seq (SP),other,conotoxin
+P0DKN1,other,full_seq (SP),other,conotoxin
+P0DKN2,other,full_seq (SP),other,conotoxin
+P0DL35,Short scorpion toxin superfamily,full_seq (SP),other,scorpion_ktx
+P0DL66,Conotoxin O1 superfamily,mature_seq (NO_SP),other,conotoxin
+P0DM17,other,full_seq (SP),other,
+P0DM20,other,full_seq (SP),other,conotoxin
+P0DM34,other,full_seq (SP),other,conotoxin
+P0DM54,Bradykinin-potentiating peptide family,mature_seq (NO_SP),other,bradykinin_related
+P0DMA1,Conotoxin M superfamily,mature_seq (NO_SP),other,conotoxin
+P0DMA3,Conotoxin O1 superfamily,mature_seq (NO_SP),other,conotoxin
+P0DMB3,Conotoxin M superfamily,mature_seq (NO_SP),other,conotoxin
+P0DMD8,other,full_seq (SP),other,neurotoxin
+P0DN44,other,full_seq (SP),other,teretoxin
+P0DN47,other,full_seq (SP),other,teretoxin
+P0DN51,other,mature_seq (NO_SP),other,teretoxin
+P0DN52,other,full_seq (SP),other,teretoxin
+P0DN59,other,mature_seq (NO_SP),other,teretoxin
+P0DN60,other,full_seq (SP),other,teretoxin
+P0DN63,other,full_seq (SP),other,teretoxin
+P0DN64,other,full_seq (SP),other,teretoxin
+P0DN65,other,full_seq (SP),other,teretoxin
+P0DP12,Conotoxin T superfamily,mature_seq (NO_SP),other,conotoxin
+P0DP47,other,full_seq (SP),other,
+P0DP48,other,mature_seq (NO_SP),other,
+P0DPG6,other,full_seq (SP),other,conotoxin
+P0DPJ8,Conotoxin M superfamily,mature_seq (NO_SP),other,conotoxin
+P0DPK9,Conotoxin M superfamily,mature_seq (NO_SP),other,conotoxin
+P0DPL0,Conotoxin M superfamily,mature_seq (NO_SP),other,conotoxin
+P0DPL3,Conotoxin M superfamily,mature_seq (NO_SP),other,conotoxin
+P0DPL4,Conotoxin T superfamily,mature_seq (NO_SP),other,conotoxin
+P0DPL5,Conotoxin T superfamily,mature_seq (NO_SP),other,conotoxin
+P0DPL6,Conotoxin T superfamily,mature_seq (NO_SP),other,conotoxin
+P0DPM2,Conotoxin A superfamily,mature_seq (NO_SP),other,conotoxin
+P0DPV7,other,full_seq (SP),other,
+P0DPV8,other,full_seq (SP),other,
+P0DPW0,other,full_seq (SP),other,
+P0DPW3,other,full_seq (SP),other,scoloptoxin
+P0DPW5,other,full_seq (SP),other,scoloptoxin
+P0DPW8,other,full_seq (SP),other,scoloptoxin
+P0DPX2,other,full_seq (SP),other,scoloptoxin
+P0DPX3,other,mature_seq (NO_SP),other,scoloptoxin
+P0DPX4,other,full_seq (SP),other,scoloptoxin
+P0DPX6,other,mature_seq (NO_SP),other,scoloptoxin
+P0DPX7,other,full_seq (SP),Scoloptoxin,scoloptoxin
+P0DPX8,other,full_seq (SP),Scoloptoxin,scoloptoxin
+P0DPX9,other,full_seq (SP),Scoloptoxin,scoloptoxin
+P0DPY0,other,full_seq (SP),Scoloptoxin,scoloptoxin
+P0DPY1,other,full_seq (SP),Scoloptoxin,scoloptoxin
+P0DPY2,other,full_seq (SP),other,scoloptoxin
+P0DPY3,other,full_seq (SP),other,scoloptoxin
+P0DPY6,other,full_seq (SP),other,scoloptoxin
+P0DPY7,other,mature_seq (NO_SP),other,scoloptoxin
+P0DPY9,other,full_seq (SP),other,scoloptoxin
+P0DPZ0,other,full_seq (SP),other,scoloptoxin
+P0DPZ1,other,full_seq (SP),other,scoloptoxin
+P0DPZ4,other,full_seq (SP),other,scoloptoxin
+P0DPZ5,other,full_seq (SP),other,scoloptoxin
+P0DPZ6,other,full_seq (SP),other,scoloptoxin
+P0DPZ8,other,full_seq (SP),other,scoloptoxin
+P0DPZ9,other,full_seq (SP),other,scoloptoxin
+P0DQA1,other,mature_seq (NO_SP),other,scoloptoxin
+P0DQA2,other,full_seq (SP),other,scoloptoxin
+P0DQA7,other,mature_seq (NO_SP),other,scoloptoxin
+P0DQA9,other,full_seq (SP),other,scoloptoxin
+P0DQB1,other,mature_seq (NO_SP),other,scoloptoxin
+P0DQB3,other,full_seq (SP),other,scoloptoxin
+P0DQB4,other,full_seq (SP),other,scoloptoxin
+P0DQB5,other,full_seq (SP),other,scoloptoxin
+P0DQB9,other,full_seq (SP),other,scoloptoxin
+P0DQC3,other,full_seq (SP),other,scoloptoxin
+P0DQC6,other,mature_seq (NO_SP),other,scoloptoxin
+P0DQC9,other,mature_seq (NO_SP),other,scoloptoxin
+P0DQE0,other,full_seq (SP),other,scoloptoxin
+P0DQE4,other,full_seq (SP),other,scoloptoxin
+P0DQE5,other,full_seq (SP),other,scoloptoxin
+P0DQE6,other,full_seq (SP),other,scoloptoxin
+P0DQE7,other,full_seq (SP),other,scoloptoxin
+P0DQE9,other,full_seq (SP),other,scoloptoxin
+P0DQF0,other,full_seq (SP),other,scoloptoxin
+P0DQF1,other,full_seq (SP),other,scoloptoxin
+P0DQF2,other,full_seq (SP),other,scoloptoxin
+P0DQF3,other,full_seq (SP),other,scoloptoxin
+P0DQF4,other,full_seq (SP),other,scoloptoxin
+P0DQF5,other,full_seq (SP),other,scoloptoxin
+P0DQF6,other,full_seq (SP),other,scoloptoxin
+P0DQF7,other,full_seq (SP),other,scoloptoxin
+P0DQF8,other,mature_seq (NO_SP),other,scoloptoxin
+P0DQF9,other,full_seq (SP),other,scoloptoxin
+P0DQG0,other,full_seq (SP),other,scoloptoxin
+P0DQG1,other,full_seq (SP),other,scoloptoxin
+P0DQG4,other,mature_seq (NO_SP),other,scoloptoxin
+P0DQG5,other,full_seq (SP),other,scoloptoxin
+P0DQG6,other,full_seq (SP),other,scoloptoxin
+P0DQG8,other,full_seq (SP),other,scoloptoxin
+P0DQH1,other,full_seq (SP),other,scoloptoxin
+P0DQI9,other,full_seq (SP),other,
+P0DQJ0,other,full_seq (SP),other,
+P0DQJ1,other,mature_seq (NO_SP),other,
+P0DQN4,other,full_seq (SP),other,scorpion_long_toxin
+P0DQT8,other,full_seq (SP),other,antimicrobial_peptide
+P0DQU3,Short scorpion toxin superfamily,mature_seq (NO_SP),other,scorpion_ktx
+P0DQU5,Short scorpion toxin superfamily,mature_seq (NO_SP),other,scorpion_ktx
+P0DQX9,other,full_seq (SP),other,egf
+P0DQY8,other,mature_seq (NO_SP),other,
+P0DRC6,Long (4 C-C) scorpion toxin superfamily,mature_seq (NO_SP),other,scorpion_long_toxin
+P0DRD6,other,full_seq (SP),other,
+P0DSI6,Formicidae venom precursor-01 superfamily,full_seq (SP),other,
+P0DSI9,other,mature_seq (NO_SP),other,
+P0DSJ7,other,full_seq (SP),other,
+P0DSK1,Formicidae venom precursor-01 superfamily,full_seq (SP),other,
+P0DSL1,other,mature_seq (NO_SP),other,
+P0DSL2,other,mature_seq (NO_SP),other,
+P0DSL3,other,mature_seq (NO_SP),other,
+P0DSM3,Non-disulfide-bridged peptide (NDBP) superfamily,mature_seq (NO_SP),other,antimicrobial_peptide
+P0DSM9,Snake three-finger toxin family,mature_seq (NO_SP),3FTX,three_finger_toxin
+P0DTX2,Conotoxin O1 superfamily,full_seq (SP),other,conotoxin
+P0DTX7,Conotoxin O1 superfamily,full_seq (SP),other,conotoxin
+P0DTY0,Conotoxin O1 superfamily,full_seq (SP),other,conotoxin
+P0DTY4,Conotoxin O1 superfamily,full_seq (SP),other,conotoxin
+P0DTY5,Conotoxin O1 superfamily,full_seq (SP),other,conotoxin
+P0DTY9,Conotoxin O1 superfamily,full_seq (SP),other,conotoxin
+P0DTZ1,Conotoxin O1 superfamily,full_seq (SP),other,conotoxin
+P0DTZ5,Conotoxin O1 superfamily,full_seq (SP),other,conotoxin
+P0DTZ6,Conotoxin O1 superfamily,full_seq (SP),other,conotoxin
+P0DUA0,Conotoxin O1 superfamily,full_seq (SP),other,conotoxin
+P0DUQ8,other,mature_seq (NO_SP),other,conotoxin
+P0DV13,other,mature_seq (NO_SP),other,
+P0DV80,Bradykinin-potentiating peptide family,mature_seq (NO_SP),other,bradykinin_related
+P0DV81,Bradykinin-potentiating peptide family,mature_seq (NO_SP),other,bradykinin_related
+P0DX99,other,full_seq (SP),other,neurotoxin
+P0DXA0,other,full_seq (SP),other,
+P0DXT9,other,full_seq (SP),other,
+P0DXU1,other,full_seq (SP),other,
+P0DXW3,other,full_seq (SP),other,
+P0DXW4,other,full_seq (SP),other,
+P0DXW5,other,full_seq (SP),other,
+P0DXW6,other,full_seq (SP),other,
+P0DXW8,other,full_seq (SP),other,
+P0DXW9,other,full_seq (SP),other,
+P14534,Snake three-finger toxin family,mature_seq (NO_SP),3FTX,three_finger_toxin
+P15221,Long (4 C-C) scorpion toxin superfamily,mature_seq (NO_SP),other,scorpion_long_toxin
+P19003,Snake three-finger toxin family,mature_seq (NO_SP),3FTX,three_finger_toxin
+P24159,Conotoxin O1 superfamily,mature_seq (NO_SP),other,conotoxin
+P25676,Snake three-finger toxin family,mature_seq (NO_SP),3FTX,three_finger_toxin
+P58849,Conotoxin T superfamily,mature_seq (NO_SP),other,conotoxin
+P61100,other,mature_seq (NO_SP),other,neurotoxin
+P61229,other,full_seq (SP),other,neurotoxin
+P61504,other,mature_seq (NO_SP),other,neurotoxin
+P68420,Neurotoxin 14 (magi-1) family,mature_seq (NO_SP),other,neurotoxin
+P68423,Neurotoxin 14 (magi-1) family,mature_seq (NO_SP),other,neurotoxin
+P69496,other,full_seq (SP),other,conotoxin
+P69756,Conotoxin O1 superfamily,mature_seq (NO_SP),other,conotoxin
+P80163,other,mature_seq (NO_SP),other,
+P81885,other,mature_seq (NO_SP),other,neurotoxin
+P82464,Snake three-finger toxin family,mature_seq (NO_SP),3FTX,three_finger_toxin
+P82885,other,mature_seq (NO_SP),other,
+P84017,other,mature_seq (NO_SP),other,neurotoxin
+P84716,Snake three-finger toxin family,mature_seq (NO_SP),3FTX,three_finger_toxin
+P85016,Conotoxin M superfamily,mature_seq (NO_SP),other,conotoxin
+P85019,Conotoxin M superfamily,mature_seq (NO_SP),other,conotoxin
+P85020,Conotoxin M superfamily,mature_seq (NO_SP),other,conotoxin
+P85038,Bradykinin-potentiating peptide family,mature_seq (NO_SP),other,bradykinin_related
+P86263,Conotoxin M superfamily,mature_seq (NO_SP),other,conotoxin
+Q0PL65,Venom Kunitz-type family,mature_seq (NO_SP),other,venom_kunitz
+Q1A3Q5,Conotoxin T superfamily,full_seq (SP),other,conotoxin
+Q1A3Q6,Conotoxin T superfamily,mature_seq (NO_SP),other,conotoxin
+Q2I2P2,other,full_seq (SP),other,conotoxin
+Q2I2P4,other,full_seq (SP),other,conotoxin
+Q2I2Q2,Conotoxin M superfamily,full_seq (SP),other,conotoxin
+Q2VBN0,Snake three-finger toxin family,mature_seq (NO_SP),3FTX,three_finger_toxin
+Q2XXP1,other,mature_seq (NO_SP),other,crisp_related
+Q2XXR8,other,full_seq (SP),other,
+Q3YEE3,Conotoxin O1 superfamily,full_seq (SP),other,conotoxin
+Q3YEE5,Conotoxin O1 superfamily,full_seq (SP),other,conotoxin
+Q3YEF7,Conotoxin O2 superfamily,full_seq (SP),other,conotoxin
+Q3YEF8,Conotoxin O2 superfamily,full_seq (SP),other,conotoxin
+Q4JCS1,Venom metalloproteinase (M12B) family,mature_seq (NO_SP),other,metalloproteinase
+Q4LCT1,Long (3 C-C) scorpion toxin superfamily,full_seq (SP),other,scorpion_long_toxin
+Q53B48,Snake three-finger toxin family,full_seq (SP),3FTX,three_finger_toxin
+Q53B55,Snake three-finger toxin family,full_seq (SP),3FTX,three_finger_toxin
+Q5Y4U2,other,full_seq (SP),other,neurotoxin
+Q5Y4U3,other,full_seq (SP),other,neurotoxin
+Q5Y4U4,Neurotoxin 02 (plectoxin) family,full_seq (SP),other,neurotoxin
+Q5Y4V9,other,full_seq (SP),other,venom_protein_other
+Q5Y4Y0,other,mature_seq (NO_SP),other,neurotoxin
+Q66S17,other,full_seq (SP),other,
+Q6XLL8,Short scorpion toxin superfamily,mature_seq (NO_SP),other,scorpion_ktx
+Q7Z0A1,Conotoxin I1 superfamily,mature_seq (NO_SP),other,conotoxin
+Q7ZT13,Snake three-finger toxin family,mature_seq (NO_SP),3FTX,three_finger_toxin
+Q86QV3,other,mature_seq (NO_SP),other,scorpion_ktx
+Q8MTX1,other,full_seq (SP),other,neurotoxin
+Q8QGP7,Natriuretic peptide family,mature_seq (NO_SP),other,
+Q8T3S7,Venom Kunitz-type family,mature_seq (NO_SP),other,venom_kunitz
+Q9BHA0,Conotoxin O2 superfamily,mature_seq (NO_SP),other,conotoxin
+Q9BN11,Short scorpion toxin superfamily,mature_seq (NO_SP),other,scorpion_short_toxin
+Q9BP67,other,mature_seq (NO_SP),other,conotoxin
+Q9BP77,Conotoxin O1 superfamily,full_seq (SP),other,conotoxin
+Q9BP90,Conotoxin O1 superfamily,mature_seq (NO_SP),other,conotoxin
+Q9BPC3,Conotoxin O2 superfamily,mature_seq (NO_SP),other,conotoxin
+Q9BPJ4,Conotoxin M superfamily,full_seq (SP),other,conotoxin
+Q9TWR4,Non-disulfide-bridged peptide (NDBP) superfamily,mature_seq (NO_SP),other,
+Q9U6Z5,Conotoxin T superfamily,full_seq (SP),other,conotoxin
+V9ISG0,other,mature_seq (NO_SP),other,neurotoxin
+W4VRU9,other,mature_seq (NO_SP),other,neurotoxin
+W4VRV3,Neurotoxin 14 (magi-1) family,full_seq (SP),other,neurotoxin
+W4VRY7,Neurotoxin 14 (magi-1) family,full_seq (SP),other,neurotoxin
+W4VS32,other,full_seq (SP),other,neurotoxin
+W4VS70,other,mature_seq (NO_SP),other,
+W4VSB0,other,mature_seq (NO_SP),other,neurotoxin
+W4VSB6,other,full_seq (SP),other,conotoxin
+W4VSB9,other,full_seq (SP),other,neurotoxin
+W4VSG7,other,full_seq (SP),other,conotoxin
+W4VSI6,other,full_seq (SP),other,neurotoxin
+W4VSI9,Neurotoxin 10 (Hwtx-1) family,mature_seq (NO_SP),other,neurotoxin
+I6R1R5,other,full_seq (SP),Scoloptoxin,scoloptoxin
+P0DPX5,other,full_seq (SP),Scoloptoxin,scoloptoxin
