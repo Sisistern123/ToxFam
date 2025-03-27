@@ -1,8 +1,8 @@
 {
     "numeric_metrics": {
-        "Validation_Accuracy": 0.7134146341463414,
-        "Validation_MCC": 0.6915302084818129,
-        "Validation_Avg_Loss": 1.1800629198551178
+        "Validation_Accuracy": 0.7012195121951219,
+        "Validation_MCC": 0.6835841797003246,
+        "Validation_Avg_Loss": 1.1270030935605366
     },
     "classification_report": {
         "antimicrobial_peptide": {
@@ -24,9 +24,9 @@
             "support": 8.0
         },
         "conotoxin": {
-            "precision": 0.75,
-            "recall": 0.6428571428571429,
-            "f1-score": 0.6923076923076923,
+            "precision": 0.7083333333333334,
+            "recall": 0.6071428571428571,
+            "f1-score": 0.6538461538461539,
             "support": 28.0
         },
         "mcd_related": {
@@ -37,9 +37,9 @@
         },
         "metalloproteinase": {
             "precision": 1.0,
-            "recall": 0.16666666666666666,
-            "f1-score": 0.2857142857142857,
-            "support": 6.0
+            "recall": 0.14285714285714285,
+            "f1-score": 0.25,
+            "support": 7.0
         },
         "neurotoxin": {
             "precision": 0.8846153846153846,
@@ -48,28 +48,28 @@
             "support": 29.0
         },
         "other": {
-            "precision": 0.3125,
-            "recall": 0.8333333333333334,
-            "f1-score": 0.45454545454545453,
-            "support": 18.0
+            "precision": 0.2916666666666667,
+            "recall": 1.0,
+            "f1-score": 0.45161290322580644,
+            "support": 14.0
         },
         "phospholipase_a2": {
             "precision": 1.0,
-            "recall": 1.0,
-            "f1-score": 1.0,
-            "support": 1.0
+            "recall": 0.5,
+            "f1-score": 0.6666666666666666,
+            "support": 2.0
         },
         "scoloptoxin": {
             "precision": 0.8235294117647058,
-            "recall": 0.6666666666666666,
-            "f1-score": 0.7368421052631579,
-            "support": 21.0
+            "recall": 0.6086956521739131,
+            "f1-score": 0.7,
+            "support": 23.0
         },
         "scorpion_ktx": {
-            "precision": 1.0,
-            "recall": 0.5,
-            "f1-score": 0.6666666666666666,
-            "support": 12.0
+            "precision": 0.8333333333333334,
+            "recall": 0.45454545454545453,
+            "f1-score": 0.5882352941176471,
+            "support": 11.0
         },
         "scorpion_long_toxin": {
             "precision": 1.0,
@@ -78,10 +78,10 @@
             "support": 7.0
         },
         "three_finger_toxin": {
-            "precision": 0.8888888888888888,
+            "precision": 1.0,
             "recall": 1.0,
-            "f1-score": 0.9411764705882353,
-            "support": 8.0
+            "f1-score": 1.0,
+            "support": 9.0
         },
         "venom_kunitz": {
             "precision": 0.0,
@@ -89,17 +89,17 @@
             "f1-score": 0.0,
             "support": 0.0
         },
-        "accuracy": 0.7134146341463414,
+        "accuracy": 0.7012195121951219,
         "macro avg": {
-            "precision": 0.8185381203763556,
-            "recall": 0.6820754163734459,
-            "f1-score": 0.704208246910591,
+            "precision": 0.810105580693816,
+            "recall": 0.6466266518874144,
+            "f1-score": 0.6708588428227896,
             "support": 164.0
         },
         "weighted avg": {
-            "precision": 0.828561432390342,
-            "recall": 0.7134146341463414,
-            "f1-score": 0.7318422036235221,
+            "precision": 0.8285265607180958,
+            "recall": 0.7012195121951219,
+            "f1-score": 0.719649394266995,
             "support": 164.0
         }
     }
