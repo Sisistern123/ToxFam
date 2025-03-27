@@ -1,8 +1,8 @@
 {
     "numeric_metrics": {
-        "Validation_Accuracy": 0.7439024390243902,
-        "Validation_MCC": 0.7222213847155738,
-        "Validation_Avg_Loss": 1.064505696296692
+        "Validation_Accuracy": 0.725609756097561,
+        "Validation_MCC": 0.7044281107971626,
+        "Validation_Avg_Loss": 1.1299653053283691
     },
     "classification_report": {
         "Cationic peptide family": {
@@ -13,9 +13,9 @@
         },
         "Conotoxin family": {
             "precision": 0.7692307692307693,
-            "recall": 0.6666666666666666,
-            "f1-score": 0.7142857142857143,
-            "support": 30.0
+            "recall": 0.7142857142857143,
+            "f1-score": 0.7407407407407407,
+            "support": 28.0
         },
         "Formicidae venom family": {
             "precision": 1.0,
@@ -25,9 +25,9 @@
         },
         "Limacoditoxin family": {
             "precision": 1.0,
-            "recall": 0.25,
-            "f1-score": 0.4,
-            "support": 4.0
+            "recall": 0.2,
+            "f1-score": 0.3333333333333333,
+            "support": 5.0
         },
         "Long (3 C-C) scorpion toxin superfamily": {
             "precision": 0.6666666666666666,
@@ -37,9 +37,9 @@
         },
         "Long (4 C-C) scorpion toxin superfamily": {
             "precision": 1.0,
-            "recall": 0.75,
-            "f1-score": 0.8571428571428571,
-            "support": 4.0
+            "recall": 0.6,
+            "f1-score": 0.75,
+            "support": 5.0
         },
         "MCD family": {
             "precision": 0.8571428571428571,
@@ -54,10 +54,10 @@
             "support": 15.0
         },
         "Neurotoxin family": {
-            "precision": 0.88,
-            "recall": 0.7857142857142857,
-            "f1-score": 0.8301886792452831,
-            "support": 28.0
+            "precision": 0.92,
+            "recall": 0.7931034482758621,
+            "f1-score": 0.8518518518518519,
+            "support": 29.0
         },
         "Non-disulfide-bridged peptide (NDBP) superfamily": {
             "precision": 0.5714285714285714,
@@ -72,10 +72,10 @@
             "support": 3.0
         },
         "Scoloptoxin family": {
-            "precision": 0.8888888888888888,
-            "recall": 0.7619047619047619,
-            "f1-score": 0.8205128205128205,
-            "support": 21.0
+            "precision": 0.8333333333333334,
+            "recall": 0.75,
+            "f1-score": 0.7894736842105263,
+            "support": 20.0
         },
         "Short scorpion toxin superfamily": {
             "precision": 1.0,
@@ -97,27 +97,27 @@
         },
         "Venom metalloproteinase (M12B) family": {
             "precision": 1.0,
-            "recall": 0.25,
-            "f1-score": 0.4,
-            "support": 4.0
+            "recall": 0.16666666666666666,
+            "f1-score": 0.2857142857142857,
+            "support": 6.0
         },
         "other": {
-            "precision": 0.2727272727272727,
-            "recall": 0.75,
-            "f1-score": 0.4,
-            "support": 12.0
+            "precision": 0.18181818181818182,
+            "recall": 0.6,
+            "f1-score": 0.27906976744186046,
+            "support": 10.0
         },
-        "accuracy": 0.7439024390243902,
+        "accuracy": 0.725609756097561,
         "macro avg": {
-            "precision": 0.8077925832337598,
-            "recall": 0.6646294881588999,
-            "f1-score": 0.6778962347940546,
+            "precision": 0.8015299569711335,
+            "recall": 0.6416747890378722,
+            "f1-score": 0.6548405637414618,
             "support": 164.0
         },
         "weighted avg": {
-            "precision": 0.8381035106492423,
-            "recall": 0.7439024390243902,
-            "f1-score": 0.7584409636640552,
+            "precision": 0.8444876143504191,
+            "recall": 0.725609756097561,
+            "f1-score": 0.7451627507204329,
             "support": 164.0
         }
     }

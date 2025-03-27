@@ -1,8 +1,8 @@
 {
     "numeric_metrics": {
-        "Test_Accuracy": 0.7580645161290323,
-        "Test_MCC": 0.7328515377143032,
-        "Test_Avg_Loss": 0.63165083527565
+        "Test_Accuracy": 0.7741935483870968,
+        "Test_MCC": 0.7518821287643643,
+        "Test_Avg_Loss": 0.6576767265796661
     },
     "classification_report": {
         "antimicrobial_peptide": {
@@ -24,9 +24,9 @@
             "support": 1.0
         },
         "conotoxin": {
-            "precision": 0.7333333333333333,
-            "recall": 0.5789473684210527,
-            "f1-score": 0.6470588235294118,
+            "precision": 0.8571428571428571,
+            "recall": 0.631578947368421,
+            "f1-score": 0.7272727272727273,
             "support": 19.0
         },
         "mcd_related": {
@@ -42,15 +42,15 @@
             "support": 1.0
         },
         "neurotoxin": {
-            "precision": 0.7222222222222222,
-            "recall": 0.7222222222222222,
-            "f1-score": 0.7222222222222222,
+            "precision": 0.7777777777777778,
+            "recall": 0.7777777777777778,
+            "f1-score": 0.7777777777777778,
             "support": 18.0
         },
         "other": {
-            "precision": 0.9285714285714286,
-            "recall": 0.5416666666666666,
-            "f1-score": 0.6842105263157895,
+            "precision": 0.8571428571428571,
+            "recall": 0.5,
+            "f1-score": 0.631578947368421,
             "support": 24.0
         },
         "phospholipase_a2": {
@@ -60,9 +60,9 @@
             "support": 0.0
         },
         "scoloptoxin": {
-            "precision": 0.4,
-            "recall": 0.6666666666666666,
-            "f1-score": 0.5,
+            "precision": 0.4375,
+            "recall": 0.7777777777777778,
+            "f1-score": 0.56,
             "support": 9.0
         },
         "scorpion_ktx": {
@@ -89,17 +89,17 @@
             "f1-score": 0.8,
             "support": 2.0
         },
-        "accuracy": 0.7580645161290323,
+        "accuracy": 0.7741935483870968,
         "macro avg": {
-            "precision": 0.6471595864453007,
-            "recall": 0.7375485281832032,
-            "f1-score": 0.6649228239940316,
+            "precision": 0.6575479084407655,
+            "recall": 0.7502364981080152,
+            "f1-score": 0.675146958304853,
             "support": 124.0
         },
         "weighted avg": {
-            "precision": 0.8045984929049445,
-            "recall": 0.7580645161290323,
-            "f1-score": 0.7634702512995731,
+            "precision": 0.8205307125670028,
+            "recall": 0.7741935483870968,
+            "f1-score": 0.7779936890123647,
             "support": 124.0
         }
     }

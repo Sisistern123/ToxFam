@@ -8,7 +8,7 @@ from torch.utils.data import DataLoader
 
 from config import CONFIG
 from dataset import ToxDataset, analyze_data_splits
-from model import MLP
+from model_architecture import MLP
 from training import train_model, evaluate_model, get_class_weights
 from visualization import plot_loss_curve, plot_confusion_matrix
 from utils import custom_logging

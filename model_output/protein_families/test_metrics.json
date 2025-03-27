@@ -1,8 +1,8 @@
 {
     "numeric_metrics": {
-        "Test_Accuracy": 0.7258064516129032,
-        "Test_MCC": 0.6990962935847013,
-        "Test_Avg_Loss": 0.8919939994812012
+        "Test_Accuracy": 0.7338709677419355,
+        "Test_MCC": 0.7084108015713058,
+        "Test_Avg_Loss": 0.8589332103729248
     },
     "classification_report": {
         "Cationic peptide family": {
@@ -12,9 +12,9 @@
             "support": 1.0
         },
         "Conotoxin family": {
-            "precision": 0.8333333333333334,
-            "recall": 0.7142857142857143,
-            "f1-score": 0.7692307692307693,
+            "precision": 0.8421052631578947,
+            "recall": 0.7619047619047619,
+            "f1-score": 0.8,
             "support": 21.0
         },
         "Formicidae venom family": {
@@ -54,9 +54,9 @@
             "support": 5.0
         },
         "Neurotoxin family": {
-            "precision": 0.75,
-            "recall": 0.8,
-            "f1-score": 0.7741935483870968,
+            "precision": 0.8125,
+            "recall": 0.8666666666666667,
+            "f1-score": 0.8387096774193549,
             "support": 15.0
         },
         "Non-disulfide-bridged peptide (NDBP) superfamily": {
@@ -90,9 +90,9 @@
             "support": 17.0
         },
         "Venom Kunitz-type family": {
-            "precision": 1.0,
+            "precision": 0.75,
             "recall": 1.0,
-            "f1-score": 1.0,
+            "f1-score": 0.8571428571428571,
             "support": 3.0
         },
         "Venom metalloproteinase (M12B) family": {
@@ -102,22 +102,22 @@
             "support": 1.0
         },
         "other": {
-            "precision": 0.6153846153846154,
-            "recall": 0.5333333333333333,
-            "f1-score": 0.5714285714285714,
+            "precision": 0.6363636363636364,
+            "recall": 0.4666666666666667,
+            "f1-score": 0.5384615384615384,
             "support": 15.0
         },
-        "accuracy": 0.7258064516129032,
+        "accuracy": 0.7338709677419355,
         "macro avg": {
-            "precision": 0.619049659490836,
-            "recall": 0.6664689405173835,
-            "f1-score": 0.6048248952186334,
+            "precision": 0.6097703036557526,
+            "recall": 0.6692700609655627,
+            "f1-score": 0.6000873178055341,
             "support": 124.0
         },
         "weighted avg": {
-            "precision": 0.7630821239692207,
-            "recall": 0.7258064516129032,
-            "f1-score": 0.725338534817593,
+            "precision": 0.7686175742998748,
+            "recall": 0.7338709677419355,
+            "f1-score": 0.7309096546446964,
             "support": 124.0
         }
     }
