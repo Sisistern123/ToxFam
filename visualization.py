@@ -99,7 +99,7 @@ def plot_confusion_matrix(all_labels, all_preds, label_encoder, output_path):
                     fontsize=7, color=font_color
                 )
 
-    plt.title("Confusion Matrix (Validation) – % per class w/ absolute counts")
+    plt.title("Confusion Matrix – % per class w/ absolute counts")
     plt.xlabel("Predicted")
     plt.ylabel("True")
     plt.savefig(output_path, bbox_inches='tight')
