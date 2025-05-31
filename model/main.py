@@ -1,4 +1,3 @@
-import os
 import json
 from pathlib import Path
 from collections import Counter
@@ -10,8 +9,8 @@ import torch
 from torch.utils.data import DataLoader
 from sklearn.metrics import classification_report
 
-from config import CONFIG
-from dataset import ToxDataset, analyze_data_splits  # updated dataset module
+from model.config import CONFIG
+from model.dataset import ToxDataset, analyze_data_splits  # updated dataset module
 from model_architecture import MLP
 from training import train_model, evaluate_model, get_class_weights
 from visualization import plot_loss_curve, plot_confusion_matrix

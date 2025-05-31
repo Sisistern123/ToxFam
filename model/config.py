@@ -2,7 +2,7 @@
 import yaml
 from glob import glob
 
-with open("config.yaml", "r") as f:
+with open("model/config.yaml", "r") as f:
     CONFIG = yaml.safe_load(f)
 
 # ────────────────────────────────
