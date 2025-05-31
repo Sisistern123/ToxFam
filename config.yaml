@@ -1,10 +1,14 @@
-# Configuration parameters
-input_csv: "data/model_input.csv"
-h5_path: "data/model_input.h5"
+# config.yaml ─ glob pattern
+# ──────────────────────────
+input_csv: "data/interm/training_data.csv"
+
+h5_paths_glob: "data/interm/training_embeds_*.h5"   # matches all files that fit the pattern
+
 output_dir: "model_output"
+
 embedding_dim: 1024
-hidden_dim: 128
-batch_size: 64
-num_epochs: 500
+hidden_dim:    128
+batch_size:    64
+num_epochs:    500
 learning_rate: 0.0001
 early_stopping_patience: 5
