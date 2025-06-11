@@ -6,3 +6,4 @@ data/sp6
 data/foldseek
 .DS_Store
 data
+benchmark/bacterial/*.h5
