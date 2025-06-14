@@ -1,154 +1,154 @@
 {
     "numeric_metrics": {
-        "Validation_Accuracy": 0.9389742987912217,
-        "Validation_MCC": 0.6511303113118408,
-        "Validation_Avg_Loss": 0.22413868740645806,
-        "Validation_Micro_MCC": 0.936940108750929
+        "Validation_Accuracy": 0.9690177209247741,
+        "Validation_MCC": 0.7705388685821405,
+        "Validation_Avg_Loss": 0.138222198686632,
+        "Validation_Micro_MCC": 0.9679849782889333
     },
     "classification_report": {
         "Bradykinin-related peptide family": {
-            "precision": 1.0,
-            "recall": 0.14285714285714285,
-            "f1-score": 0.25,
-            "support": 14.0
-        },
-        "CRISP family": {
-            "precision": 1.0,
-            "recall": 0.25,
-            "f1-score": 0.4,
-            "support": 12.0
-        },
-        "Cationic peptide family": {
-            "precision": 1.0,
-            "recall": 0.2962962962962963,
-            "f1-score": 0.45714285714285713,
-            "support": 27.0
-        },
-        "Conotoxin family": {
-            "precision": 0.8899082568807339,
-            "recall": 0.7698412698412699,
-            "f1-score": 0.825531914893617,
-            "support": 126.0
-        },
-        "Disintegrin family": {
-            "precision": 0.5,
+            "precision": 0.2857142857142857,
             "recall": 1.0,
-            "f1-score": 0.6666666666666666,
+            "f1-score": 0.4444444444444444,
             "support": 2.0
         },
-        "Ergtoxin family": {
+        "CRISP family": {
+            "precision": 0.375,
+            "recall": 1.0,
+            "f1-score": 0.5454545454545454,
+            "support": 3.0
+        },
+        "Cationic peptide family": {
+            "precision": 0.6,
+            "recall": 0.75,
+            "f1-score": 0.6666666666666666,
+            "support": 8.0
+        },
+        "Conotoxin family": {
+            "precision": 0.8076923076923077,
+            "recall": 0.963302752293578,
+            "f1-score": 0.8786610878661087,
+            "support": 109.0
+        },
+        "Disintegrin family": {
             "precision": 1.0,
             "recall": 0.5,
             "f1-score": 0.6666666666666666,
-            "support": 2.0
+            "support": 4.0
+        },
+        "Ergtoxin family": {
+            "precision": 0.5,
+            "recall": 1.0,
+            "f1-score": 0.6666666666666666,
+            "support": 1.0
         },
         "FARP (FMRFamide related peptide) family": {
-            "precision": 0.5,
-            "recall": 0.06666666666666667,
-            "f1-score": 0.11764705882352941,
-            "support": 15.0
+            "precision": 0.3333333333333333,
+            "recall": 0.5,
+            "f1-score": 0.4,
+            "support": 2.0
         },
         "Flavin monoamine oxidase family": {
-            "precision": 1.0,
+            "precision": 0.6666666666666666,
             "recall": 1.0,
-            "f1-score": 1.0,
+            "f1-score": 0.8,
             "support": 2.0
         },
         "Formicidae venom family": {
             "precision": 0.6,
-            "recall": 0.375,
-            "f1-score": 0.46153846153846156,
-            "support": 8.0
+            "recall": 0.6,
+            "f1-score": 0.6,
+            "support": 5.0
         },
         "Insulin family": {
-            "precision": 1.0,
-            "recall": 0.2857142857142857,
-            "f1-score": 0.4444444444444444,
-            "support": 7.0
+            "precision": 0.4,
+            "recall": 1.0,
+            "f1-score": 0.5714285714285714,
+            "support": 2.0
         },
         "Limacoditoxin family": {
-            "precision": 0.5,
-            "recall": 0.25,
-            "f1-score": 0.3333333333333333,
-            "support": 4.0
+            "precision": 0.6666666666666666,
+            "recall": 1.0,
+            "f1-score": 0.8,
+            "support": 2.0
         },
         "Long (3 C-C) scorpion toxin superfamily": {
-            "precision": 0.8,
-            "recall": 1.0,
+            "precision": 1.0,
+            "recall": 0.8,
             "f1-score": 0.8888888888888888,
-            "support": 4.0
+            "support": 5.0
         },
         "Long (4 C-C) scorpion toxin superfamily": {
-            "precision": 1.0,
-            "recall": 0.9166666666666666,
+            "precision": 0.9166666666666666,
+            "recall": 1.0,
             "f1-score": 0.9565217391304348,
-            "support": 36.0
+            "support": 33.0
         },
         "Long chain scorpion toxin family": {
             "precision": 0.75,
-            "recall": 0.6,
-            "f1-score": 0.6666666666666666,
-            "support": 5.0
-        },
-        "MCD family": {
-            "precision": 1.0,
-            "recall": 0.1956521739130435,
-            "f1-score": 0.32727272727272727,
-            "support": 46.0
-        },
-        "Natriuretic, Bradykinin potentiating peptide family": {
-            "precision": 1.0,
-            "recall": 0.29411764705882354,
-            "f1-score": 0.45454545454545453,
-            "support": 34.0
-        },
-        "Neurotoxin family": {
-            "precision": 0.9661016949152542,
-            "recall": 0.76,
-            "f1-score": 0.8507462686567164,
-            "support": 75.0
-        },
-        "Non-disulfide-bridged peptide (NDBP) superfamily": {
-            "precision": 0.25,
-            "recall": 0.09090909090909091,
-            "f1-score": 0.13333333333333333,
-            "support": 11.0
-        },
-        "PDGF/VEGF growth factor family": {
-            "precision": 1.0,
-            "recall": 0.5,
-            "f1-score": 0.6666666666666666,
+            "recall": 0.75,
+            "f1-score": 0.75,
             "support": 4.0
         },
+        "MCD family": {
+            "precision": 0.3181818181818182,
+            "recall": 0.7777777777777778,
+            "f1-score": 0.45161290322580644,
+            "support": 9.0
+        },
+        "Natriuretic, Bradykinin potentiating peptide family": {
+            "precision": 0.47619047619047616,
+            "recall": 1.0,
+            "f1-score": 0.6451612903225806,
+            "support": 10.0
+        },
+        "Neurotoxin family": {
+            "precision": 0.8055555555555556,
+            "recall": 0.9830508474576272,
+            "f1-score": 0.8854961832061069,
+            "support": 59.0
+        },
+        "Non-disulfide-bridged peptide (NDBP) superfamily": {
+            "precision": 0.1,
+            "recall": 0.25,
+            "f1-score": 0.14285714285714285,
+            "support": 4.0
+        },
+        "PDGF/VEGF growth factor family": {
+            "precision": 0.5,
+            "recall": 1.0,
+            "f1-score": 0.6666666666666666,
+            "support": 2.0
+        },
         "Peptidase S1 family": {
-            "precision": 1.0,
-            "recall": 0.20634920634920634,
-            "f1-score": 0.34210526315789475,
-            "support": 63.0
+            "precision": 0.7222222222222222,
+            "recall": 1.0,
+            "f1-score": 0.8387096774193549,
+            "support": 13.0
         },
         "Phospholipase family": {
-            "precision": 1.0,
-            "recall": 0.5319148936170213,
-            "f1-score": 0.6944444444444444,
-            "support": 47.0
+            "precision": 0.6944444444444444,
+            "recall": 1.0,
+            "f1-score": 0.819672131147541,
+            "support": 25.0
         },
         "Scoloptoxin family": {
-            "precision": 0.8333333333333334,
-            "recall": 0.15789473684210525,
-            "f1-score": 0.26548672566371684,
-            "support": 95.0
+            "precision": 0.2916666666666667,
+            "recall": 0.7777777777777778,
+            "f1-score": 0.42424242424242425,
+            "support": 18.0
         },
         "Short scorpion toxin superfamily": {
-            "precision": 0.9642857142857143,
-            "recall": 0.8181818181818182,
+            "precision": 0.8181818181818182,
+            "recall": 0.9642857142857143,
             "f1-score": 0.8852459016393442,
-            "support": 33.0
+            "support": 28.0
         },
         "Snaclec family": {
-            "precision": 1.0,
-            "recall": 0.7,
-            "f1-score": 0.8235294117647058,
-            "support": 20.0
+            "precision": 0.7777777777777778,
+            "recall": 1.0,
+            "f1-score": 0.875,
+            "support": 14.0
         },
         "Teretoxin family": {
             "precision": 0.0,
@@ -158,51 +158,51 @@
         },
         "Three-finger toxin family": {
             "precision": 1.0,
-            "recall": 0.9285714285714286,
-            "f1-score": 0.9629629629629629,
-            "support": 42.0
+            "recall": 1.0,
+            "f1-score": 1.0,
+            "support": 39.0
         },
         "Vasopressin/oxytocin family": {
-            "precision": 1.0,
-            "recall": 0.125,
-            "f1-score": 0.2222222222222222,
-            "support": 8.0
+            "precision": 0.09090909090909091,
+            "recall": 1.0,
+            "f1-score": 0.16666666666666666,
+            "support": 1.0
         },
         "Venom Kunitz-type family": {
-            "precision": 1.0,
-            "recall": 0.35,
+            "precision": 0.35,
+            "recall": 1.0,
             "f1-score": 0.5185185185185185,
-            "support": 20.0
+            "support": 7.0
         },
         "Venom metalloproteinase (M12B) family": {
-            "precision": 1.0,
-            "recall": 0.6923076923076923,
-            "f1-score": 0.8181818181818182,
-            "support": 26.0
+            "precision": 0.75,
+            "recall": 1.0,
+            "f1-score": 0.8571428571428571,
+            "support": 18.0
         },
         "nontox": {
-            "precision": 0.9415560243206353,
-            "recall": 0.9990783410138249,
-            "f1-score": 0.9694646735658617,
-            "support": 7595.0
+            "precision": 0.9979635993381698,
+            "recall": 0.9729494974562601,
+            "f1-score": 0.9852978135209852,
+            "support": 8059.0
         },
         "other": {
-            "precision": 0.41935483870967744,
-            "recall": 0.09558823529411764,
-            "f1-score": 0.15568862275449102,
-            "support": 136.0
+            "precision": 0.16923076923076924,
+            "recall": 0.3548387096774194,
+            "f1-score": 0.22916666666666666,
+            "support": 31.0
         },
-        "accuracy": 0.9389742987912217,
+        "accuracy": 0.9690177209247741,
         "macro avg": {
-            "precision": 0.8359528987885596,
-            "recall": 0.48060024490646774,
-            "f1-score": 0.5556601197918208,
+            "precision": 0.5730343279173786,
+            "recall": 0.8369026798943922,
+            "f1-score": 0.6460276167888922,
             "support": 8521.0
         },
         "weighted avg": {
-            "precision": 0.9316658168646231,
-            "recall": 0.9389742987912217,
-            "f1-score": 0.9226874427511348,
+            "precision": 0.9822374406933336,
+            "recall": 0.9690177209247741,
+            "f1-score": 0.9741457638796702,
             "support": 8521.0
         }
     }

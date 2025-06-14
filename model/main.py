@@ -1,6 +1,5 @@
 import json
 from pathlib import Path
-from collections import Counter
 
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -50,15 +49,27 @@ def analyze_label_distribution_for_split(train_df, val_df, test_df, label_col, o
     dist_json = Path(output_dir, f"{label_col.replace(' ', '_')}_distribution.json")
     dist_df.to_json(dist_json, orient="index")
 
-    # Bar plot
-    plt.figure(figsize=(10, 6))
-    dist_df.plot(kind="bar")
-    plt.title(f"Distribution of {label_col} Across Splits")
-    plt.xlabel(label_col)
-    plt.ylabel("Count")
-    plt.tight_layout()
-    plt.savefig(Path(output_dir, f"{label_col.replace(' ', '_')}_distribution.png"))
-    plt.close()
+    # 1) create fig/ax explicitly, with a bit more height
+    fig, ax = plt.subplots(figsize=(10, 6), constrained_layout=False)
+
+    # 2) plot onto that ax
+    dist_df.plot(kind="bar", logy=True, ax=ax)
+
+    # 3) shrink the x-tick labels and rotate them
+    ax.tick_params(axis="x", labelsize=8)
+    plt.setp(ax.get_xticklabels(), rotation=50, ha="right")
+
+    # 4) manually give the bottom margin enough space
+    fig.subplots_adjust(bottom=0.4)
+
+    # labels and title
+    ax.set_title(f"Distribution of {label_col} Across Splits (log scale)")
+    ax.set_xlabel(label_col, labelpad=20)
+    ax.set_ylabel("Count (log scale)")
+
+    # save
+    fig.savefig(Path(output_dir, f"{label_col.replace(' ', '_')}_distribution_log.png"))
+    plt.close(fig)
 
     # Chi‑square
     chi2, p, dof, expected = chi2_contingency(dist_df.T)
@@ -161,9 +172,7 @@ def main():
 
     # single‐label: Protein families
     label_col = "Protein families"
-    subdir    = label_col.replace(" ", "_").lower()   # e.g. "protein_families"
-    out_dir   = out_root / subdir
-    out_dir.mkdir(parents=True, exist_ok=True)
+    out_dir = out_root
 
     # split diagnostics
     analyze_label_distribution_for_split(train_df, val_df, test_df, label_col, out_dir)
