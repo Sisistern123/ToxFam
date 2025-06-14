@@ -3,21 +3,26 @@ import torch.optim as optim
 import os
 import json
 from collections import Counter
-from sklearn.metrics import accuracy_score, matthews_corrcoef, confusion_matrix, classification_report
-from visualization import plot_confusion_matrix
+from sklearn.metrics import accuracy_score, matthews_corrcoef, classification_report
+from sklearn.preprocessing import label_binarize
 
 def evaluate_model(model, data_loader, loss_fn, device, dataset_type="Validation"):
     """
-    Evaluate model performance
+    Evaluate model performance, returning metrics dict (incl. micro‐MCC),
+    plus raw all_labels and all_preds lists.
     """
     model.eval()
     all_labels, all_preds = [], []
-    total_loss = 0
+    total_loss = 0.0
+    n_classes = None
 
     with torch.no_grad():
         for features, labels in data_loader:
             features, labels = features.to(device), labels.to(device)
-            outputs = model(features)
+            outputs = model(features)               # (B, C)
+            if n_classes is None:
+                n_classes = outputs.size(1)         # grab C on first batch
+
             loss = loss_fn(outputs, labels)
             total_loss += loss.item()
 
@@ -26,12 +31,24 @@ def evaluate_model(model, data_loader, loss_fn, device, dataset_type="Validation
             all_preds.extend(preds)
 
     avg_loss = total_loss / len(data_loader)
+
+    # standard metrics
     metrics = {
         f"{dataset_type}_Accuracy": accuracy_score(all_labels, all_preds),
-        f"{dataset_type}_MCC": matthews_corrcoef(all_labels, all_preds),
-        f"{dataset_type}_Avg_Loss": avg_loss
+        f"{dataset_type}_MCC":      matthews_corrcoef(all_labels, all_preds),
+        f"{dataset_type}_Avg_Loss": avg_loss,
     }
+
+    # --- micro‐MCC over the flattened one‐hot vectors ---
+    # binarize into shape (N, C)
+    y_true_bin = label_binarize(all_labels, classes=list(range(n_classes)))
+    y_pred_bin = label_binarize(all_preds,  classes=list(range(n_classes)))
+    # flatten and compute
+    micro_mcc = matthews_corrcoef(y_true_bin.ravel(), y_pred_bin.ravel())
+    metrics[f"{dataset_type}_Micro_MCC"] = micro_mcc
+
     return metrics, all_labels, all_preds
+
 
 def get_class_weights(train_dataset):
     """
@@ -115,7 +132,7 @@ def train_model(model, train_loader, val_loader, weights_tensor, label_encoder, 
     final_val_metrics, val_preds, val_labels = evaluate_model(model, val_loader, loss_fn, device, dataset_type="Validation")
 
     # Save validation confusion matrix plot
-    plot_confusion_matrix(val_labels, val_preds, label_encoder, os.path.join(config['output_dir'], "val_confusion_matrix.png"))
+    # plot_confusion_matrix(val_labels, val_preds, label_encoder, os.path.join(config['output_dir'], "val_confusion_matrix.png"))
 
     # Generate and save classification report for validation
     val_class_report = classification_report(

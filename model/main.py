@@ -74,109 +74,110 @@ def analyze_label_distribution_for_split(train_df, val_df, test_df, label_col, o
     print(f"{label_col}: χ²={chi2:.2f}, p={p:.4e}, dof={dof}")
 
 
-# -----------------------------------------------------------------------------
-# Per‑label training pipeline
-# -----------------------------------------------------------------------------
+def train_and_return_model(train_df, val_df, label_col):
+    # Build datasets
+    train_ds = ToxDataset(train_df, CONFIG["h5_paths"], is_train=True,  label_col=label_col)
+    val_ds   = ToxDataset(val_df,   CONFIG["h5_paths"], label_encoder=train_ds.le, is_train=False, label_col=label_col)
 
-def run_training_for_label(label_col: str, output_subdir: str, train_df, val_df, test_df):
-    print(f"\n=== Training model for: {label_col} ===")
-    out_dir = Path(CONFIG["output_dir"], output_subdir)
-    out_dir.mkdir(parents=True, exist_ok=True)
-
-    # ------------------------------------------------------------------
-    # Split stats & label distribution diagnostics
-    # ------------------------------------------------------------------
-    counts = {"train": len(train_df), "val": len(val_df), "test": len(test_df)}
-    total = sum(counts.values())
-    (out_dir / "split_stats.json").write_text(json.dumps({
-        "absolute": {**counts, "total": total},
-        "relative": {k: v / total for k, v in counts.items()},
-    }, indent=4))
-
-    analyze_label_distribution_for_split(train_df, val_df, test_df, label_col, out_dir)
-
-    # ------------------------------------------------------------------
-    # Datasets & loaders
-    # ------------------------------------------------------------------
-    try:
-        train_ds = ToxDataset(train_df, CONFIG["h5_paths"], is_train=True, label_col=label_col)
-        val_ds   = ToxDataset(val_df,   CONFIG["h5_paths"], label_encoder=train_ds.le, is_train=False, label_col=label_col)
-        test_ds  = ToxDataset(test_df,  CONFIG["h5_paths"], label_encoder=train_ds.le, is_train=False, label_col=label_col)
-    except Exception as exc:
-        print(f"Failed to build datasets for {label_col}: {exc}")
-        return
-
+    # Loaders
     train_loader = DataLoader(train_ds, batch_size=CONFIG["batch_size"], shuffle=True)
     val_loader   = DataLoader(val_ds,   batch_size=CONFIG["batch_size"], shuffle=False)
-    test_loader  = DataLoader(test_ds,  batch_size=CONFIG["batch_size"], shuffle=False)
 
-    # ------------------------------------------------------------------
-    # Class weights (handle imbalance)
-    # ------------------------------------------------------------------
-    w_dict, w_tensor, enc2lbl = get_class_weights(train_ds)
-    print("\nClass counts & weights:")
-    # merge the three Counters first, then iterate
-    total_counts = (Counter(train_ds.df[f"{label_col}_encoded"])
-                    + Counter(val_ds.df[f"{label_col}_encoded"])
-                    + Counter(test_ds.df[f"{label_col}_encoded"]))
-
-    for enc, cnt in total_counts.items():  # ← .items() on the result
-        print(f"{enc2lbl[enc]}: {cnt} | weight={w_dict[enc2lbl[enc]]:.4f}")
-
-    # ------------------------------------------------------------------
-    # Model, train, evaluate
-    # ------------------------------------------------------------------
+    # Class weights & model
+    _, w_tensor, _ = get_class_weights(train_ds)
     model = MLP(
         input_dim=CONFIG["embedding_dim"],
         hidden_dim=CONFIG["hidden_dim"],
-        num_family_classes=train_ds.num_classes,  # unified arg name
+        num_family_classes=train_ds.num_classes,
     )
 
-    run_cfg = CONFIG.copy(); run_cfg["output_dir"] = str(out_dir)
-    model, history = train_model(model, train_loader, val_loader, w_tensor, val_ds.le, run_cfg)
-    plot_loss_curve(history, out_dir / "loss_plot.png")
+    # Point at the single root output dir
+    run_cfg = CONFIG.copy()
+    run_cfg["output_dir"] = CONFIG["output_dir"]
 
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device  = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     loss_fn = torch.nn.CrossEntropyLoss(weight=w_tensor.to(device))
-    metrics, y_true, y_pred = evaluate_model(model, test_loader, loss_fn, device, dataset_type="Test")
 
-    # Confusion matrix & classification report
-    plot_confusion_matrix(y_true, y_pred, test_ds.le, out_dir / "test_confusion_matrix.png")
-    (out_dir / "test_metrics.json").write_text(json.dumps({
+    # Train + save loss curve
+    model, history = train_model(model, train_loader, val_loader, w_tensor, train_ds.le, run_cfg)
+    plot_loss_curve(history, Path(run_cfg["output_dir"]) / "loss_plot.png")
+
+    # Cleanup
+    train_ds.close()
+    val_ds.close()
+
+    return model, train_ds.le, loss_fn
+
+def evaluate_label_on_dataset(model, dataset_df, label_col, label_encoder, loss_fn, tag, out_dir):
+    # Note: out_dir should be CONFIG["output_dir"]
+    ds     = ToxDataset(dataset_df, CONFIG["h5_paths"], label_encoder=label_encoder, is_train=False, label_col=label_col)
+    loader = DataLoader(ds, batch_size=CONFIG["batch_size"], shuffle=False)
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+    # Get metrics + preds
+    metrics, y_true, y_pred = evaluate_model(model, loader, loss_fn, device, dataset_type=tag)
+
+    # Confusion matrix
+    plot_confusion_matrix(
+        y_true, y_pred,
+        ds.le,
+        Path(out_dir) / f"{tag.lower()}_confusion_matrix.png"
+    )
+
+    # Classification report
+    report_path = Path(out_dir) / f"{tag.lower()}_metrics.json"
+    report = classification_report(
+        y_true, y_pred,
+        labels=range(ds.num_classes),
+        target_names=ds.le.classes_,
+        output_dict=True, zero_division=0
+    )
+    report_path.write_text(json.dumps({
         "numeric_metrics": metrics,
-        "classification_report": classification_report(
-            y_true, y_pred, labels=range(test_ds.num_classes),
-            target_names=test_ds.le.classes_, output_dict=True, zero_division=0),
+        "classification_report": report,
     }, indent=4))
 
-    # Clean up to release file handles
-    for ds in (train_ds, val_ds, test_ds):
-        ds.close()
-
+    ds.close()
 
 # -----------------------------------------------------------------------------
 # Main orchestrator
 # -----------------------------------------------------------------------------
-
 def main():
-    Path(CONFIG["output_dir"]).mkdir(parents=True, exist_ok=True)
+    # ensure output dir exists
+    out_root = Path(CONFIG["output_dir"])
+    out_root.mkdir(parents=True, exist_ok=True)
 
+    # load and split data
     df = pd.read_csv(CONFIG["input_csv"])
-    train_df, val_df, test_df = analyze_data_splits(df)  # uses the updated 'Split' field
+    train_df, val_df, test_df = analyze_data_splits(df)
 
-    # Overall split stats
+    # overall split stats
     counts = {"train": len(train_df), "val": len(val_df), "test": len(test_df)}
-    total = sum(counts.values())
-    Path(CONFIG["output_dir"], "overall_split_stats.json").write_text(json.dumps({
+    total  = sum(counts.values())
+    (out_root / "overall_split_stats.json").write_text(json.dumps({
         "absolute": {**counts, "total": total},
         "relative": {k: v / total for k, v in counts.items()},
     }, indent=4))
 
-    # Targets to model
-    for col, subdir in [
-        ("Protein families", "protein_families")]:
-        with custom_logging(Path(CONFIG["output_dir"], subdir)):
-            run_training_for_label(col, subdir, train_df, val_df, test_df)
+    # single‐label: Protein families
+    label_col = "Protein families"
+    subdir    = label_col.replace(" ", "_").lower()   # e.g. "protein_families"
+    out_dir   = out_root / subdir
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    # split diagnostics
+    analyze_label_distribution_for_split(train_df, val_df, test_df, label_col, out_dir)
+
+    # train + eval under one logging context
+    with custom_logging(out_dir):
+        # 1) train once on Protein families
+        model, le, loss_fn = train_and_return_model(train_df, val_df, label_col)
+
+        # 2) evaluate & plot on validation
+        evaluate_label_on_dataset(model, val_df,  label_col, le, loss_fn, "Validation", out_dir)
+
+        # 3) evaluate & plot on test
+        evaluate_label_on_dataset(model, test_df, label_col, le, loss_fn, "Test",       out_dir)
 
 
 if __name__ == "__main__":
