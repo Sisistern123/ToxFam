@@ -2,9 +2,9 @@
 # ──────────────────────────
 input_csv: "data/interm/training_data.csv"
 
-h5_paths_glob: "data/interm/training_embeds_*.h5"   # matches all files that fit the pattern
+h5_paths_glob: "data/interm/training_data.h5"
 
-output_dir: "model_output"
+output_dir: "model/model_output"
 
 embedding_dim: 1024
 hidden_dim:    128

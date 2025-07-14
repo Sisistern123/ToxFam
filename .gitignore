@@ -1,9 +1,7 @@
 .idea
-data/mmseqs_0.3
-data/mmseqs_0.5
-data/MSA
+
 data/sp6
-data/foldseek
 .DS_Store
 data
-benchmark/bacterial/*.h5
+benchmark/bacterial/
+benchmark/uniprot/
