@@ -15,7 +15,7 @@ class ToxDataset(Dataset):
     Parameters
     ----------
     df : pandas.DataFrame
-        DataFrame containing at least the columns ``Entry`` (UniProt/sequence ID),
+        DataFrame containing at least the columns ``identifier`` (UniProt/sequence ID),
         the categorical label column (default: ``"Protein families"``), and a
         column named ``Split`` whose values are ``"train"``, ``"val"`` or
         ``"test"``.
@@ -129,7 +129,7 @@ class ToxDataset(Dataset):
 
     def __getitem__(self, index: int):  # noqa: D401, PLE, N802
         row = self.df.iloc[index]
-        protein_id = row["Entry"]
+        protein_id = row["identifier"]
         embedding = self._find_embedding(protein_id)
         label = row[f"{self.label_col}_encoded"]
         return torch.tensor(embedding, dtype=torch.float32), label
