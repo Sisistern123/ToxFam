@@ -131,9 +131,6 @@ def train_model(model, train_loader, val_loader, weights_tensor, label_encoder, 
 
     final_val_metrics, val_preds, val_labels = evaluate_model(model, val_loader, loss_fn, device, dataset_type="Validation")
 
-    # Save validation confusion matrix plot
-    # plot_confusion_matrix(val_labels, val_preds, label_encoder, os.path.join(config['output_dir'], "val_confusion_matrix.png"))
-
     # Generate and save classification report for validation
     val_class_report = classification_report(
         val_labels,

@@ -128,6 +128,19 @@ def evaluate_label_on_dataset(model, dataset_df, label_col, label_encoder, loss_
     # Get metrics + preds
     metrics, y_true, y_pred = evaluate_model(model, loader, loss_fn, device, dataset_type=tag)
 
+    # assumes dataset_df["identifier"] is aligned with DataLoader order (shuffle=False)
+    ids = dataset_df["identifier"].reset_index(drop=True)
+    actual_lbls = label_encoder.inverse_transform(y_true)
+    pred_lbls = label_encoder.inverse_transform(y_pred)
+
+    pred_df = pd.DataFrame({
+        "identifier": ids,
+        "actual_label": actual_lbls,
+        "prediction": pred_lbls,
+    })
+    csv_path = Path(out_dir) / f"{tag.lower()}_predictions.csv"
+    pred_df.to_csv(csv_path, index=False)
+
     # Confusion matrix
     plot_confusion_matrix(
         y_true, y_pred,

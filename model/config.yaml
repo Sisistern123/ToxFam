@@ -2,13 +2,13 @@
 # ──────────────────────────
 input_csv: "data/interm/training_data.csv"
 
-h5_paths_glob: "data/interm/training_data.h5"
+h5_paths_glob: "data/protspace/training_data.h5"
 
 output_dir: "model/model_output"
 
 embedding_dim: 1024
 hidden_dim:    128
 batch_size:    64
-num_epochs:    500
-learning_rate: 0.001 # 0.0001
+num_epochs:    100
+learning_rate: 0.0001
 early_stopping_patience: 5
