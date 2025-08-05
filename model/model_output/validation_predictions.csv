@@ -25,9 +25,9 @@ C5H5D6,Venom metalloproteinase (M12B) family,Venom metalloproteinase (M12B) fami
 P83253,Disintegrin family,Disintegrin family
 P0C6A4,Disintegrin family,Venom metalloproteinase (M12B) family
 P0C6B5,Disintegrin family,Disintegrin family
-P83658,Disintegrin family,Disintegrin family
+P83658,Disintegrin family,Venom metalloproteinase (M12B) family
 B0VXV4,PDGF/VEGF growth factor family,PDGF/VEGF growth factor family
-I6RU32,Scoloptoxin family,Scoloptoxin family
+I6RU32,Scoloptoxin family,Teretoxin family
 A0A023W0B6,Scoloptoxin family,Scoloptoxin family
 A0A023W145,Scoloptoxin family,Scoloptoxin family
 I6R1R5,Scoloptoxin family,Scoloptoxin family
@@ -76,14 +76,14 @@ Q8QG86,Peptidase S1 family,Peptidase S1 family
 Q8UUJ1,Peptidase S1 family,Peptidase S1 family
 Q58L94,Peptidase S1 family,Peptidase S1 family
 Q5MCS0,Peptidase S1 family,Peptidase S1 family
-A6MFK7,Peptidase S1 family,nontox
+A6MFK7,Peptidase S1 family,Peptidase S1 family
 B5G6G5,Peptidase S1 family,Peptidase S1 family
 Q91508,Peptidase S1 family,Peptidase S1 family
 A7LAC7,Peptidase S1 family,Peptidase S1 family
 E5L0E3,Peptidase S1 family,Peptidase S1 family
 J3S835,Peptidase S1 family,Peptidase S1 family
 A0A096MK47,nontox,nontox
-A0A0G2UGT2,nontox,other
+A0A0G2UGT2,nontox,nontox
 A0A0K1YW63,nontox,Scoloptoxin family
 A0A0K3AV08,nontox,nontox
 A0A0U1QT59,nontox,nontox
@@ -257,7 +257,7 @@ G5ECN9,nontox,nontox
 G5EDJ4,nontox,nontox
 G5EDW7,nontox,nontox
 G5EE96,nontox,nontox
-G5EEC2,nontox,other
+G5EEC2,nontox,nontox
 G5EEH9,nontox,nontox
 G5EEK3,nontox,nontox
 G5EF33,nontox,nontox
@@ -285,7 +285,7 @@ J3S6Y1,nontox,nontox
 K7SGN7,nontox,nontox
 L0R8F8,nontox,nontox
 M0R2J8,nontox,nontox
-M0R8L2,nontox,"Natriuretic, Bradykinin potentiating peptide family"
+M0R8L2,nontox,nontox
 N1NVB7,nontox,nontox
 O00124,nontox,nontox
 O00204,nontox,nontox
@@ -399,7 +399,7 @@ O35734,nontox,nontox
 O35820,nontox,nontox
 O42127,nontox,nontox
 O42182,nontox,nontox
-O42222,nontox,nontox
+O42222,nontox,other
 O42364,nontox,nontox
 O43181,nontox,nontox
 O43194,nontox,nontox
@@ -424,7 +424,7 @@ O44411,nontox,nontox
 O44712,nontox,nontox
 O44857,nontox,nontox
 O45307,nontox,nontox
-O45346,nontox,Scoloptoxin family
+O45346,nontox,nontox
 O45797,nontox,nontox
 O45818,nontox,nontox
 O45935,nontox,nontox
@@ -555,7 +555,7 @@ Q9NXA8,nontox,nontox
 Q9NXE4,nontox,nontox
 Q9NXE8,nontox,nontox
 Q9NXR1,nontox,nontox
-Q9NY25,nontox,Snaclec family
+Q9NY25,nontox,nontox
 Q9NY33,nontox,nontox
 Q9NY97,nontox,nontox
 Q9NYA1,nontox,nontox
@@ -568,7 +568,7 @@ Q2TA08,nontox,nontox
 Q2TA32,nontox,nontox
 Q2TA38,nontox,nontox
 Q2TBM7,nontox,nontox
-Q2VF17,nontox,"Natriuretic, Bradykinin potentiating peptide family"
+Q2VF17,nontox,Scoloptoxin family
 Q2WFL8,nontox,nontox
 Q2YFS2,nontox,nontox
 Q2YGT9,nontox,nontox
@@ -593,7 +593,7 @@ P51904,nontox,nontox
 P52811,nontox,nontox
 P52812,nontox,nontox
 P53770,nontox,nontox
-P55848,nontox,other
+P55848,nontox,nontox
 P05997,nontox,nontox
 P06133,nontox,nontox
 P06240,nontox,nontox
@@ -605,7 +605,7 @@ P07222,nontox,nontox
 P07323,nontox,nontox
 P07433,nontox,nontox
 P07471,nontox,nontox
-P07492,nontox,"Natriuretic, Bradykinin potentiating peptide family"
+P07492,nontox,nontox
 P07500,nontox,"Natriuretic, Bradykinin potentiating peptide family"
 P07507,nontox,Scoloptoxin family
 P07602,nontox,nontox
@@ -622,7 +622,7 @@ P08037,nontox,nontox
 P08101,nontox,nontox
 P08195,nontox,nontox
 P08317,nontox,nontox
-P08493,nontox,Scoloptoxin family
+P08493,nontox,nontox
 P08494,nontox,Scoloptoxin family
 P08508,nontox,nontox
 P08523,nontox,Scoloptoxin family
@@ -640,7 +640,7 @@ P09087,nontox,nontox
 P09132,nontox,nontox
 P09208,nontox,nontox
 P09215,nontox,nontox
-P09240,nontox,"Natriuretic, Bradykinin potentiating peptide family"
+P09240,nontox,nontox
 P09330,nontox,nontox
 P09455,nontox,nontox
 P09486,nontox,nontox
@@ -652,9 +652,9 @@ P09769,nontox,nontox
 P09774,nontox,nontox
 P09848,nontox,nontox
 P09875,nontox,nontox
-P09916,nontox,"Natriuretic, Bradykinin potentiating peptide family"
+P09916,nontox,nontox
 P09956,nontox,nontox
-P0C005,nontox,Cationic peptide family
+P0C005,nontox,MCD family
 P0C644,nontox,nontox
 P0C7A3,nontox,nontox
 P0C7T6,nontox,nontox
@@ -666,7 +666,7 @@ P0DMS9,nontox,nontox
 P0DOV2,nontox,nontox
 P0DP43,nontox,nontox
 P10090,nontox,nontox
-P10092,nontox,"Natriuretic, Bradykinin potentiating peptide family"
+P10092,nontox,other
 P10145,nontox,nontox
 P10247,nontox,nontox
 P10568,nontox,nontox
@@ -699,7 +699,7 @@ P11859,nontox,nontox
 P12110,nontox,nontox
 P12265,nontox,nontox
 P12389,nontox,nontox
-P12724,nontox,other
+P12724,nontox,nontox
 P12815,nontox,nontox
 P12965,nontox,nontox
 P13051,nontox,nontox
@@ -743,7 +743,7 @@ P15948,nontox,Peptidase S1 family
 P16056,nontox,nontox
 P16225,nontox,nontox
 P16241,nontox,nontox
-P16296,nontox,nontox
+P16296,nontox,Peptidase S1 family
 P16298,nontox,nontox
 P16375,nontox,nontox
 P16376,nontox,nontox
@@ -808,7 +808,7 @@ P21573,nontox,nontox
 P21581,nontox,nontox
 P21730,nontox,nontox
 P21758,nontox,nontox
-P21781,nontox,nontox
+P21781,nontox,other
 P21803,nontox,nontox
 P21854,nontox,nontox
 P21941,nontox,nontox
@@ -817,7 +817,7 @@ P22102,nontox,nontox
 P22227,nontox,nontox
 P22270,nontox,nontox
 P22273,nontox,nontox
-P22362,nontox,other
+P22362,nontox,nontox
 P22674,nontox,nontox
 P22711,nontox,nontox
 P22734,nontox,nontox
@@ -865,7 +865,7 @@ P25090,nontox,nontox
 P25099,nontox,nontox
 P25115,nontox,nontox
 P25153,nontox,nontox
-P25155,nontox,nontox
+P25155,nontox,Peptidase S1 family
 P25160,nontox,nontox
 P25440,nontox,nontox
 P25686,nontox,nontox
@@ -1087,7 +1087,7 @@ Q6ZUT1,nontox,nontox
 Q6ZUX7,nontox,nontox
 Q704V6,nontox,nontox
 Q70Z35,nontox,nontox
-Q71MJ0,nontox,other
+Q71MJ0,nontox,nontox
 Q71SY5,nontox,nontox
 Q765H6,nontox,nontox
 Q76HL1,nontox,nontox
@@ -1235,7 +1235,7 @@ P70248,nontox,nontox
 P70279,nontox,nontox
 P70284,nontox,nontox
 P70353,nontox,nontox
-P70375,nontox,nontox
+P70375,nontox,Peptidase S1 family
 P70379,nontox,nontox
 P70399,nontox,nontox
 P70423,nontox,nontox
@@ -1257,7 +1257,7 @@ P79169,nontox,nontox
 P79621,nontox,nontox
 P79734,nontox,nontox
 P79943,nontox,nontox
-P80075,nontox,other
+P80075,nontox,nontox
 P80108,nontox,nontox
 P80109,nontox,nontox
 P80202,nontox,nontox
@@ -1372,7 +1372,7 @@ Q05BQ1,nontox,nontox
 Q06154,nontox,nontox
 Q06787,nontox,nontox
 Q06AU5,nontox,nontox
-Q06PM8,nontox,nontox
+Q06PM8,nontox,other
 Q06ZW3,nontox,nontox
 Q07011,nontox,nontox
 Q07235,nontox,nontox
@@ -1521,7 +1521,7 @@ Q17607,nontox,nontox
 Q17667,nontox,nontox
 Q17CS8,nontox,nontox
 Q17P71,nontox,nontox
-Q17QB3,nontox,nontox
+Q17QB3,nontox,Phospholipase family
 Q17RB8,nontox,nontox
 Q18020,nontox,nontox
 Q18223,nontox,nontox
@@ -1551,7 +1551,7 @@ Q20085,nontox,nontox
 Q20117,nontox,nontox
 Q20402,nontox,nontox
 Q20591,nontox,nontox
-Q20930,nontox,Venom metalloproteinase (M12B) family
+Q20930,nontox,nontox
 Q20938,nontox,nontox
 Q20992,nontox,nontox
 Q21209,nontox,nontox
@@ -1588,7 +1588,7 @@ Q96C10,nontox,nontox
 Q96C92,nontox,nontox
 Q96CG3,nontox,nontox
 Q96D98,nontox,nontox
-Q96DA0,nontox,other
+Q96DA0,nontox,nontox
 Q96DW6,nontox,nontox
 Q96DZ5,nontox,nontox
 Q96DZ7,nontox,nontox
@@ -1698,7 +1698,7 @@ P00770,nontox,Peptidase S1 family
 P00793,nontox,nontox
 P01099,nontox,nontox
 P01152,nontox,Scoloptoxin family
-P01170,nontox,"Natriuretic, Bradykinin potentiating peptide family"
+P01170,nontox,other
 P01353,nontox,"Natriuretic, Bradykinin potentiating peptide family"
 P01569,nontox,nontox
 P01614,nontox,nontox
@@ -1718,7 +1718,7 @@ Q9NTI7,nontox,nontox
 Q9NV39,nontox,nontox
 Q9NYR8,nontox,nontox
 Q9NYW2,nontox,nontox
-P69145,nontox,Cationic peptide family
+P69145,nontox,nontox
 Q9VMA0,nontox,nontox
 Q9VML9,nontox,nontox
 Q9VN50,nontox,nontox
@@ -1734,39 +1734,39 @@ Q9QZZ2,nontox,nontox
 Q9R022,nontox,nontox
 Q9R0H2,nontox,nontox
 Q9R0X2,nontox,Venom metalloproteinase (M12B) family
-P82422,nontox,Cationic peptide family
-P82618,nontox,FARP (FMRFamide related peptide) family
-P82691,nontox,FARP (FMRFamide related peptide) family
+P82422,nontox,Non-disulfide-bridged peptide (NDBP) superfamily
+P82618,nontox,nontox
+P82691,nontox,nontox
 P82829,nontox,other
 P82881,nontox,MCD family
 P82925,nontox,nontox
 P82927,nontox,nontox
-P82943,nontox,other
+P82943,nontox,nontox
 P83053,nontox,nontox
 P83183,nontox,nontox
 P83216,nontox,nontox
-P83220,nontox,other
+P83220,nontox,nontox
 P83305,nontox,Limacoditoxin family
 P83306,nontox,MCD family
 P83382,nontox,FARP (FMRFamide related peptide) family
 P83412,nontox,nontox
-P83416,nontox,Cationic peptide family
-P83516,nontox,other
+P83416,nontox,Non-disulfide-bridged peptide (NDBP) superfamily
+P83516,nontox,nontox
 P83567,nontox,FARP (FMRFamide related peptide) family
 P83570,nontox,nontox
 P83586,nontox,MCD family
 P83861,nontox,nontox
-P83866,nontox,MCD family
+P83866,nontox,Formicidae venom family
 P83926,nontox,nontox
-P83962,nontox,"Natriuretic, Bradykinin potentiating peptide family"
-P84006,nontox,Bradykinin-related peptide family
+P83962,nontox,other
+P84006,nontox,nontox
 P84115,nontox,other
 P84181,nontox,nontox
 P84251,nontox,nontox
 P84257,nontox,nontox
 P84292,nontox,MCD family
 P84307,nontox,FARP (FMRFamide related peptide) family
-P84373,nontox,FARP (FMRFamide related peptide) family
+P84373,nontox,nontox
 P84375,nontox,nontox
 Q9VNE7,nontox,nontox
 Q9VP04,nontox,nontox
@@ -2123,7 +2123,7 @@ Q63707,nontox,nontox
 Q63788,nontox,nontox
 Q63HR2,nontox,nontox
 Q640I9,nontox,nontox
-Q64133,nontox,nontox
+Q64133,nontox,Flavin monoamine oxidase family
 Q64151,nontox,nontox
 Q641K1,nontox,nontox
 Q641K5,nontox,nontox
@@ -2193,7 +2193,7 @@ P09907,nontox,nontox
 P09954,nontox,nontox
 P09987,nontox,nontox
 P0C240,nontox,nontox
-P0C5W7,nontox,other
+P0C5W7,nontox,Conotoxin family
 P0C6G6,nontox,nontox
 P0C872,nontox,nontox
 P0C8F1,nontox,Three-finger toxin family
@@ -2204,8 +2204,8 @@ P79385,nontox,nontox
 P79742,nontox,nontox
 P79766,nontox,nontox
 P79778,nontox,nontox
-P79886,nontox,Formicidae venom family
-P80007,nontox,other
+P79886,nontox,Conotoxin family
+P80007,nontox,Scoloptoxin family
 Q5XI67,nontox,nontox
 Q5XIA8,nontox,nontox
 Q7JR71,nontox,nontox
@@ -2311,7 +2311,7 @@ Q9V7H4,nontox,nontox
 Q9VAF5,nontox,nontox
 Q9VBW6,nontox,nontox
 Q9VBZ5,nontox,nontox
-Q9VC44,nontox,other
+Q9VC44,nontox,Scoloptoxin family
 Q9VC61,nontox,nontox
 Q9VCH5,nontox,nontox
 Q9VCX1,nontox,nontox
@@ -2397,17 +2397,17 @@ P84834,nontox,Bradykinin-related peptide family
 P84842,nontox,other
 P84860,nontox,other
 P84923,nontox,Non-disulfide-bridged peptide (NDBP) superfamily
-P84956,nontox,FARP (FMRFamide related peptide) family
+P84956,nontox,Bradykinin-related peptide family
 P85069,nontox,MCD family
-P85279,nontox,Cationic peptide family
-P86017,nontox,other
-P86020,nontox,FARP (FMRFamide related peptide) family
+P85279,nontox,nontox
+P86017,nontox,nontox
+P86020,nontox,Conotoxin family
 P86124,nontox,FARP (FMRFamide related peptide) family
-P86160,nontox,Limacoditoxin family
+P86160,nontox,Formicidae venom family
 P86161,nontox,other
 P86162,nontox,other
 P86164,nontox,MCD family
-P86239,nontox,nontox
+P86239,nontox,other
 P86299,nontox,Cationic peptide family
 P86301,nontox,Cationic peptide family
 P86308,nontox,FARP (FMRFamide related peptide) family
@@ -2432,7 +2432,7 @@ Q9XUP3,nontox,nontox
 Q9XV46,nontox,nontox
 Q9XXD7,nontox,nontox
 Q9XZV4,nontox,nontox
-Q9Y0X9,nontox,Cationic peptide family
+Q9Y0X9,nontox,other
 Q9Y115,nontox,nontox
 Q9Y2G7,nontox,nontox
 Q9Y3D5,nontox,nontox
@@ -2617,7 +2617,7 @@ Q8I136,nontox,nontox
 Q8I7M8,nontox,nontox
 Q8IH18,nontox,nontox
 Q8IMA8,nontox,nontox
-Q8IN44,nontox,nontox
+Q8IN44,nontox,other
 Q8IPH9,nontox,nontox
 Q8IPX7,nontox,nontox
 Q8IQG1,nontox,nontox
@@ -2736,7 +2736,7 @@ Q8VBX1,nontox,nontox
 Q8VBZ3,nontox,nontox
 Q8VC97,nontox,nontox
 Q8VCK6,nontox,nontox
-Q8VCM7,nontox,nontox
+Q8VCM7,nontox,other
 Q8VCN6,nontox,nontox
 Q8VCS3,nontox,nontox
 Q8VDW0,nontox,nontox
@@ -2846,7 +2846,7 @@ A5D7V9,nontox,nontox
 A5D8M0,nontox,nontox
 A5PJ93,nontox,nontox
 P87362,nontox,nontox
-P87384,nontox,"Natriuretic, Bradykinin potentiating peptide family"
+P87384,nontox,other
 P90666,nontox,nontox
 P90783,nontox,nontox
 P91950,nontox,nontox
@@ -2866,7 +2866,7 @@ P58170,nontox,nontox
 P58961,nontox,nontox
 P59111,nontox,nontox
 P59536,nontox,nontox
-P59685,nontox,other
+P59685,nontox,nontox
 P60003,nontox,nontox
 Q9UF47,nontox,nontox
 Q9UKQ9,nontox,Peptidase S1 family
@@ -3213,7 +3213,7 @@ Q9JJG0,nontox,nontox
 Q9JJH7,nontox,nontox
 Q9JJK5,nontox,nontox
 Q9JJS0,nontox,nontox
-Q9JJS8,nontox,nontox
+Q9JJS8,nontox,Peptidase S1 family
 Q9JJT2,nontox,nontox
 Q9JJT9,nontox,nontox
 Q9JJX6,nontox,nontox
@@ -3307,8 +3307,8 @@ Q28FY0,nontox,nontox
 Q28GG8,nontox,nontox
 Q28IN4,nontox,nontox
 P28468,nontox,nontox
-P29003,nontox,Cationic peptide family
-P29207,nontox,FARP (FMRFamide related peptide) family
+P29003,nontox,nontox
+P29207,nontox,nontox
 P30373,nontox,nontox
 P34258,nontox,nontox
 P34334,nontox,nontox
@@ -3531,7 +3531,7 @@ Q9WUU8,nontox,nontox
 Q9WUV2,nontox,nontox
 Q9WUZ9,nontox,nontox
 Q9WV30,nontox,nontox
-Q9WV54,nontox,nontox
+Q9WV54,nontox,Phospholipase family
 Q9WV76,nontox,nontox
 Q9WV93,nontox,nontox
 Q9WVH6,nontox,nontox
@@ -3552,7 +3552,7 @@ Q9XUJ7,nontox,nontox
 Q9XVM9,nontox,nontox
 Q9XVS4,nontox,nontox
 Q9XWN7,nontox,nontox
-Q9XWU2,nontox,other
+Q9XWU2,nontox,nontox
 Q9XYD3,nontox,nontox
 Q9XYM0,nontox,nontox
 Q9XYP8,nontox,nontox
@@ -3739,7 +3739,7 @@ B5LUQ3,nontox,Cationic peptide family
 B6A8R8,nontox,nontox
 B6CZ62,nontox,nontox
 B7PKZ1,nontox,nontox
-B7Z8K6,nontox,nontox
+B7Z8K6,nontox,other
 B8JKF4,nontox,nontox
 B8JKP6,nontox,nontox
 B9EJR8,nontox,nontox
@@ -3815,7 +3815,7 @@ O16262,nontox,nontox
 O16452,nontox,nontox
 O16956,nontox,nontox
 O18737,nontox,nontox
-O18783,nontox,nontox
+O18783,nontox,Peptidase S1 family
 O18870,nontox,nontox
 O18879,nontox,nontox
 O18994,nontox,nontox
@@ -3879,7 +3879,7 @@ P10786,nontox,nontox
 P11418,nontox,nontox
 P11707,nontox,nontox
 P11937,nontox,nontox
-P12065,nontox,other
+P12065,nontox,nontox
 P12068,nontox,nontox
 P12399,nontox,nontox
 P12661,nontox,nontox
@@ -3903,14 +3903,14 @@ P16414,nontox,other
 P16419,nontox,nontox
 P17019,nontox,nontox
 P17690,nontox,nontox
-P18137,nontox,other
+P18137,nontox,nontox
 P18590,nontox,nontox
 P18870,nontox,nontox
 P18978,nontox,nontox
 P18981,nontox,nontox
 P19000,nontox,Phospholipase family
 P19016,nontox,nontox
-P19093,nontox,nontox
+P19093,nontox,other
 P19179,nontox,nontox
 P19238,nontox,nontox
 P19377,nontox,nontox
@@ -3943,7 +3943,7 @@ P25429,nontox,nontox
 P26261,nontox,nontox
 P26267,nontox,nontox
 P28227,nontox,nontox
-P28317,nontox,other
+P28317,nontox,Conotoxin family
 P28680,nontox,nontox
 P28686,nontox,nontox
 P28781,nontox,nontox
@@ -3965,8 +3965,8 @@ P34498,nontox,nontox
 P34629,nontox,nontox
 P34638,nontox,nontox
 P34673,nontox,nontox
-P34714,nontox,nontox
-P34822,nontox,nontox
+P34714,nontox,other
+P34822,nontox,other
 P34942,nontox,nontox
 P34955,nontox,nontox
 P35217,nontox,nontox
@@ -4077,7 +4077,7 @@ Q9TTF0,nontox,nontox
 Q9TUF8,nontox,nontox
 Q9TYT0,nontox,nontox
 Q9U3N5,nontox,nontox
-Q9U3S9,nontox,Venom metalloproteinase (M12B) family
+Q9U3S9,nontox,nontox
 Q9U3V5,nontox,nontox
 Q9U5W9,nontox,nontox
 Q9U6Y8,nontox,Scoloptoxin family
@@ -4085,23 +4085,23 @@ Q9UDV7,nontox,nontox
 Q9UHF5,nontox,nontox
 P80017,nontox,nontox
 P80051,nontox,Scoloptoxin family
-P80167,nontox,other
+P80167,nontox,Conotoxin family
 P80220,nontox,nontox
 P80246,nontox,nontox
 P80252,nontox,nontox
-P80279,nontox,Cationic peptide family
+P80279,nontox,other
 P80363,nontox,nontox
-P80964,nontox,other
+P80964,nontox,nontox
 P81013,nontox,other
 P81056,nontox,Conotoxin family
-P81060,nontox,other
+P81060,nontox,nontox
 P81191,nontox,Insulin family
 P81485,nontox,other
 P62597,nontox,nontox
 P62819,nontox,nontox
-P67801,nontox,Non-disulfide-bridged peptide (NDBP) superfamily
+P67801,nontox,nontox
 P67837,nontox,nontox
-P67934,nontox,"Natriuretic, Bradykinin potentiating peptide family"
+P67934,nontox,other
 Q640U3,nontox,nontox
 Q641Z2,nontox,nontox
 Q642A6,nontox,nontox
@@ -4143,7 +4143,7 @@ P41375,nontox,nontox
 P41588,nontox,nontox
 P41590,nontox,nontox
 P41776,nontox,nontox
-P41870,nontox,other
+P41870,nontox,nontox
 P41931,nontox,nontox
 P42069,nontox,nontox
 P42165,nontox,nontox
@@ -4197,7 +4197,7 @@ P52019,nontox,nontox
 P52205,nontox,nontox
 P53678,nontox,nontox
 P54149,nontox,nontox
-P54217,nontox,Scoloptoxin family
+P54217,nontox,nontox
 P54286,nontox,nontox
 P54357,nontox,nontox
 P54985,nontox,nontox
@@ -4205,9 +4205,9 @@ P55027,nontox,nontox
 P55169,nontox,nontox
 P55204,nontox,nontox
 P55866,nontox,nontox
-P55885,nontox,"Natriuretic, Bradykinin potentiating peptide family"
+P55885,nontox,nontox
 P56598,nontox,nontox
-P58294,nontox,nontox
+P58294,nontox,other
 P58658,nontox,nontox
 P58710,nontox,nontox
 P59222,nontox,nontox
@@ -4255,7 +4255,7 @@ P82966,nontox,Venom Kunitz-type family
 P82971,nontox,Phospholipase family
 P83273,nontox,nontox
 P83286,nontox,nontox
-P83313,nontox,Cationic peptide family
+P83313,nontox,other
 P83362,nontox,nontox
 P83404,nontox,other
 P83455,nontox,Scoloptoxin family
@@ -4269,7 +4269,7 @@ P85059,nontox,other
 P85071,nontox,Conotoxin family
 P85214,nontox,other
 P85521,nontox,nontox
-P85800,nontox,nontox
+P85800,nontox,other
 P86483,nontox,nontox
 P86863,nontox,Conotoxin family
 P90900,nontox,nontox
@@ -4341,7 +4341,7 @@ Q0ZHH6,nontox,nontox
 Q10124,nontox,nontox
 Q10715,nontox,nontox
 Q11068,nontox,nontox
-Q11099,nontox,other
+Q11099,nontox,Conotoxin family
 Q11174,nontox,nontox
 Q11183,nontox,nontox
 Q12796,nontox,nontox
@@ -4366,7 +4366,7 @@ Q19503,nontox,nontox
 Q19980,nontox,nontox
 Q19A30,nontox,nontox
 Q1AGS7,nontox,nontox
-Q1EG28,nontox,nontox
+Q1EG28,nontox,Conotoxin family
 Q1EN15,nontox,Scoloptoxin family
 Q1JP61,nontox,nontox
 Q1JV40,nontox,nontox
@@ -4445,7 +4445,7 @@ Q58GE8,nontox,nontox
 Q58T40,nontox,Cationic peptide family
 Q58T42,nontox,Cationic peptide family
 Q599T9,nontox,nontox
-Q59DY6,nontox,other
+Q59DY6,nontox,nontox
 Q59J78,nontox,nontox
 Q5BJ41,nontox,nontox
 Q5DTU0,nontox,nontox
@@ -4507,7 +4507,7 @@ Q9P299,nontox,nontox
 Q9PT92,nontox,nontox
 Q9PTK2,nontox,nontox
 Q9PU16,nontox,nontox
-Q9PU29,nontox,"Natriuretic, Bradykinin potentiating peptide family"
+Q9PU29,nontox,other
 Q9PUU8,nontox,nontox
 Q9QX82,nontox,nontox
 Q9QXD1,nontox,nontox
@@ -4568,7 +4568,7 @@ Q6ZW05,nontox,nontox
 Q711Q0,nontox,nontox
 Q71FD7,nontox,nontox
 Q71M44,nontox,nontox
-Q765I2,nontox,"Natriuretic, Bradykinin potentiating peptide family"
+Q765I2,nontox,nontox
 Q76KP1,nontox,nontox
 Q76LS9,nontox,nontox
 Q76LW2,nontox,nontox
@@ -4597,7 +4597,7 @@ Q7TS72,nontox,nontox
 Q7TT28,nontox,nontox
 Q7YRZ9,nontox,nontox
 Q7YS54,nontox,nontox
-Q7YT83,nontox,CRISP family
+Q7YT83,nontox,nontox
 Q7Z398,nontox,nontox
 Q7Z3G6,nontox,nontox
 Q7Z3T1,nontox,nontox
@@ -4611,7 +4611,7 @@ Q800Y2,nontox,nontox
 Q801F7,nontox,nontox
 Q803A7,nontox,nontox
 Q803I8,nontox,nontox
-Q805E9,nontox,"Natriuretic, Bradykinin potentiating peptide family"
+Q805E9,nontox,other
 Q80TE7,nontox,nontox
 Q80U23,nontox,nontox
 Q80V53,nontox,nontox
@@ -4735,7 +4735,7 @@ Q8R0Y8,nontox,nontox
 Q8R1R5,nontox,nontox
 Q8R1S0,nontox,nontox
 Q8R1W2,nontox,nontox
-Q8R2G4,nontox,nontox
+Q8R2G4,nontox,other
 Q8R2U2,nontox,nontox
 Q8R3B7,nontox,nontox
 Q8R3Y8,nontox,nontox
@@ -4863,7 +4863,7 @@ Q9CQT9,nontox,nontox
 Q9CQV1,nontox,nontox
 Q9CQZ6,nontox,nontox
 Q9CR13,nontox,nontox
-Q9CRA0,nontox,nontox
+Q9CRA0,nontox,other
 Q9CRD4,nontox,nontox
 Q9CTN4,nontox,nontox
 Q9CWU6,nontox,nontox
@@ -4942,7 +4942,7 @@ P38981,nontox,nontox
 P40754,nontox,FARP (FMRFamide related peptide) family
 P41336,nontox,other
 P41491,nontox,nontox
-P41492,nontox,FARP (FMRFamide related peptide) family
+P41492,nontox,nontox
 P41517,nontox,FARP (FMRFamide related peptide) family
 P41837,nontox,FARP (FMRFamide related peptide) family
 P41860,nontox,nontox
@@ -4950,8 +4950,8 @@ P41861,nontox,nontox
 P41864,nontox,nontox
 P41868,nontox,nontox
 P41875,nontox,FARP (FMRFamide related peptide) family
-P41966,nontox,FARP (FMRFamide related peptide) family
-P42579,nontox,Scoloptoxin family
+P41966,nontox,nontox
+P42579,nontox,nontox
 P42687,nontox,nontox
 P42718,nontox,MCD family
 P42984,nontox,nontox
@@ -5008,7 +5008,7 @@ B3EWD2,nontox,nontox
 B3EWD8,nontox,nontox
 B3EWE1,nontox,nontox
 B3EWH1,nontox,FARP (FMRFamide related peptide) family
-B3EWJ4,nontox,Cationic peptide family
+B3EWJ4,nontox,nontox
 B3EWJ7,nontox,nontox
 B3EWK8,nontox,nontox
 B4PIP5,nontox,nontox
@@ -5026,22 +5026,22 @@ B7ZD04,nontox,nontox
 B9A064,nontox,nontox
 B9TQX4,nontox,Scoloptoxin family
 C0HAV3,nontox,nontox
-C0HK45,nontox,Non-disulfide-bridged peptide (NDBP) superfamily
+C0HK45,nontox,other
 C0HK73,nontox,Venom Kunitz-type family
-C0HK88,nontox,Cationic peptide family
-C0HKN9,nontox,Cationic peptide family
-C0HKP2,nontox,MCD family
+C0HK88,nontox,nontox
+C0HKN9,nontox,nontox
+C0HKP2,nontox,nontox
 C0HKP4,nontox,nontox
 C0HKQ2,nontox,Formicidae venom family
-C0HKS1,nontox,other
+C0HKS1,nontox,nontox
 C0HKX5,nontox,"Natriuretic, Bradykinin potentiating peptide family"
 C0HL09,nontox,MCD family
-C0HL42,nontox,FARP (FMRFamide related peptide) family
+C0HL42,nontox,Vasopressin/oxytocin family
 C0HLN5,nontox,other
 C0HM56,nontox,other
 C1BYA3,nontox,nontox
 C9J1S8,nontox,nontox
-D2IT41,nontox,nontox
+D2IT41,nontox,Conotoxin family
 D2KQB0,nontox,nontox
 D2KUZ7,nontox,nontox
 D2YVK1,nontox,Snaclec family
@@ -5081,7 +5081,7 @@ G5CTF9,nontox,nontox
 G5CTG6,nontox,nontox
 G5EBX4,nontox,nontox
 G5EDB8,nontox,nontox
-G5EDQ9,nontox,nontox
+G5EDQ9,nontox,Scoloptoxin family
 G5EGA6,nontox,nontox
 H2A0L4,nontox,nontox
 H2A0L6,nontox,nontox
@@ -5090,7 +5090,7 @@ H9JIQ1,nontox,nontox
 I3LHK5,nontox,nontox
 I6PG79,nontox,Three-finger toxin family
 K7NA32,nontox,nontox
-K9N4Q4,nontox,Scoloptoxin family
+K9N4Q4,nontox,nontox
 L7MC74,nontox,other
 O01939,nontox,nontox
 O02350,nontox,nontox
@@ -5118,7 +5118,7 @@ O35680,nontox,nontox
 O42091,nontox,nontox
 O42097,nontox,nontox
 O42144,nontox,nontox
-O42146,nontox,nontox
+O42146,nontox,other
 O42196,nontox,nontox
 O42367,nontox,nontox
 O42611,nontox,nontox
@@ -5132,7 +5132,7 @@ O57380,nontox,nontox
 O57401,nontox,nontox
 O60309,nontox,nontox
 O61704,nontox,nontox
-O62605,nontox,Scoloptoxin family
+O62605,nontox,nontox
 O62675,nontox,nontox
 O62812,nontox,nontox
 O62855,nontox,nontox
@@ -5143,7 +5143,7 @@ O75290,nontox,nontox
 O76145,nontox,Scoloptoxin family
 O76146,nontox,Formicidae venom family
 O77408,nontox,nontox
-O77420,nontox,other
+O77420,nontox,nontox
 O77457,nontox,nontox
 O77645,nontox,nontox
 O77649,nontox,nontox
@@ -5166,13 +5166,13 @@ P00038,nontox,nontox
 P00174,nontox,nontox
 P00993,nontox,Venom Kunitz-type family
 P00994,nontox,Venom Kunitz-type family
-P01261,nontox,nontox
-P01331,nontox,other
+P01261,nontox,other
+P01331,nontox,Insulin family
 P01340,nontox,other
 P01361,nontox,Scoloptoxin family
-P01505,nontox,Cationic peptide family
+P01505,nontox,Formicidae venom family
 P01737,nontox,nontox
-P01885,nontox,nontox
+P01885,nontox,other
 P02218,nontox,nontox
 P02226,nontox,nontox
 P02227,nontox,nontox
@@ -5186,7 +5186,7 @@ P04345,nontox,nontox
 P04359,nontox,nontox
 P04656,nontox,nontox
 P05504,nontox,nontox
-P06841,nontox,Conotoxin family
+P06841,nontox,nontox
 P07178,nontox,nontox
 P07188,nontox,nontox
 P07349,nontox,nontox
@@ -5202,7 +5202,7 @@ P09539,nontox,nontox
 P09611,nontox,nontox
 P09966,nontox,nontox
 P09967,nontox,nontox
-P0C007,nontox,Formicidae venom family
+P0C007,nontox,other
 P0C091,nontox,nontox
 P0C1M7,nontox,MCD family
 P0C1Z9,nontox,Neurotoxin family
@@ -5224,13 +5224,13 @@ P0DPA2,nontox,nontox
 P0DPB5,nontox,nontox
 P0DPE0,nontox,nontox
 P0DPI2,nontox,nontox
-P0DPT0,nontox,other
+P0DPT0,nontox,nontox
 P0DQK5,nontox,MCD family
 P0DQZ5,nontox,MCD family
 P0DTD7,nontox,nontox
 P0DTM0,nontox,MCD family
 P0DTU0,nontox,MCD family
-P0DX39,nontox,Cationic peptide family
+P0DX39,nontox,MCD family
 P0DY42,nontox,Phospholipase family
 P10043,nontox,nontox
 P10280,nontox,Venom Kunitz-type family
@@ -5253,7 +5253,7 @@ P14484,nontox,nontox
 P14629,nontox,nontox
 P15131,nontox,Insulin family
 P15161,nontox,nontox
-P15421,nontox,nontox
+P15421,nontox,Formicidae venom family
 P15501,nontox,other
 P16041,nontox,nontox
 P17453,nontox,nontox
@@ -5284,7 +5284,7 @@ P24710,nontox,nontox
 P24775,nontox,nontox
 P25172,nontox,nontox
 P25320,nontox,nontox
-P25331,nontox,other
+P25331,nontox,nontox
 P25420,nontox,nontox
 P25703,nontox,nontox
 P26797,nontox,nontox
@@ -5303,13 +5303,13 @@ P30972,nontox,other
 P31241,nontox,Insulin family
 P31393,nontox,nontox
 P31400,nontox,nontox
-P31727,nontox,other
+P31727,nontox,Scoloptoxin family
 P31886,nontox,Conotoxin family
-P32414,nontox,Cationic peptide family
-P32647,nontox,MCD family
+P32414,nontox,nontox
+P32647,nontox,Conotoxin family
 P32845,nontox,nontox
 P32940,nontox,nontox
-P33439,nontox,Scoloptoxin family
+P33439,nontox,Conotoxin family
 P33571,nontox,nontox
 P33575,nontox,nontox
 P33706,nontox,nontox
@@ -5326,7 +5326,7 @@ P34953,nontox,other
 P34987,nontox,nontox
 P35464,nontox,nontox
 P35481,nontox,other
-P35490,nontox,Vasopressin/oxytocin family
+P35490,nontox,Conotoxin family
 P35587,nontox,Peptidase S1 family
 P35744,nontox,nontox
 P35777,nontox,Scoloptoxin family
@@ -5334,10 +5334,10 @@ P35896,nontox,nontox
 P36573,nontox,nontox
 P36916,nontox,nontox
 P36976,nontox,nontox
-P37085,nontox,FARP (FMRFamide related peptide) family
+P37085,nontox,Conotoxin family
 P37160,nontox,nontox
 P37301,nontox,nontox
-P37362,nontox,Bradykinin-related peptide family
+P37362,nontox,"Natriuretic, Bradykinin potentiating peptide family"
 P37801,nontox,nontox
 P38552,nontox,nontox
 P39413,nontox,nontox
@@ -5347,7 +5347,7 @@ P41044,nontox,nontox
 P41110,nontox,nontox
 P41126,nontox,nontox
 P41158,nontox,nontox
-P41366,nontox,other
+P41366,nontox,nontox
 P41570,nontox,nontox
 P41572,nontox,nontox
 P41688,nontox,nontox
@@ -5355,9 +5355,9 @@ P42145,nontox,nontox
 P42583,nontox,nontox
 P42987,nontox,FARP (FMRFamide related peptide) family
 P43510,nontox,nontox
-P45652,nontox,"Natriuretic, Bradykinin potentiating peptide family"
+P45652,nontox,Scoloptoxin family
 P45972,nontox,nontox
-P46164,nontox,other
+P46164,nontox,nontox
 P46166,nontox,other
 P46223,nontox,nontox
 P46409,nontox,nontox
@@ -5370,7 +5370,7 @@ P48673,nontox,nontox
 P48801,nontox,nontox
 P48812,nontox,nontox
 P48969,nontox,nontox
-P48970,nontox,nontox
+P48970,nontox,other
 P49010,nontox,nontox
 P49041,nontox,nontox
 P49048,nontox,nontox
@@ -5398,7 +5398,7 @@ P52170,nontox,nontox
 P52786,nontox,nontox
 P53545,nontox,nontox
 P53546,nontox,nontox
-P53613,nontox,Phospholipase family
+P53613,nontox,nontox
 P54106,nontox,nontox
 P54192,nontox,nontox
 P54195,nontox,nontox
@@ -5528,7 +5528,7 @@ Q32PC3,nontox,nontox
 Q32PE2,nontox,nontox
 Q32PJ7,nontox,nontox
 Q32PR0,nontox,nontox
-Q331K1,nontox,other
+Q331K1,nontox,nontox
 Q35915,nontox,nontox
 Q3B7H2,nontox,nontox
 Q3BBV2,nontox,nontox
@@ -5905,7 +5905,7 @@ Q810A1,nontox,nontox
 Q810V0,nontox,nontox
 Q812E4,nontox,nontox
 Q862A8,nontox,nontox
-Q864T8,nontox,nontox
+Q864T8,nontox,other
 Q86P48,nontox,nontox
 Q86VR8,nontox,nontox
 Q86XZ4,nontox,nontox
@@ -5995,7 +5995,7 @@ Q8MJZ7,nontox,nontox
 Q8MKF5,nontox,nontox
 Q8MR31,nontox,nontox
 Q8MUF6,nontox,nontox
-Q8MVA6,nontox,Conotoxin family
+Q8MVA6,nontox,Neurotoxin family
 Q8N0N3,nontox,nontox
 Q8N0Y3,nontox,nontox
 Q8N0Z2,nontox,nontox
@@ -6044,7 +6044,7 @@ Q8SPK1,nontox,nontox
 Q8SQD7,nontox,nontox
 Q8SWU7,nontox,nontox
 Q8SZZ8,nontox,nontox
-Q8T112,nontox,FARP (FMRFamide related peptide) family
+Q8T112,nontox,Scoloptoxin family
 Q8T4J9,nontox,nontox
 Q8TCN5,nontox,nontox
 Q8TD55,nontox,nontox
@@ -6062,7 +6062,7 @@ Q8VCW8,nontox,nontox
 Q8VDV0,nontox,nontox
 Q8VE42,nontox,nontox
 Q8WNR4,nontox,nontox
-Q8WSV1,nontox,other
+Q8WSV1,nontox,nontox
 Q8WTU2,nontox,nontox
 Q8WUR7,nontox,nontox
 Q8WUT9,nontox,nontox
@@ -6079,10 +6079,10 @@ Q90VZ3,nontox,nontox
 Q90Y35,nontox,nontox
 Q91041,nontox,Peptidase S1 family
 Q910A1,nontox,Phospholipase family
-Q91167,nontox,nontox
+Q91167,nontox,Vasopressin/oxytocin family
 Q91206,nontox,nontox
 Q91617,nontox,nontox
-Q91621,nontox,nontox
+Q91621,nontox,other
 Q91853,nontox,nontox
 Q91VD1,nontox,nontox
 Q91VW3,nontox,nontox
@@ -6104,7 +6104,7 @@ Q925E0,nontox,nontox
 Q92778,nontox,Snaclec family
 Q93142,nontox,nontox
 Q94225,nontox,nontox
-Q94676,nontox,Insulin family
+Q94676,nontox,nontox
 Q95005,nontox,nontox
 Q95108,nontox,nontox
 Q95116,nontox,nontox
@@ -6123,7 +6123,7 @@ Q95Y36,nontox,nontox
 Q96133,nontox,nontox
 Q961G1,nontox,nontox
 Q961J5,nontox,nontox
-Q963A9,nontox,Cationic peptide family
+Q963A9,nontox,other
 Q966Y3,nontox,nontox
 Q96DC7,nontox,nontox
 Q96JM4,nontox,nontox
@@ -6254,7 +6254,7 @@ A2AVQ5,nontox,nontox
 A2BDG5,nontox,nontox
 A2BFL2,nontox,nontox
 A2CER7,nontox,nontox
-A2IA90,nontox,other
+A2IA90,nontox,nontox
 A2IAB1,nontox,Scoloptoxin family
 A2RSQ1,nontox,nontox
 A2RT91,nontox,nontox
@@ -6316,7 +6316,7 @@ A7X4K1,nontox,nontox
 A7Z052,nontox,nontox
 A8C750,nontox,nontox
 A8DZE7,nontox,nontox
-A8I0L8,nontox,Teretoxin family
+A8I0L8,nontox,Neurotoxin family
 A8MTT3,nontox,nontox
 A8MTY0,nontox,nontox
 A8MUX0,nontox,nontox
@@ -6345,17 +6345,17 @@ B3A063,nontox,nontox
 B3A087,nontox,FARP (FMRFamide related peptide) family
 B3A0A1,nontox,nontox
 B3A0A6,nontox,FARP (FMRFamide related peptide) family
-B3A0D6,nontox,MCD family
+B3A0D6,nontox,nontox
 B3A0E5,nontox,FARP (FMRFamide related peptide) family
 B3A0H8,nontox,FARP (FMRFamide related peptide) family
-B3A0I9,nontox,FARP (FMRFamide related peptide) family
-B3A0K8,nontox,FARP (FMRFamide related peptide) family
+B3A0I9,nontox,nontox
+B3A0K8,nontox,nontox
 B3A0P7,nontox,nontox
 B3A0Q3,nontox,nontox
 B3A0R3,nontox,nontox
 B3A0R5,nontox,Scoloptoxin family
 B3EWY6,nontox,nontox
-B3IWF8,nontox,"Natriuretic, Bradykinin potentiating peptide family"
+B3IWF8,nontox,other
 B3KS81,nontox,nontox
 B3VZU1,nontox,Conotoxin family
 B3VZU6,nontox,Formicidae venom family
@@ -6368,15 +6368,15 @@ B9VJ80,nontox,nontox
 C0HJB7,nontox,nontox
 C0HJB9,nontox,MCD family
 C0HJF1,nontox,nontox
-C0HJK4,nontox,MCD family
-C0HK08,nontox,Cationic peptide family
+C0HJK4,nontox,nontox
+C0HK08,nontox,nontox
 C0HK85,nontox,Cationic peptide family
 C0HK90,nontox,Non-disulfide-bridged peptide (NDBP) superfamily
 C0HKN6,nontox,Cationic peptide family
 C0HLC3,nontox,other
 C0HLK9,nontox,FARP (FMRFamide related peptide) family
-C0HLV9,nontox,Formicidae venom family
-C0HM57,nontox,MCD family
+C0HLV9,nontox,Conotoxin family
+C0HM57,nontox,other
 C6KGD8,nontox,nontox
 C8BKF2,nontox,other
 C9JL84,nontox,nontox
@@ -6390,9 +6390,9 @@ G4VGH9,nontox,nontox
 G5CTG5,nontox,nontox
 H2A0P1,nontox,nontox
 H2CYR5,nontox,Non-disulfide-bridged peptide (NDBP) superfamily
-J7MAN2,nontox,nontox
+J7MAN2,nontox,Scoloptoxin family
 L0GCJ1,nontox,Scoloptoxin family
-M1GL27,nontox,other
+M1GL27,nontox,nontox
 M5B4R7,nontox,nontox
 O01692,nontox,nontox
 O02380,nontox,nontox
@@ -6415,7 +6415,7 @@ O97420,nontox,nontox
 P00000,nontox,Long (4 C-C) scorpion toxin superfamily
 P01051,nontox,nontox
 P01202,nontox,other
-P01372,nontox,Formicidae venom family
+P01372,nontox,Conotoxin family
 P01509,nontox,other
 P01512,nontox,nontox
 P01631,nontox,nontox
@@ -6428,7 +6428,7 @@ P01828,nontox,nontox
 P01847,nontox,nontox
 P01886,nontox,nontox
 P02615,nontox,nontox
-P02657,nontox,Cationic peptide family
+P02657,nontox,nontox
 P02815,nontox,nontox
 P04214,nontox,nontox
 P05143,nontox,"Natriuretic, Bradykinin potentiating peptide family"
@@ -6438,11 +6438,11 @@ P06327,nontox,nontox
 P06910,nontox,nontox
 P08608,nontox,Cationic peptide family
 P08610,nontox,FARP (FMRFamide related peptide) family
-P08944,nontox,FARP (FMRFamide related peptide) family
+P08944,nontox,nontox
 P08951,nontox,nontox
 P09837,nontox,nontox
 P0C008,nontox,other
-P0C5W9,nontox,Limacoditoxin family
+P0C5W9,nontox,nontox
 P0C7K5,nontox,nontox
 P0C7V6,nontox,nontox
 P0C8A7,nontox,other
@@ -6450,21 +6450,21 @@ P0C8B0,nontox,other
 P0CF04,nontox,nontox
 P0CG14,nontox,nontox
 P0CG33,nontox,nontox
-P0CJ73,nontox,Conotoxin family
+P0CJ73,nontox,other
 P0DJG4,nontox,nontox
 P0DL22,nontox,Non-disulfide-bridged peptide (NDBP) superfamily
-P0DME7,nontox,Cationic peptide family
+P0DME7,nontox,Non-disulfide-bridged peptide (NDBP) superfamily
 P0DMI8,nontox,Conotoxin family
 P0DO92,nontox,nontox
 P0DP55,nontox,other
 P0DRE9,nontox,nontox
-P0DRF1,nontox,Bradykinin-related peptide family
+P0DRF1,nontox,other
 P0DRF6,nontox,"Natriuretic, Bradykinin potentiating peptide family"
 P0DRG9,nontox,"Natriuretic, Bradykinin potentiating peptide family"
-P0DRH0,nontox,MCD family
-P0DUV0,nontox,Bradykinin-related peptide family
+P0DRH0,nontox,Bradykinin-related peptide family
+P0DUV0,nontox,MCD family
 P0DY02,nontox,Non-disulfide-bridged peptide (NDBP) superfamily
-P0DY21,nontox,other
+P0DY21,nontox,Short scorpion toxin superfamily
 P10751,nontox,nontox
 P11734,nontox,nontox
 P12812,nontox,nontox
@@ -6473,12 +6473,12 @@ P13728,nontox,nontox
 P13913,nontox,nontox
 P13914,nontox,nontox
 P14662,nontox,Formicidae venom family
-P15450,nontox,other
+P15450,nontox,nontox
 P15507,nontox,nontox
 P17350,nontox,Scoloptoxin family
-P18107,nontox,other
+P18107,nontox,Non-disulfide-bridged peptide (NDBP) superfamily
 P18144,nontox,"Natriuretic, Bradykinin potentiating peptide family"
-P18312,nontox,Formicidae venom family
+P18312,nontox,Conotoxin family
 P18606,nontox,nontox
 P18897,nontox,nontox
 P20421,nontox,Formicidae venom family
@@ -6488,15 +6488,15 @@ P20808,nontox,nontox
 P21798,nontox,nontox
 P22765,nontox,nontox
 P23216,nontox,nontox
-P23465,nontox,Cationic peptide family
+P23465,nontox,Conotoxin family
 P23543,nontox,nontox
-P23834,nontox,Non-disulfide-bridged peptide (NDBP) superfamily
+P23834,nontox,Conotoxin family
 P25271,nontox,FARP (FMRFamide related peptide) family
 P25456,nontox,nontox
 P25510,nontox,Scoloptoxin family
 P25692,nontox,nontox
 P56175,nontox,nontox
-P56236,nontox,MCD family
+P56236,nontox,Non-disulfide-bridged peptide (NDBP) superfamily
 P61133,nontox,nontox
 P61571,nontox,nontox
 P62085,nontox,nontox
@@ -6504,9 +6504,9 @@ P62299,nontox,nontox
 P67785,nontox,nontox
 P67880,nontox,nontox
 P69023,nontox,MCD family
-P69138,nontox,Cationic peptide family
-P69843,nontox,Cationic peptide family
-P79695,nontox,nontox
+P69138,nontox,nontox
+P69843,nontox,Non-disulfide-bridged peptide (NDBP) superfamily
+P79695,nontox,other
 P80059,nontox,other
 P80517,nontox,nontox
 P81033,nontox,nontox
@@ -6520,20 +6520,20 @@ P81635,nontox,other
 P81653,nontox,nontox
 P81728,nontox,nontox
 P81735,nontox,Bradykinin-related peptide family
-P81736,nontox,Bradykinin-related peptide family
-P81753,nontox,FARP (FMRFamide related peptide) family
-P81805,nontox,MCD family
-P81811,nontox,MCD family
+P81736,nontox,nontox
+P81753,nontox,nontox
+P81805,nontox,nontox
+P81811,nontox,nontox
 P81816,nontox,FARP (FMRFamide related peptide) family
 P81846,nontox,MCD family
 P82020,nontox,other
-P82027,nontox,Cationic peptide family
-P82073,nontox,Cationic peptide family
+P82027,nontox,nontox
+P82073,nontox,nontox
 P82095,nontox,MCD family
-P82096,nontox,MCD family
+P82096,nontox,nontox
 P82120,nontox,nontox
 P82122,nontox,nontox
-P82155,nontox,FARP (FMRFamide related peptide) family
+P82155,nontox,nontox
 P82235,nontox,other
 P82269,nontox,other
 P82284,nontox,MCD family
@@ -6541,16 +6541,16 @@ P82595,nontox,other
 P82824,nontox,MCD family
 P82965,nontox,FARP (FMRFamide related peptide) family
 P83275,nontox,nontox
-P83277,nontox,MCD family
+P83277,nontox,nontox
 P83278,nontox,FARP (FMRFamide related peptide) family
-P83518,nontox,FARP (FMRFamide related peptide) family
+P83518,nontox,MCD family
 P83640,nontox,other
 P84117,nontox,Conotoxin family
 P84573,nontox,nontox
 P84663,nontox,nontox
 P84702,nontox,Neurotoxin family
-P84937,nontox,Cationic peptide family
-P84947,nontox,FARP (FMRFamide related peptide) family
+P84937,nontox,other
+P84947,nontox,nontox
 P84959,nontox,nontox
 P85067,nontox,MCD family
 P85094,nontox,nontox
@@ -6561,11 +6561,11 @@ P85469,nontox,nontox
 P85479,nontox,nontox
 P85548,nontox,FARP (FMRFamide related peptide) family
 P85551,nontox,FARP (FMRFamide related peptide) family
-P85581,nontox,FARP (FMRFamide related peptide) family
+P85581,nontox,Bradykinin-related peptide family
 P85611,nontox,nontox
 P85696,nontox,FARP (FMRFamide related peptide) family
 P85806,nontox,FARP (FMRFamide related peptide) family
-P85817,nontox,FARP (FMRFamide related peptide) family
+P85817,nontox,Bradykinin-related peptide family
 P86129,nontox,other
 P86283,nontox,nontox
 P86449,nontox,nontox
@@ -6640,7 +6640,7 @@ Q0VFN8,nontox,nontox
 Q0VG18,nontox,nontox
 Q0Z7S8,nontox,nontox
 Q0ZS88,nontox,nontox
-Q10416,nontox,other
+Q10416,nontox,nontox
 Q11101,nontox,Scoloptoxin family
 Q149G0,nontox,nontox
 Q14AE4,nontox,nontox
@@ -6701,7 +6701,7 @@ Q28FE5,nontox,nontox
 Q28G88,nontox,nontox
 Q28HC7,nontox,nontox
 Q290S5,nontox,nontox
-Q29126,nontox,other
+Q29126,nontox,nontox
 Q29RH0,nontox,nontox
 Q29S20,nontox,nontox
 Q2HJE5,nontox,nontox
@@ -6726,7 +6726,7 @@ Q2TA51,nontox,nontox
 Q2TBI7,nontox,nontox
 Q2TBP5,nontox,nontox
 Q2TBX7,nontox,nontox
-Q2UXW0,nontox,other
+Q2UXW0,nontox,Conotoxin family
 Q2VQM6,nontox,nontox
 Q2WG79,nontox,nontox
 Q2XWK0,nontox,nontox
@@ -6824,7 +6824,7 @@ Q503P5,nontox,nontox
 Q503R4,nontox,nontox
 Q503V3,nontox,nontox
 Q505D1,nontox,nontox
-Q52MQ7,nontox,Non-disulfide-bridged peptide (NDBP) superfamily
+Q52MQ7,nontox,nontox
 Q566C5,nontox,nontox
 Q566H4,nontox,nontox
 Q566V0,nontox,nontox
@@ -6837,7 +6837,7 @@ Q58D91,nontox,nontox
 Q58DM7,nontox,nontox
 Q5BJB7,nontox,nontox
 Q5BJJ6,nontox,nontox
-Q8WZ26,nontox,nontox
+Q8WZ26,nontox,Scoloptoxin family
 Q96KX1,nontox,Scoloptoxin family
 Q96T59,nontox,nontox
 Q9CQE9,nontox,nontox
@@ -6848,7 +6848,7 @@ Q9DAQ5,nontox,Scoloptoxin family
 Q9H478,nontox,nontox
 Q9H693,nontox,nontox
 Q9JJR6,nontox,nontox
-Q9NZ38,nontox,nontox
+Q9NZ38,nontox,Scoloptoxin family
 Q9U1G6,nontox,nontox
 Q9VE11,nontox,nontox
 Q7T012,nontox,nontox
@@ -6925,7 +6925,7 @@ P03949,nontox,nontox
 P01730,nontox,nontox
 P01831,nontox,nontox
 P01860,nontox,nontox
-P01887,nontox,nontox
+P01887,nontox,other
 P01910,nontox,nontox
 P02067,nontox,nontox
 P02074,nontox,nontox
@@ -6961,14 +6961,14 @@ Q08E11,nontox,nontox
 Q09242,nontox,nontox
 Q09253,nontox,nontox
 P81490,nontox,other
-P81555,nontox,FARP (FMRFamide related peptide) family
+P81555,nontox,nontox
 P81623,nontox,nontox
 P81902,nontox,Venom Kunitz-type family
 P82021,nontox,MCD family
-P82022,nontox,MCD family
-P82065,nontox,FARP (FMRFamide related peptide) family
+P82022,nontox,nontox
+P82065,nontox,nontox
 P82075,nontox,MCD family
-P82076,nontox,MCD family
+P82076,nontox,nontox
 P82091,nontox,nontox
 P82357,nontox,MCD family
 Q6AZI2,nontox,nontox
@@ -6987,13 +6987,13 @@ Q9P1Z9,nontox,nontox
 Q9P255,nontox,nontox
 Q9PSM2,nontox,other
 Q9PTE6,nontox,nontox
-Q9PTQ2,nontox,nontox
+Q9PTQ2,nontox,other
 Q5BKN5,nontox,nontox
 Q5BL87,nontox,nontox
 Q5D016,nontox,nontox
 Q5DA90,nontox,nontox
 Q5DAA3,nontox,nontox
-Q5DC74,nontox,other
+Q5DC74,nontox,Neurotoxin family
 Q5DHJ5,nontox,nontox
 Q5DJU3,nontox,nontox
 Q5DP50,nontox,nontox
@@ -7123,12 +7123,12 @@ A0JMA9,nontox,nontox
 A0JMT0,nontox,nontox
 P86442,nontox,other
 P86455,nontox,Vasopressin/oxytocin family
-P86621,nontox,Cationic peptide family
+P86621,nontox,nontox
 P86883,nontox,nontox
 P86915,nontox,MCD family
 P86919,nontox,nontox
 P86955,nontox,nontox
-P68006,nontox,other
+P68006,nontox,Conotoxin family
 P69014,nontox,nontox
 P69107,nontox,other
 Q5ZM45,nontox,nontox
@@ -7139,7 +7139,7 @@ Q60HD0,nontox,nontox
 Q9PVE8,nontox,nontox
 Q9PW28,nontox,nontox
 Q9PWM5,nontox,nontox
-Q9QXX2,nontox,Scoloptoxin family
+Q9QXX2,nontox,Cationic peptide family
 Q9QYT7,nontox,nontox
 Q9QZ23,nontox,nontox
 P04218,nontox,nontox
@@ -7165,7 +7165,7 @@ A0A2R4SV19,nontox,other
 A0A2R8Y619,nontox,nontox
 A0A4X1TZW7,nontox,nontox
 A0A584,nontox,nontox
-A0A6M3Z4L2,nontox,Cationic peptide family
+A0A6M3Z4L2,nontox,Non-disulfide-bridged peptide (NDBP) superfamily
 A0A7D0AGU9,nontox,nontox
 A0A7M6W880,nontox,nontox
 A0A8U0WQ84,nontox,nontox
@@ -7202,9 +7202,9 @@ Q3SZW6,nontox,nontox
 Q3T136,nontox,nontox
 Q3UNU4,nontox,nontox
 P13729,nontox,nontox
-P19962,nontox,FARP (FMRFamide related peptide) family
+P19962,nontox,nontox
 P21937,nontox,Scoloptoxin family
-P23063,nontox,Scoloptoxin family
+P23063,nontox,Conotoxin family
 P37363,nontox,nontox
 P49671,nontox,Scoloptoxin family
 P80578,nontox,nontox
@@ -7260,7 +7260,7 @@ P46952,nontox,nontox
 P47710,nontox,nontox
 P47740,nontox,nontox
 P47750,nontox,nontox
-P47783,nontox,other
+P47783,nontox,nontox
 Q05AM5,nontox,nontox
 Q06442,nontox,nontox
 Q06AV1,nontox,nontox
@@ -7273,7 +7273,7 @@ P00742,nontox,nontox
 P00759,nontox,Peptidase S1 family
 P00772,nontox,Peptidase S1 family
 P00939,nontox,nontox
-P01005,nontox,other
+P01005,nontox,nontox
 P01024,nontox,nontox
 P01029,nontox,nontox
 P01042,nontox,nontox
@@ -7409,7 +7409,7 @@ Q6P4H8,nontox,nontox
 Q6P4X5,nontox,nontox
 Q6P589,nontox,nontox
 Q6P5H2,nontox,nontox
-Q6P6T1,nontox,nontox
+Q6P6T1,nontox,Peptidase S1 family
 Q6P6V0,nontox,nontox
 Q6P788,nontox,nontox
 Q6P7A1,nontox,nontox
@@ -7480,7 +7480,7 @@ O61309,nontox,nontox
 O61613,nontox,nontox
 O61660,nontox,nontox
 O61790,nontox,nontox
-O61887,nontox,other
+O61887,nontox,nontox
 O62179,nontox,nontox
 O62416,nontox,nontox
 O62848,nontox,nontox
@@ -7641,7 +7641,7 @@ Q6ZQN5,nontox,nontox
 Q6ZRC1,nontox,nontox
 Q6ZRP0,nontox,nontox
 Q6ZSJ8,nontox,nontox
-Q75UG5,nontox,"Natriuretic, Bradykinin potentiating peptide family"
+Q75UG5,nontox,Scoloptoxin family
 Q75V93,nontox,nontox
 Q75WE7,nontox,nontox
 Q766Y6,nontox,other
@@ -7684,7 +7684,7 @@ Q8BG73,nontox,nontox
 Q8BGF6,nontox,nontox
 Q8BGI1,nontox,nontox
 Q8BGN5,nontox,nontox
-Q8BGW9,nontox,other
+Q8BGW9,nontox,nontox
 Q8BH88,nontox,nontox
 Q8BHE0,nontox,nontox
 Q8BM86,nontox,nontox
@@ -7747,7 +7747,7 @@ Q8R370,nontox,nontox
 Q8R3T5,nontox,nontox
 Q8R4X3,nontox,nontox
 Q8T088,nontox,nontox
-Q8T0W5,nontox,Scoloptoxin family
+Q8T0W5,nontox,other
 Q8TEF2,nontox,nontox
 Q8VC12,nontox,nontox
 Q8VDT9,nontox,nontox
@@ -7879,7 +7879,7 @@ Q9VM65,nontox,nontox
 Q9VPF9,nontox,nontox
 Q9VQC4,nontox,nontox
 Q9VR89,nontox,nontox
-Q9VR93,nontox,Scoloptoxin family
+Q9VR93,nontox,Conotoxin family
 Q9VUA0,nontox,nontox
 Q9VUR0,nontox,nontox
 Q9VVV2,nontox,nontox
@@ -7901,7 +7901,7 @@ A0A0U1RQG5,nontox,nontox
 A0A0U1RQS6,nontox,nontox
 A0A1B0GTJ6,nontox,nontox
 A0A1B0GU33,nontox,Conotoxin family
-A0A1B0GVR7,nontox,Scoloptoxin family
+A0A1B0GVR7,nontox,nontox
 A0A1W2PQ72,nontox,nontox
 A0JPQ1,nontox,nontox
 A4D250,nontox,nontox
@@ -7927,10 +7927,10 @@ P01693,nontox,nontox
 P01696,nontox,nontox
 P01823,nontox,nontox
 P01858,nontox,"Natriuretic, Bradykinin potentiating peptide family"
-P06518,nontox,"Natriuretic, Bradykinin potentiating peptide family"
+P06518,nontox,nontox
 P0CZ25,nontox,nontox
 P0DMR6,nontox,nontox
-P0DQY4,nontox,Conotoxin family
+P0DQY4,nontox,Bradykinin-related peptide family
 P0DRD9,nontox,Conotoxin family
 Q07929,nontox,nontox
 Q07G42,nontox,nontox
@@ -7950,7 +7950,7 @@ Q5ZI43,nontox,nontox
 Q5ZI66,nontox,nontox
 P01225,nontox,other
 P01239,nontox,nontox
-P01275,nontox,nontox
+P01275,nontox,other
 P01282,nontox,other
 P01315,nontox,nontox
 P01344,nontox,nontox
@@ -8037,7 +8037,7 @@ P54315,nontox,nontox
 P54320,nontox,nontox
 P54350,nontox,nontox
 P54623,nontox,nontox
-P54631,nontox,nontox
+P54631,nontox,other
 P54812,nontox,nontox
 P54818,nontox,nontox
 P54826,nontox,nontox
@@ -8168,7 +8168,7 @@ Q9N0Y2,nontox,nontox
 Q9N119,nontox,nontox
 Q9N126,nontox,nontox
 Q9N2D3,nontox,nontox
-Q9N2F1,nontox,nontox
+Q9N2F1,nontox,other
 Q9N2G6,nontox,nontox
 P0C8X9,Short scorpion toxin superfamily,Short scorpion toxin superfamily
 P0C909,Short scorpion toxin superfamily,Short scorpion toxin superfamily
@@ -8289,7 +8289,7 @@ A0A8U0LTT9,other,Scoloptoxin family
 C5J895,other,Scoloptoxin family
 D2CFI7,other,Scoloptoxin family
 P0C846,other,Conotoxin family
-P0DKN0,other,Scoloptoxin family
+P0DKN0,other,Teretoxin family
 P0DQJ0,other,Short scorpion toxin superfamily
 P0DQX9,other,nontox
 P68425,Venom Kunitz-type family,Venom Kunitz-type family
@@ -8329,12 +8329,12 @@ P21789,Phospholipase family,Phospholipase family
 P30811,Phospholipase family,Phospholipase family
 P86407,Non-disulfide-bridged peptide (NDBP) superfamily,Non-disulfide-bridged peptide (NDBP) superfamily
 P86828,Non-disulfide-bridged peptide (NDBP) superfamily,Non-disulfide-bridged peptide (NDBP) superfamily
-A0A218QWY8,Non-disulfide-bridged peptide (NDBP) superfamily,Scoloptoxin family
+A0A218QWY8,Non-disulfide-bridged peptide (NDBP) superfamily,nontox
 Q9TWR4,Non-disulfide-bridged peptide (NDBP) superfamily,other
 P86194,other,other
 O57540,other,other
 P0DUS8,Limacoditoxin family,Neurotoxin family
-P0DUT0,Limacoditoxin family,Conotoxin family
+P0DUT0,Limacoditoxin family,Teretoxin family
 Q1ELU5,Cationic peptide family,other
 B3EWV4,Cationic peptide family,Cationic peptide family
 B3EWW0,Cationic peptide family,Cationic peptide family
@@ -8352,7 +8352,7 @@ G1AS82,Conotoxin family,Conotoxin family
 M9PQ91,Conotoxin family,Conotoxin family
 P0C1U2,Conotoxin family,Conotoxin family
 P0C1V9,Conotoxin family,Conotoxin family
-P0C612,Conotoxin family,Neurotoxin family
+P0C612,Conotoxin family,Conotoxin family
 P0C614,Conotoxin family,Conotoxin family
 P69495,Conotoxin family,Conotoxin family
 P85016,Conotoxin family,Conotoxin family
@@ -8379,7 +8379,7 @@ P0DQX0,Conotoxin family,Conotoxin family
 P0DTJ8,Conotoxin family,Conotoxin family
 P0DUQ6,Conotoxin family,Conotoxin family
 P0DUR2,Conotoxin family,Conotoxin family
-P58785,Conotoxin family,Conotoxin family
+P58785,Conotoxin family,nontox
 P58841,Conotoxin family,Conotoxin family
 P84197,Conotoxin family,Neurotoxin family
 P85011,Conotoxin family,Conotoxin family
@@ -8392,7 +8392,7 @@ D9IWN7,Conotoxin family,Conotoxin family
 E2DIH5,Conotoxin family,Conotoxin family
 F2XFS9,Conotoxin family,Conotoxin family
 P0C1V8,Conotoxin family,Conotoxin family
-P0C1W1,Conotoxin family,other
+P0C1W1,Conotoxin family,Conotoxin family
 P0C6S2,Conotoxin family,Short scorpion toxin superfamily
 P0C8V2,Conotoxin family,Conotoxin family
 P0C8V5,Conotoxin family,Conotoxin family
@@ -8427,7 +8427,7 @@ Q9BPJ7,Conotoxin family,Conotoxin family
 Q9XZK5,Conotoxin family,Conotoxin family
 A0A3G3C7U1,Conotoxin family,Conotoxin family
 B3SVF1,Conotoxin family,Conotoxin family
-B1PZN6,Conotoxin family,Conotoxin family
+B1PZN6,Conotoxin family,Teretoxin family
 B3FIA6,Conotoxin family,Conotoxin family
 Q9BPE5,Conotoxin family,Conotoxin family
 Q9BPF7,Conotoxin family,Conotoxin family
@@ -8459,7 +8459,7 @@ P0DTX2,Conotoxin family,Conotoxin family
 P0DW17,Conotoxin family,Conotoxin family
 P0DW74,Conotoxin family,Conotoxin family
 P83659,Bradykinin-related peptide family,Bradykinin-related peptide family
-Q7M3T2,Bradykinin-related peptide family,FARP (FMRFamide related peptide) family
+Q7M3T2,Bradykinin-related peptide family,Bradykinin-related peptide family
 P0DQJ6,Neurotoxin family,Neurotoxin family
 P0DQO6,Neurotoxin family,Neurotoxin family
 P0DV96,Neurotoxin family,Neurotoxin family
@@ -8468,7 +8468,7 @@ P61408,Neurotoxin family,Neurotoxin family
 P83256,Neurotoxin family,Neurotoxin family
 P85505,Neurotoxin family,Neurotoxin family
 Q5Y4U7,Neurotoxin family,Neurotoxin family
-A5A3H2,Neurotoxin family,Conotoxin family
+A5A3H2,Neurotoxin family,Neurotoxin family
 O76198,Neurotoxin family,Neurotoxin family
 P0DMD9,Neurotoxin family,Neurotoxin family
 P0DQN1,Neurotoxin family,Neurotoxin family
@@ -8514,7 +8514,7 @@ Q86C49,Neurotoxin family,Neurotoxin family
 Q8MTX1,Neurotoxin family,Neurotoxin family
 S0F215,Neurotoxin family,Neurotoxin family
 W4VRX0,Neurotoxin family,Neurotoxin family
-W4VRX8,Neurotoxin family,Scoloptoxin family
+W4VRX8,Neurotoxin family,Neurotoxin family
 W4VSI6,Neurotoxin family,Neurotoxin family
 W4VSI9,Neurotoxin family,Neurotoxin family
 B1P1A7,Neurotoxin family,Neurotoxin family
@@ -8524,23 +8524,23 @@ A0A6G9KHD6,Formicidae venom family,Formicidae venom family
 A0A348G5W2,Formicidae venom family,Formicidae venom family
 P0DRD5,Formicidae venom family,Formicidae venom family
 P0DRD6,Formicidae venom family,Formicidae venom family
-P0DXT8,Formicidae venom family,MCD family
+P0DXT8,Formicidae venom family,Formicidae venom family
 A0A0B5ABD5,Insulin family,Insulin family
 A0A0B5ABE6,Insulin family,Insulin family
 P01514,MCD family,MCD family
 P0C022,MCD family,MCD family
 P21654,MCD family,MCD family
-P85874,MCD family,MCD family
+P85874,MCD family,other
 P0CJ39,MCD family,MCD family
 P0DRA7,MCD family,MCD family
 P17235,MCD family,MCD family
 S4S2C7,MCD family,MCD family
 P0CD68,MCD family,MCD family
 P0DN44,Teretoxin family,Scoloptoxin family
-P0DN56,Teretoxin family,Conotoxin family
+P0DN56,Teretoxin family,Teretoxin family
 B8XH01,Long (3 C-C) scorpion toxin superfamily,Long (3 C-C) scorpion toxin superfamily
 P0CI43,Long (3 C-C) scorpion toxin superfamily,Long (4 C-C) scorpion toxin superfamily
-P0CI98,Long (3 C-C) scorpion toxin superfamily,Long (4 C-C) scorpion toxin superfamily
+P0CI98,Long (3 C-C) scorpion toxin superfamily,Long (3 C-C) scorpion toxin superfamily
 Q4LCT3,Long (3 C-C) scorpion toxin superfamily,Long (3 C-C) scorpion toxin superfamily
-Q9BLM1,Long (3 C-C) scorpion toxin superfamily,Long (4 C-C) scorpion toxin superfamily
+Q9BLM1,Long (3 C-C) scorpion toxin superfamily,Long (3 C-C) scorpion toxin superfamily
 A7X3W6,other,Snaclec family

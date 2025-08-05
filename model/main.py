@@ -4,9 +4,13 @@ from pathlib import Path
 import pandas as pd
 import matplotlib.pyplot as plt
 from scipy.stats import chi2_contingency
+from sklearn.preprocessing import label_binarize
+import numpy as np
+
 import torch
 from torch.utils.data import DataLoader
 from sklearn.metrics import classification_report
+from sklearn.metrics import roc_curve, auc
 
 from model.config import CONFIG
 from model.dataset import ToxDataset, analyze_data_splits
@@ -125,8 +129,10 @@ def evaluate_label_on_dataset(model, dataset_df, label_col, label_encoder, loss_
     loader = DataLoader(ds, batch_size=CONFIG["batch_size"], shuffle=False)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
+    model = model.to(device)
+
     # Get metrics + preds
-    metrics, y_true, y_pred = evaluate_model(model, loader, loss_fn, device, dataset_type=tag)
+    metrics, y_true, y_pred, y_scores = evaluate_model(model, loader, loss_fn, device, dataset_type=tag)
 
     # assumes dataset_df["identifier"] is aligned with DataLoader order (shuffle=False)
     ids = dataset_df["identifier"].reset_index(drop=True)
@@ -161,7 +167,62 @@ def evaluate_label_on_dataset(model, dataset_df, label_col, label_encoder, loss_
         "classification_report": report,
     }, indent=4))
 
+    plot_multiclass_roc_from_scores(
+        y_true=y_true,
+        y_scores=y_scores,
+        classes=ds.le.classes_,
+        output_path=Path(out_dir) / f"{tag.lower()}_roc.png",
+        legend_cols=3
+    )
+
     ds.close()
+
+def plot_multiclass_roc_from_scores(y_true, y_scores, classes, output_path, legend_cols=3):
+    # Binarize ground truth
+    y_bin = label_binarize(y_true, classes=list(range(len(classes))))
+    n_classes = y_bin.shape[1]
+
+    # Compute ROC & AUC per class
+    fpr, tpr, roc_auc = {}, {}, {}
+    for i in range(n_classes):
+        fpr[i], tpr[i], _ = roc_curve(y_bin[:, i], y_scores[:, i])
+        roc_auc[i] = auc(fpr[i], tpr[i])
+
+    # Create a dark-rainbow colormap with n_classes steps
+    cmap = plt.cm.get_cmap('rainbow', n_classes)
+    # Optionally darken them a bit by mixing with black
+    colors = [(0.8*r, 0.8*g, 0.8*b) for (r, g, b, a) in cmap(np.arange(n_classes))]
+
+    # Plot
+    fig, ax = plt.subplots(figsize=(10, 8), dpi=180, constrained_layout=True)
+    for i, cname in enumerate(classes):
+        ax.plot(
+            fpr[i], tpr[i],
+            color=colors[i],
+            lw=1.5,
+            label=f"{cname} (AUC {roc_auc[i]:.2f})"
+        )
+
+    # Diagonal
+    ax.plot([0, 1], [0, 1], linestyle="--", lw=1, color="gray")
+    ax.set_xlim(0, 1)
+    ax.set_ylim(0, 1.05)
+    ax.set_xlabel("False Positive Rate")
+    ax.set_ylabel("True Positive Rate")
+    ax.set_title("One-vs-Rest ROC Curves")
+
+    # Legend below
+    ax.legend(
+        loc="upper center",
+        bbox_to_anchor=(0.5, -0.15),
+        ncol=legend_cols,
+        fontsize="small",
+        frameon=False
+    )
+
+    fig.subplots_adjust(bottom=0.25)
+    fig.savefig(output_path, bbox_inches='tight')
+    plt.close(fig)
 
 # -----------------------------------------------------------------------------
 # Main orchestrator
