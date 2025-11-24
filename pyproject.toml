@@ -6,6 +6,7 @@ readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
     "biopython>=1.85",
+    "git-lfs>=1.6",
     "iterative-stratification>=0.1.9",
     "jupyter>=1.1.1",
     "protspace[frontend]==3.1.1",

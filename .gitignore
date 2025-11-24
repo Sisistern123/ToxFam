@@ -1,10 +1,49 @@
-.idea
+# IDE
+.idea/
+.vscode/
 
+# macOS
 .DS_Store
-data
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg-info/
+*.egg
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Project data (keep out of git)
 benchmark/uniprot/
+benchmark/HBI/tmp/
+model/model_output/
 
+# Ignore all contents of data/
+data/*
+
+# --- Keep everything in data/tax/ ---
+!data/tax/
+!data/tax/**
+
+# --- data/interm: ignore everything except training_data.csv ---
+!data/interm/
+data/interm/*
+!data/interm/training_data.csv
+
+# --- data/protspace: ignore everything except training_data.h5 ---
+!data/protspace/
+data/protspace/*
+!data/protspace/training_data.h5
+
+
+# Local-only notes
 notes.md
-benchmark/HBI/tmp
-
-model/model_output
