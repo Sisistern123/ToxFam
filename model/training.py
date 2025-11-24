@@ -1,12 +1,28 @@
 import torch
 import torch.optim as optim
 import os
-import json
+
 from collections import Counter
 import numpy as np
 import torch.nn.functional as F
 from sklearn.metrics import accuracy_score, matthews_corrcoef, classification_report
 from sklearn.preprocessing import label_binarize
+
+
+def _forward_model(model, features, device):
+    """
+    Handle either:
+      - features: Tensor                (embeddings only)
+      - features: (emb_tensor, tax_tensor)
+    """
+    if isinstance(features, (tuple, list)):
+        # Multi-input case
+        features = [f.to(device) for f in features]
+        return model(*features)  # model(emb, tax)
+    else:
+        # Single-input case (old behavior)
+        return model(features.to(device))
+
 
 def evaluate_model(model, data_loader, loss_fn, device, dataset_type="Validation"):
     """
@@ -23,8 +39,9 @@ def evaluate_model(model, data_loader, loss_fn, device, dataset_type="Validation
 
     with torch.no_grad():
         for features, labels in data_loader:
-            features, labels = features.to(device), labels.to(device)
-            outputs = model(features)               # shape (B, C)
+            labels = labels.to(device)
+            outputs = _forward_model(model, features, device)
+            # shape (B, C)
             if n_classes is None:
                 n_classes = outputs.size(1)        # capture C once
             probs   = F.softmax(outputs, dim=1)     # (B, C)
@@ -86,7 +103,7 @@ def get_class_weights(train_dataset):
 
     return weights_dict, weights_tensor, encoded_to_label
 
-def train_model(model, train_loader, val_loader, weights_tensor, label_encoder, config):
+def train_model(model, train_loader, val_loader, weights_tensor, config):
     """
     Train the model and save validation metrics, confusion matrix, and classification report.
     """
@@ -105,9 +122,9 @@ def train_model(model, train_loader, val_loader, weights_tensor, label_encoder, 
         total_loss = 0
 
         for features, labels in train_loader:
-            features, labels = features.to(device), labels.to(device)
+            labels = labels.to(device)
             optimizer.zero_grad()
-            outputs = model(features)
+            outputs = _forward_model(model, features, device)
             loss = loss_fn(outputs, labels)
             loss.backward()
             optimizer.step()

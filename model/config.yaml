@@ -1,14 +1,18 @@
 # config.yaml ─ glob pattern
 # ──────────────────────────
 input_csv: "data/interm/training_data.csv"
-
-h5_paths_glob: "data/protspace/training_data.h5"
-
-output_dir: "model/model_output/0800_all_model"
-
+h5_paths_glob: "data/protspace/training_data.h5"   # embeddings
 embedding_dim: 1024
-hidden_dim:    128
-batch_size:    64
-num_epochs:    100
+
+# NEW
+use_taxonomy: true        # set to true when you want the combined model
+tax_h5_path: "data/tax/binary_taxonomy_vectors.h5"
+tax_dim: 56                 # from "Binary taxonomy vector length: 56"
+
+hidden_dims: [256, 256]
+dropout: 0.5
+batch_size: 64
+num_epochs: 200
 learning_rate: 0.0001
-early_stopping_patience: 5
+early_stopping_patience: 10
+output_dir: "model/model_output/multiinput_256_256_05_200ep"

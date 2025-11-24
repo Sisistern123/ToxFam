@@ -1,10 +1,10 @@
 .idea
 
-data/sp6
 .DS_Store
 data
-benchmark/bacterial/
 benchmark/uniprot/
 
 notes.md
 benchmark/HBI/tmp
+
+model/model_output

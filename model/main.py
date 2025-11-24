@@ -14,7 +14,7 @@ from sklearn.metrics import roc_curve, auc
 
 from config import CONFIG
 from dataset import ToxDataset, analyze_data_splits
-from model_architecture import MLP
+from model_architecture import MLP, MultiInputMLP
 from training import train_model, evaluate_model, get_class_weights
 from visualization import plot_loss_curve, plot_confusion_matrix
 from utils import custom_logging
@@ -91,8 +91,23 @@ def analyze_label_distribution_for_split(train_df, val_df, test_df, label_col, o
 
 def train_and_return_model(train_df, val_df, label_col):
     # Build datasets
-    train_ds = ToxDataset(train_df, CONFIG["h5_paths"], is_train=True,  label_col=label_col)
-    val_ds   = ToxDataset(val_df,   CONFIG["h5_paths"], label_encoder=train_ds.le, is_train=False, label_col=label_col)
+    use_tax = CONFIG.get("use_taxonomy", False)
+
+    train_ds = ToxDataset(
+        train_df,
+        CONFIG["h5_paths"],
+        is_train=True,
+        label_col=label_col,
+        tax_h5_path=CONFIG["tax_h5_path"] if use_tax else None,
+    )
+    val_ds = ToxDataset(
+        val_df,
+        CONFIG["h5_paths"],
+        label_encoder=train_ds.le,
+        is_train=False,
+        label_col=label_col,
+        tax_h5_path=CONFIG["tax_h5_path"] if use_tax else None,
+    )
 
     # Loaders
     train_loader = DataLoader(train_ds, batch_size=CONFIG["batch_size"], shuffle=True)
@@ -100,11 +115,22 @@ def train_and_return_model(train_df, val_df, label_col):
 
     # Class weights & model
     _, w_tensor, _ = get_class_weights(train_ds)
-    model = MLP(
-        input_dim=CONFIG["embedding_dim"],
-        hidden_dim=CONFIG["hidden_dim"],
-        num_family_classes=train_ds.num_classes,
-    )
+
+    if use_tax:
+        model = MultiInputMLP(
+            embed_dim=CONFIG["embedding_dim"],
+            tax_dim=CONFIG["tax_dim"],
+            hidden_dims=CONFIG["hidden_dims"],
+            num_family_classes=train_ds.num_classes,
+            dropout=CONFIG["dropout"],
+        )
+    else:
+        model = MLP(
+            input_dim=CONFIG["embedding_dim"],
+            hidden_dims=CONFIG["hidden_dims"],
+            num_family_classes=train_ds.num_classes,
+            dropout=CONFIG["dropout"],
+        )
 
     # Point at the single root output dir
     run_cfg = CONFIG.copy()
@@ -114,7 +140,7 @@ def train_and_return_model(train_df, val_df, label_col):
     loss_fn = torch.nn.CrossEntropyLoss(weight=w_tensor.to(device))
 
     # Train + save loss curve
-    model, history = train_model(model, train_loader, val_loader, w_tensor, train_ds.le, run_cfg)
+    model, history = train_model(model, train_loader, val_loader, w_tensor, run_cfg)
     plot_loss_curve(history, Path(run_cfg["output_dir"]) / "loss_plot.png")
 
     # Cleanup
@@ -124,28 +150,55 @@ def train_and_return_model(train_df, val_df, label_col):
     return model, train_ds.le, loss_fn
 
 def evaluate_label_on_dataset(model, dataset_df, label_col, label_encoder, loss_fn, tag, out_dir):
-    # Note: out_dir should be CONFIG["output_dir"]
-    ds     = ToxDataset(dataset_df, CONFIG["h5_paths"], label_encoder=label_encoder, is_train=False, label_col=label_col)
+    use_tax = CONFIG.get("use_taxonomy", False)
+    ds = ToxDataset(
+        dataset_df,
+        CONFIG["h5_paths"],
+        label_encoder=label_encoder,
+        is_train=False,
+        label_col=label_col,
+        tax_h5_path=CONFIG["tax_h5_path"] if use_tax else None,
+    )
     loader = DataLoader(ds, batch_size=CONFIG["batch_size"], shuffle=False)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
     model = model.to(device)
 
     # Get metrics + preds
     metrics, y_true, y_pred, y_scores = evaluate_model(model, loader, loss_fn, device, dataset_type=tag)
 
-    # assumes dataset_df["identifier"] is aligned with DataLoader order (shuffle=False)
-    ids = dataset_df["identifier"].reset_index(drop=True)
-    actual_lbls = label_encoder.inverse_transform(y_true)
-    pred_lbls = label_encoder.inverse_transform(y_pred)
+    # y_scores is already an array of probabilities from evaluate_model
+    probs = y_scores
+    confidences = probs.max(axis=1)
+    classes = label_encoder.classes_
 
-    pred_df = pd.DataFrame({
-        "identifier": ids,
-        "actual_label": actual_lbls,
-        "prediction": pred_lbls,
+    # Build dataframe with columns in desired order
+    conf_df = pd.DataFrame({
+        "identifier": dataset_df["identifier"].reset_index(drop=True),
+        "actual_label": label_encoder.inverse_transform(y_true),
+        "predicted_label": label_encoder.inverse_transform(y_pred),
+        "confidence": confidences,
     })
-    csv_path = Path(out_dir) / f"{tag.lower()}_predictions.csv"
-    pred_df.to_csv(csv_path, index=False)
+
+    # Add per-class probabilities afterward
+    for i, cls in enumerate(classes):
+        conf_df[f"prob_{cls}"] = probs[:, i]
+
+    # Save to CSV (no JSON)
+    conf_csv = Path(out_dir) / f"{tag.lower()}_confidences.csv"
+    conf_df.to_csv(conf_csv, index=False)
+
+    # Quick summary CSV (just labels + confidence)
+    pred_csv = Path(out_dir) / f"{tag.lower()}_predictions.csv"
+    conf_df[["identifier", "actual_label", "predicted_label", "confidence"]].to_csv(pred_csv, index=False)
+
+    # Confidence histogram
+    plt.figure(figsize=(8, 5))
+    plt.hist(confidences, bins=30, color="steelblue", alpha=0.7)
+    plt.title(f"Confidence Distribution ({tag} set)")
+    plt.xlabel("Confidence (max softmax prob)")
+    plt.ylabel("Frequency")
+    plt.savefig(Path(out_dir) / f"{tag.lower()}_confidence_hist.png", bbox_inches="tight")
+    plt.close()
 
     # Confusion matrix
     plot_confusion_matrix(
@@ -167,6 +220,7 @@ def evaluate_label_on_dataset(model, dataset_df, label_col, label_encoder, loss_
         "classification_report": report,
     }, indent=4))
 
+    # ROC curves
     plot_multiclass_roc_from_scores(
         y_true=y_true,
         y_scores=y_scores,
@@ -176,6 +230,7 @@ def evaluate_label_on_dataset(model, dataset_df, label_col, label_encoder, loss_
     )
 
     ds.close()
+
 
 def plot_multiclass_roc_from_scores(y_true, y_scores, classes, output_path, legend_cols=3):
     # Binarize ground truth

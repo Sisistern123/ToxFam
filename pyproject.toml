@@ -8,7 +8,7 @@ dependencies = [
     "biopython>=1.85",
     "iterative-stratification>=0.1.9",
     "jupyter>=1.1.1",
-    "protspace[frontend]>=2.1.2",
+    "protspace[frontend]==3.1.1",
     "pymmseqs>=1.0.4",
     "seaborn>=0.13.2",
     "torch>=2.7.1",

@@ -50,18 +50,17 @@ class ToxDataset(Dataset):
         is_train: bool = True,
         label_col: str = "Protein families",
         cache_size: int = 3,
+        tax_h5_path: str | None = None,   # <── NEW, default None
     ) -> None:
         super().__init__()
         self.df = df.reset_index(drop=True)
         self.label_col = label_col
         self.cache_size = cache_size
 
-        # ----- label encoding -------------------------------------------------
+        # label encoding
         if is_train:
             self.le = LabelEncoder()
-            self.df[f"{label_col}_encoded"] = self.le.fit_transform(
-                self.df[label_col]
-            )
+            self.df[f"{label_col}_encoded"] = self.le.fit_transform(self.df[label_col])
         else:
             if label_encoder is None:
                 raise ValueError("label_encoder must be provided when is_train=False")
@@ -86,6 +85,11 @@ class ToxDataset(Dataset):
         # lazy‑open cache: {path: h5py.File}
         self._open_cache: Dict[str, h5py.File] = {}
         self._lru: List[str] = []  # keep order of usage
+
+        # NEW: taxonomy H5 (optional)
+        self.tax_h5 = None
+        if tax_h5_path is not None:
+            self.tax_h5 = h5py.File(tax_h5_path, "r")
 
     # ---------------------------------------------------------------------
     # internal helpers
@@ -127,18 +131,28 @@ class ToxDataset(Dataset):
     def __len__(self) -> int:  # noqa: D401, PLE, N802
         return len(self.df)
 
-    def __getitem__(self, index: int):  # noqa: D401, PLE, N802
+    def __getitem__(self, index: int):
         row = self.df.iloc[index]
         protein_id = row["identifier"]
         embedding = self._find_embedding(protein_id)
         label = row[f"{self.label_col}_encoded"]
-        return torch.tensor(embedding, dtype=torch.float32), label
+
+        if self.tax_h5 is not None:
+            if protein_id not in self.tax_h5:
+                raise KeyError(f"Protein '{protein_id}' not found in taxonomy H5.")
+            tax_vec = self.tax_h5[protein_id][:]
+            emb_tensor = torch.tensor(embedding, dtype=torch.float32)
+            tax_tensor = torch.tensor(tax_vec,  dtype=torch.float32)
+            return (emb_tensor, tax_tensor), label   # <── multi-input
+        else:
+            # old behavior – embeddings only
+            return torch.tensor(embedding, dtype=torch.float32), label
 
     # ---------------------------------------------------------------------
     # cleanup
     # ---------------------------------------------------------------------
-    def close(self):  # noqa: D401, PLE, N802
-        """Close **all** open HDF5 handles."""
+    def close(self):
+        # close embeddings
         for h5f in self._open_cache.values():
             try:
                 h5f.close()
@@ -146,6 +160,14 @@ class ToxDataset(Dataset):
                 pass
         self._open_cache.clear()
         self._lru.clear()
+
+        # close taxonomy
+        if self.tax_h5 is not None:
+            try:
+                self.tax_h5.close()
+            except Exception:
+                pass
+            self.tax_h5 = None
 
     def __del__(self):  # noqa: D401, PLE, N802
         try:
