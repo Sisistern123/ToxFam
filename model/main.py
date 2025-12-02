@@ -1,177 +1,268 @@
 import json
 from pathlib import Path
-
 import pandas as pd
 import matplotlib.pyplot as plt
 from scipy.stats import chi2_contingency
 from sklearn.preprocessing import label_binarize
 import numpy as np
-
 import torch
 from torch.utils.data import DataLoader
-from sklearn.metrics import classification_report
-from sklearn.metrics import roc_curve, auc
+from sklearn.metrics import classification_report, roc_curve, auc
 
+# Custom Modules
 from config import CONFIG
 from dataset import ToxDataset, analyze_data_splits
-from model_architecture import MLP, MultiInputMLP
+from model_architecture import ModularMLP, MultiInputMLP
 from training import train_model, evaluate_model, get_class_weights
 from visualization import plot_loss_curve, plot_confusion_matrix
-from utils import custom_logging
-
+from utils import custom_logging, load_partial_state_dict
 
 # -----------------------------------------------------------------------------
-# Utility – discover all HDF5 embed files once and stash in CONFIG
+# Setup & Config Checks
 # -----------------------------------------------------------------------------
 if "h5_paths" not in CONFIG:
-    # Fallback discovery: look in CONFIG['h5_dir'] or sibling of input CSV
     embeds_root = Path(CONFIG.get("h5_dir", Path(CONFIG["input_csv"]).parent))
     CONFIG["h5_paths"] = sorted(str(p) for p in embeds_root.glob("training_embeds_*.h5"))
     if not CONFIG["h5_paths"]:
-        raise FileNotFoundError(
-            f"No HDF5 embed files found in {embeds_root}. Expected names like 'training_embeds_*.h5'.")
+        raise FileNotFoundError(f"No HDF5 embed files found in {embeds_root}.")
 
 
 # -----------------------------------------------------------------------------
-# Analysis helpers
+# Analysis Helpers (Stats & Plots)
 # -----------------------------------------------------------------------------
-
 def analyze_label_distribution_for_split(train_df, val_df, test_df, label_col, output_dir):
     """Save counts + plot + chi‑square for *label_col* across the three splits."""
-
     train_counts = train_df[label_col].value_counts().sort_index()
-    val_counts   = val_df[label_col].value_counts().sort_index()
-    test_counts  = test_df[label_col].value_counts().sort_index()
+    val_counts = val_df[label_col].value_counts().sort_index()
+    test_counts = test_df[label_col].value_counts().sort_index()
 
     dist_df = pd.DataFrame({
-        "Train":      train_counts,
+        "Train": train_counts,
         "Validation": val_counts,
-        "Test":       test_counts,
+        "Test": test_counts,
     }).fillna(0)
 
-    # JSON counts
+    # Save JSON
     dist_json = Path(output_dir, f"{label_col.replace(' ', '_')}_distribution.json")
     dist_df.to_json(dist_json, orient="index")
 
-    # 1) create fig/ax explicitly, with a bit more height
-    fig, ax = plt.subplots(figsize=(10, 6), constrained_layout=False)
-
-    # 2) plot onto that ax
+    # Plot
+    fig, ax = plt.subplots(figsize=(10, 6))
     dist_df.plot(kind="bar", logy=True, ax=ax)
-
-    # 3) shrink the x-tick labels and rotate them
     ax.tick_params(axis="x", labelsize=8)
     plt.setp(ax.get_xticklabels(), rotation=50, ha="right")
-
-    # 4) manually give the bottom margin enough space
     fig.subplots_adjust(bottom=0.4)
-
-    # labels and title
     ax.set_title(f"Distribution of {label_col} Across Splits (log scale)")
-    ax.set_xlabel(label_col, labelpad=20)
     ax.set_ylabel("Count (log scale)")
-
-    # save
     fig.savefig(Path(output_dir, f"{label_col.replace(' ', '_')}_distribution_log.png"))
     plt.close(fig)
 
-    # Chi‑square
+    # Chi-Square
     chi2, p, dof, expected = chi2_contingency(dist_df.T)
-    chi_json = Path(output_dir, f"{label_col.replace(' ', '_')}_chi_square.json")
-    with chi_json.open("w") as fp:
-        json.dump({
-            "chi2_statistic": chi2,
-            "p_value": p,
-            "degrees_of_freedom": dof,
-            "expected": expected.tolist(),
-        }, fp, indent=4)
-
-    print(f"{label_col}: χ²={chi2:.2f}, p={p:.4e}, dof={dof}")
+    with Path(output_dir, f"{label_col.replace(' ', '_')}_chi_square.json").open("w") as fp:
+        json.dump({"chi2": chi2, "p_value": p, "dof": dof}, fp, indent=4)
 
 
-def train_and_return_model(train_df, val_df, label_col):
-    # Build datasets
-    use_tax = CONFIG.get("use_taxonomy", False)
+def plot_multiclass_roc_from_scores(y_true, y_scores, classes, output_path, legend_cols=3):
+    y_bin = label_binarize(y_true, classes=list(range(len(classes))))
+    n_classes = y_bin.shape[1]
+    fpr, tpr, roc_auc = {}, {}, {}
 
-    train_ds = ToxDataset(
-        train_df,
-        CONFIG["h5_paths"],
-        is_train=True,
-        label_col=label_col,
-        tax_h5_path=CONFIG["tax_h5_path"] if use_tax else None,
+    for i in range(n_classes):
+        fpr[i], tpr[i], _ = roc_curve(y_bin[:, i], y_scores[:, i])
+        roc_auc[i] = auc(fpr[i], tpr[i])
+
+    cmap = plt.cm.get_cmap('rainbow', n_classes)
+    colors = [(0.8 * r, 0.8 * g, 0.8 * b) for (r, g, b, a) in cmap(np.arange(n_classes))]
+
+    fig, ax = plt.subplots(figsize=(10, 8), dpi=180, constrained_layout=True)
+    for i, cname in enumerate(classes):
+        ax.plot(fpr[i], tpr[i], color=colors[i], lw=1.5, label=f"{cname} (AUC {roc_auc[i]:.2f})")
+
+    ax.plot([0, 1], [0, 1], linestyle="--", lw=1, color="gray")
+    ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.15), ncol=legend_cols, fontsize="small", frameon=False)
+    fig.savefig(output_path, bbox_inches='tight')
+    plt.close(fig)
+
+
+# -----------------------------------------------------------------------------
+# Input Helper
+# -----------------------------------------------------------------------------
+class DataSelector:
+    """Wraps the loader to yield only the specific input needed by the strategy.
+    Handles both Single-Input (Standard) and Multi-Input (Combined) Datasets automatically.
+    """
+
+    def __init__(self, loader, mode):
+        self.loader = loader
+        self.mode = mode  # 'emb_only', 'tax_only', 'both'
+
+    def __iter__(self):
+        for batch in self.loader:
+            # PyTorch DataLoader yields [features, labels]
+            features, label = batch
+
+            # SCENARIO 1: Dataset returned single input (Standard Config / tax path is None)
+            # features is just a Tensor
+            if isinstance(features, torch.Tensor):
+                if self.mode == 'emb_only':
+                    yield features, label
+                else:
+                    # If we are here, you asked for 'tax' or 'both' but dataset only has embeddings
+                    raise RuntimeError(
+                        f"Strategy requested '{self.mode}' but Dataset provided only Embeddings. Check if tax_h5_path is set in config.")
+
+            # SCENARIO 2: Dataset returned dual input (Combined/Pretrain Config)
+            # features is a list/tuple: [emb_tensor, tax_tensor]
+            elif isinstance(features, (list, tuple)):
+                emb, tax = features
+                if self.mode == 'emb_only':
+                    yield emb, label
+                elif self.mode == 'tax_only':
+                    yield tax, label
+                else:
+                    # Returns tuple for MultiInputMLP
+                    yield (emb, tax), label
+
+    def __len__(self):
+        return len(self.loader)
+
+
+# -----------------------------------------------------------------------------
+# STRATEGY 1: Standard
+# -----------------------------------------------------------------------------
+def run_standard_strategy(train_loader, val_loader, w_tensor, num_classes, out_dir):
+    print(">>> Running Strategy: STANDARD (Embeddings Only)")
+    model = ModularMLP(
+        input_dim=CONFIG["embedding_dim"],
+        hidden_dims=CONFIG["hidden_dims"],
+        num_classes=num_classes,
+        dropout=CONFIG["dropout"]
     )
-    val_ds = ToxDataset(
-        val_df,
-        CONFIG["h5_paths"],
-        label_encoder=train_ds.le,
-        is_train=False,
-        label_col=label_col,
-        tax_h5_path=CONFIG["tax_h5_path"] if use_tax else None,
+    # Wrap loaders to only give embeddings
+    model, hist = train_model(
+        model,
+        DataSelector(train_loader, 'emb_only'),
+        DataSelector(val_loader, 'emb_only'),
+        w_tensor, CONFIG
+    )
+    plot_loss_curve(hist, Path(out_dir) / "loss_standard.png")
+    return model
+
+
+# -----------------------------------------------------------------------------
+# STRATEGY 2: Combined
+# -----------------------------------------------------------------------------
+def run_combined_strategy(train_loader, val_loader, w_tensor, num_classes, out_dir):
+    print(">>> Running Strategy: COMBINED (Branched Architecture)")
+    model = MultiInputMLP(
+        embed_dim=CONFIG["embedding_dim"],
+        tax_dim=CONFIG["tax_dim"],
+        hidden_dims=CONFIG["hidden_dims"],
+        num_classes=num_classes,
+        dropout=CONFIG["dropout"]
+    )
+    # Wrap loaders to give (emb, tax) tuple
+    model, hist = train_model(
+        model,
+        DataSelector(train_loader, 'both'),
+        DataSelector(val_loader, 'both'),
+        w_tensor, CONFIG
+    )
+    plot_loss_curve(hist, Path(out_dir) / "loss_combined.png")
+    return model
+
+
+# -----------------------------------------------------------------------------
+# STRATEGY 3: Pretrain -> Finetune
+# -----------------------------------------------------------------------------
+def run_pretrain_finetune_strategy(train_loader, val_loader, w_tensor, num_classes, out_dir):
+    print(">>> Running Strategy: PRETRAIN-FINETUNE")
+
+    # --- Stage 1: Tax Only ---
+    print("--- Stage 1: Pretraining on Taxonomy ---")
+    tax_model = ModularMLP(
+        input_dim=CONFIG["tax_dim"],
+        hidden_dims=CONFIG["hidden_dims"],
+        num_classes=num_classes,
+        dropout=CONFIG["dropout"]
     )
 
-    # Loaders
-    train_loader = DataLoader(train_ds, batch_size=CONFIG["batch_size"], shuffle=True)
-    val_loader   = DataLoader(val_ds,   batch_size=CONFIG["batch_size"], shuffle=False)
+    s1_cfg = CONFIG.copy()
+    s1_cfg['num_epochs'] = CONFIG['tax_epochs']
+    s1_cfg['learning_rate'] = CONFIG['tax_lr']
+    s1_cfg['output_dir'] = str(Path(out_dir) / "stage1_tax")
 
-    # Class weights & model
-    _, w_tensor, _ = get_class_weights(train_ds)
+    tax_model, _ = train_model(
+        tax_model,
+        DataSelector(train_loader, 'tax_only'),
+        DataSelector(val_loader, 'tax_only'),
+        w_tensor, s1_cfg
+    )
 
-    if use_tax:
-        model = MultiInputMLP(
-            embed_dim=CONFIG["embedding_dim"],
-            tax_dim=CONFIG["tax_dim"],
-            hidden_dims=CONFIG["hidden_dims"],
-            num_family_classes=train_ds.num_classes,
-            dropout=CONFIG["dropout"],
-        )
-    else:
-        model = MLP(
-            input_dim=CONFIG["embedding_dim"],
-            hidden_dims=CONFIG["hidden_dims"],
-            num_family_classes=train_ds.num_classes,
-            dropout=CONFIG["dropout"],
-        )
+    # --- Stage 2: Embeddings Only ---
+    print("--- Stage 2: Finetuning on Embeddings ---")
+    emb_model = ModularMLP(
+        input_dim=CONFIG["embedding_dim"],
+        hidden_dims=CONFIG["hidden_dims"],
+        num_classes=num_classes,
+        dropout=CONFIG["dropout"]
+    )
 
-    # Point at the single root output dir
-    run_cfg = CONFIG.copy()
-    run_cfg["output_dir"] = CONFIG["output_dir"]
+    # Transfer Weights
+    print("Transferring backbone weights...")
+    load_partial_state_dict(emb_model, tax_model.state_dict())
 
-    device  = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    loss_fn = torch.nn.CrossEntropyLoss(weight=w_tensor.to(device))
+    if CONFIG.get("freeze_backbone", False):
+        for param in emb_model.backbone.parameters():
+            param.requires_grad = False
 
-    # Train + save loss curve
-    model, history = train_model(model, train_loader, val_loader, w_tensor, run_cfg)
-    plot_loss_curve(history, Path(run_cfg["output_dir"]) / "loss_plot.png")
+    emb_model, hist = train_model(
+        emb_model,
+        DataSelector(train_loader, 'emb_only'),
+        DataSelector(val_loader, 'emb_only'),
+        w_tensor, CONFIG
+    )
 
-    # Cleanup
-    train_ds.close()
-    val_ds.close()
+    plot_loss_curve(hist, Path(out_dir) / "loss_finetuned.png")
+    return emb_model
 
-    return model, train_ds.le, loss_fn
 
+# -----------------------------------------------------------------------------
+# Unified Evaluation Function
+# -----------------------------------------------------------------------------
 def evaluate_label_on_dataset(model, dataset_df, label_col, label_encoder, loss_fn, tag, out_dir):
-    use_tax = CONFIG.get("use_taxonomy", False)
+    """
+    Evaluates the model on a dataframe.
+    Crucially: Checks CONFIG['training_strategy'] to know how to feed data.
+    """
+    strategy = CONFIG["training_strategy"]
+
+    # Always init dataset with Tax if available, DataSelector handles the rest
     ds = ToxDataset(
-        dataset_df,
-        CONFIG["h5_paths"],
-        label_encoder=label_encoder,
-        is_train=False,
-        label_col=label_col,
-        tax_h5_path=CONFIG["tax_h5_path"] if use_tax else None,
+        dataset_df, CONFIG["h5_paths"],
+        label_encoder=label_encoder, is_train=False,
+        label_col=label_col, tax_h5_path=CONFIG["tax_h5_path"]
     )
     loader = DataLoader(ds, batch_size=CONFIG["batch_size"], shuffle=False)
+
+    # Wrap the loader based on strategy
+    if strategy == "combined":
+        selector = DataSelector(loader, "both")
+    elif strategy == "pretrain_finetune":
+        # The FINAL model in this strategy uses Embeddings only
+        selector = DataSelector(loader, "emb_only")
+    else:  # standard
+        selector = DataSelector(loader, "emb_only")
+
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = model.to(device)
 
-    # Get metrics + preds
-    metrics, y_true, y_pred, y_scores = evaluate_model(model, loader, loss_fn, device, dataset_type=tag)
+    # Get metrics
+    metrics, y_true, y_pred, y_scores = evaluate_model(model, selector, loss_fn, device, dataset_type=tag)
 
-    # y_scores is already an array of probabilities from evaluate_model
-    probs = y_scores
-    confidences = probs.max(axis=1)
-    classes = label_encoder.classes_
-
-    # Build dataframe with columns in desired order
+    # Save Results
+    confidences = y_scores.max(axis=1)
     conf_df = pd.DataFrame({
         "identifier": dataset_df["identifier"].reset_index(drop=True),
         "actual_label": label_encoder.inverse_transform(y_true),
@@ -179,143 +270,71 @@ def evaluate_label_on_dataset(model, dataset_df, label_col, label_encoder, loss_
         "confidence": confidences,
     })
 
-    # Add per-class probabilities afterward
-    for i, cls in enumerate(classes):
-        conf_df[f"prob_{cls}"] = probs[:, i]
+    # Save CSVs
+    conf_df.to_csv(Path(out_dir) / f"{tag.lower()}_predictions.csv", index=False)
 
-    # Save to CSV (no JSON)
-    conf_csv = Path(out_dir) / f"{tag.lower()}_confidences.csv"
-    conf_df.to_csv(conf_csv, index=False)
+    # Save Confusion Matrix & Reports
+    plot_confusion_matrix(y_true, y_pred, ds.le, Path(out_dir) / f"{tag.lower()}_confusion_matrix.png")
 
-    # Quick summary CSV (just labels + confidence)
-    pred_csv = Path(out_dir) / f"{tag.lower()}_predictions.csv"
-    conf_df[["identifier", "actual_label", "predicted_label", "confidence"]].to_csv(pred_csv, index=False)
-
-    # Confidence histogram
-    plt.figure(figsize=(8, 5))
-    plt.hist(confidences, bins=30, color="steelblue", alpha=0.7)
-    plt.title(f"Confidence Distribution ({tag} set)")
-    plt.xlabel("Confidence (max softmax prob)")
-    plt.ylabel("Frequency")
-    plt.savefig(Path(out_dir) / f"{tag.lower()}_confidence_hist.png", bbox_inches="tight")
-    plt.close()
-
-    # Confusion matrix
-    plot_confusion_matrix(
-        y_true, y_pred,
-        ds.le,
-        Path(out_dir) / f"{tag.lower()}_confusion_matrix.png"
-    )
-
-    # Classification report
-    report_path = Path(out_dir) / f"{tag.lower()}_metrics.json"
-    report = classification_report(
-        y_true, y_pred,
-        labels=range(ds.num_classes),
-        target_names=ds.le.classes_,
-        output_dict=True, zero_division=0
-    )
-    report_path.write_text(json.dumps({
-        "numeric_metrics": metrics,
-        "classification_report": report,
+    report = classification_report(y_true, y_pred, target_names=ds.le.classes_, output_dict=True, zero_division=0)
+    (Path(out_dir) / f"{tag.lower()}_metrics.json").write_text(json.dumps({
+        "numeric_metrics": metrics, "classification_report": report
     }, indent=4))
 
-    # ROC curves
-    plot_multiclass_roc_from_scores(
-        y_true=y_true,
-        y_scores=y_scores,
-        classes=ds.le.classes_,
-        output_path=Path(out_dir) / f"{tag.lower()}_roc.png",
-        legend_cols=3
-    )
-
+    # ROC
+    plot_multiclass_roc_from_scores(y_true, y_scores, ds.le.classes_, Path(out_dir) / f"{tag.lower()}_roc.png")
     ds.close()
 
 
-def plot_multiclass_roc_from_scores(y_true, y_scores, classes, output_path, legend_cols=3):
-    # Binarize ground truth
-    y_bin = label_binarize(y_true, classes=list(range(len(classes))))
-    n_classes = y_bin.shape[1]
-
-    # Compute ROC & AUC per class
-    fpr, tpr, roc_auc = {}, {}, {}
-    for i in range(n_classes):
-        fpr[i], tpr[i], _ = roc_curve(y_bin[:, i], y_scores[:, i])
-        roc_auc[i] = auc(fpr[i], tpr[i])
-
-    # Create a dark-rainbow colormap with n_classes steps
-    cmap = plt.cm.get_cmap('rainbow', n_classes)
-    # Optionally darken them a bit by mixing with black
-    colors = [(0.8*r, 0.8*g, 0.8*b) for (r, g, b, a) in cmap(np.arange(n_classes))]
-
-    # Plot
-    fig, ax = plt.subplots(figsize=(10, 8), dpi=180, constrained_layout=True)
-    for i, cname in enumerate(classes):
-        ax.plot(
-            fpr[i], tpr[i],
-            color=colors[i],
-            lw=1.5,
-            label=f"{cname} (AUC {roc_auc[i]:.2f})"
-        )
-
-    # Diagonal
-    ax.plot([0, 1], [0, 1], linestyle="--", lw=1, color="gray")
-    ax.set_xlim(0, 1)
-    ax.set_ylim(0, 1.05)
-    ax.set_xlabel("False Positive Rate")
-    ax.set_ylabel("True Positive Rate")
-    ax.set_title("One-vs-Rest ROC Curves")
-
-    # Legend below
-    ax.legend(
-        loc="upper center",
-        bbox_to_anchor=(0.5, -0.15),
-        ncol=legend_cols,
-        fontsize="small",
-        frameon=False
-    )
-
-    fig.subplots_adjust(bottom=0.25)
-    fig.savefig(output_path, bbox_inches='tight')
-    plt.close(fig)
-
 # -----------------------------------------------------------------------------
-# Main orchestrator
+# MAIN ORCHESTRATOR
 # -----------------------------------------------------------------------------
 def main():
-    # ensure output dir exists
     out_root = Path(CONFIG["output_dir"])
     out_root.mkdir(parents=True, exist_ok=True)
 
-    # load and split data
+    # 1. Load Data
+    print("Loading data...")
     df = pd.read_csv(CONFIG["input_csv"])
     train_df, val_df, test_df = analyze_data_splits(df)
 
-    # overall split stats
-    counts = {"train": len(train_df), "val": len(val_df), "test": len(test_df)}
-    total  = sum(counts.values())
-    (out_root / "overall_split_stats.json").write_text(json.dumps({
-        "absolute": {**counts, "total": total},
-        "relative": {k: v / total for k, v in counts.items()},
-    }, indent=4))
-
-    # single‐label: Protein families
     label_col = "Protein families"
-    out_dir = out_root
+    analyze_label_distribution_for_split(train_df, val_df, test_df, label_col, out_root)
 
-    # split diagnostics
-    analyze_label_distribution_for_split(train_df, val_df, test_df, label_col, out_dir)
+    # 2. Init Datasets (Load both inputs; DataSelector filters them later)
+    # We create the datasets here to get Class Weights and Encoders
+    train_ds = ToxDataset(train_df, CONFIG["h5_paths"], is_train=True, tax_h5_path=CONFIG["tax_h5_path"])
+    val_ds = ToxDataset(val_df, CONFIG["h5_paths"], label_encoder=train_ds.le, is_train=False,
+                        tax_h5_path=CONFIG["tax_h5_path"])
 
-    # train + eval under one logging context
-    with custom_logging(out_dir):
-        # 1) train once on Protein families
-        model, le, loss_fn = train_and_return_model(train_df, val_df, label_col)
+    train_loader = DataLoader(train_ds, batch_size=CONFIG["batch_size"], shuffle=True)
+    val_loader = DataLoader(val_ds, batch_size=CONFIG["batch_size"], shuffle=False)
 
-        # 2) evaluate & plot on validation
-        evaluate_label_on_dataset(model, val_df,  label_col, le, loss_fn, "Validation", out_dir)
+    _, w_tensor, _ = get_class_weights(train_ds)
 
-        # 3) evaluate & plot on test
-        evaluate_label_on_dataset(model, test_df, label_col, le, loss_fn, "Test",       out_dir)
+    # 3. DISPATCH STRATEGY
+    strategy = CONFIG["training_strategy"]
+    final_model = None
+
+    with custom_logging(out_root):
+        if strategy == "standard":
+            final_model = run_standard_strategy(train_loader, val_loader, w_tensor, train_ds.num_classes, out_root)
+        elif strategy == "combined":
+            final_model = run_combined_strategy(train_loader, val_loader, w_tensor, train_ds.num_classes, out_root)
+        elif strategy == "pretrain_finetune":
+            final_model = run_pretrain_finetune_strategy(train_loader, val_loader, w_tensor, train_ds.num_classes,
+                                                         out_root)
+        else:
+            raise ValueError(f"Unknown training strategy: {strategy}")
+
+        # 4. Final Evaluation
+        print("\nRunning Final Evaluation...")
+        loss_fn = torch.nn.CrossEntropyLoss()
+        evaluate_label_on_dataset(final_model, val_df, label_col, train_ds.le, loss_fn, "Validation", out_root)
+        evaluate_label_on_dataset(final_model, test_df, label_col, train_ds.le, loss_fn, "Test", out_root)
+
+    train_ds.close()
+    val_ds.close()
 
 
 if __name__ == "__main__":

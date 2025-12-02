@@ -1,3 +1,5 @@
+# model_architecture.py
+import torch
 import torch.nn as nn
 
 class MLP(nn.Module):
@@ -31,9 +33,6 @@ class MLP(nn.Module):
     def forward(self, x):
         return self.net(x)
 
-# model_architecture.py
-import torch
-import torch.nn as nn
 
 class MultiInputMLP(nn.Module):
     """
@@ -47,7 +46,7 @@ class MultiInputMLP(nn.Module):
         embed_dim,
         tax_dim,
         hidden_dims,
-        num_family_classes,
+        num_classes,
         dropout=0.3,
         tax_hidden_dim=8,
     ):
@@ -82,7 +81,7 @@ class MultiInputMLP(nn.Module):
             joint_layers.append(nn.ReLU())
             joint_layers.append(nn.Dropout(dropout))
             joint_in = h
-        joint_layers.append(nn.Linear(joint_in, num_family_classes))
+        joint_layers.append(nn.Linear(joint_in, num_classes))
         self.joint = nn.Sequential(*joint_layers)
 
     def forward(self, emb, tax):
@@ -90,3 +89,41 @@ class MultiInputMLP(nn.Module):
         tax_h = self.tax_net(tax)
         x = torch.cat([emb_h, tax_h], dim=1)
         return self.joint(x)
+
+
+class ModularMLP(nn.Module):
+    def __init__(self, input_dim, hidden_dims, num_classes, dropout=0.3):
+        super().__init__()
+
+        if isinstance(hidden_dims, int):
+            hidden_dims = [hidden_dims]
+
+        # --- 1. The Input Projector (Variable Size) ---
+        # This layer maps input_dim (56 or 1024) to the first hidden dimension
+        first_hidden_dim = hidden_dims[0]
+        self.projector = nn.Sequential(
+            nn.Linear(input_dim, first_hidden_dim),
+            nn.ReLU(),
+            nn.Dropout(dropout)
+        )
+
+        # --- 2. The Backbone (Fixed Size) ---
+        # These layers will be transferred from Tax training to Embedding training
+        layers = []
+        prev_dim = first_hidden_dim
+
+        # Add remaining hidden layers if any
+        for h in hidden_dims[1:]:
+            layers.append(nn.Linear(prev_dim, h))
+            layers.append(nn.ReLU())
+            layers.append(nn.Dropout(dropout))
+            prev_dim = h
+
+        # Output layer
+        layers.append(nn.Linear(prev_dim, num_classes))
+
+        self.backbone = nn.Sequential(*layers)
+
+    def forward(self, x):
+        x = self.projector(x)
+        return self.backbone(x)

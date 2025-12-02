@@ -32,3 +32,28 @@ def custom_logging(output_dir):
     finally:
         sys.stdout = original_stdout
         log_file.close()
+
+def load_partial_state_dict(model, state_dict):
+    """
+    Loads weights from state_dict into model, SKIPPING layers with shape mismatches.
+    This allows loading the 'backbone' from the Tax model while ignoring the 'projector'.
+    """
+    model_dict = model.state_dict()
+
+    # Filter out unnecessary or mismatched keys
+    pretrained_dict = {}
+    for k, v in state_dict.items():
+        if k in model_dict:
+            if model_dict[k].shape == v.shape:
+                pretrained_dict[k] = v
+            else:
+                print(f"Skipping layer {k}: Shape mismatch {v.shape} vs {model_dict[k].shape}")
+        else:
+            print(f"Skipping layer {k}: Not in new model")
+
+    # Overwrite entries in the existing state dict
+    model_dict.update(pretrained_dict)
+
+    # Load the new state dict
+    model.load_state_dict(model_dict)
+    print(f"Successfully transferred {len(pretrained_dict)} layers.")

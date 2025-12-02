@@ -1,0 +1,23 @@
+# combined.yaml
+input_csv: "data/interm/training_data.csv"
+h5_paths_glob: "data/protspace/training_data.h5"
+tax_h5_path: "data/tax/binary_taxonomy_vectors.h5" # REQUIRED
+output_dir: "model/model_output/combined_run"
+
+# Strategy
+training_strategy: "combined"
+
+# Hyperparameters
+use_focal_loss: false # CE
+focal_loss_gamma: 2.0
+
+batch_size: 64
+hidden_dims: [256, 256]
+dropout: 0.5
+num_epochs: 200
+learning_rate: 0.0001
+early_stopping_patience: 10
+
+# Dimensions
+embedding_dim: 1024
+tax_dim: 56
