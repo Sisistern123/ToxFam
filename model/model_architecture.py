@@ -49,7 +49,7 @@ class MultiInputMLP(nn.Module):
         hidden_dims,
         num_family_classes,
         dropout=0.3,
-        tax_hidden_dim=64,
+        tax_hidden_dim=8,
     ):
         super().__init__()
 

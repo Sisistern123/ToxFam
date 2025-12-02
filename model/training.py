@@ -1,6 +1,7 @@
 import torch
 import torch.optim as optim
 import os
+from focal_loss import FocalLoss
 
 from collections import Counter
 import numpy as np
@@ -103,18 +104,50 @@ def get_class_weights(train_dataset):
 
     return weights_dict, weights_tensor, encoded_to_label
 
+
 def train_model(model, train_loader, val_loader, weights_tensor, config):
     """
-    Train the model and save validation metrics, confusion matrix, and classification report.
+    Train model with MPS support and conditional Focal Loss.
     """
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    # --- 1. Device Selection (MPS / CUDA / CPU) ---
+    if torch.cuda.is_available():
+        device = torch.device("cuda")
+        print("Using Device: CUDA", flush=True)
+    elif torch.backends.mps.is_available():
+        device = torch.device("mps")
+        print("Using Device: MPS (Apple Silicon)", flush=True)
+    else:
+        device = torch.device("cpu")
+        print("Using Device: CPU", flush=True)
+
     model.to(device)
+
+    # Determine if we are maximizing MCC (Focal) or minimizing Loss (CE)
+    use_focal = config.get('use_focal_loss', False)
+    # If Focal: Start at -1 (maximize). If CE: Start at inf (minimize).
+    best_score = -1.0 if use_focal else float('inf')
+
+    # Move weights to device once
+    weights_tensor = weights_tensor.to(device)
+
     optimizer = optim.Adam(model.parameters(), lr=config['learning_rate'])
-    loss_fn = torch.nn.CrossEntropyLoss(weight=weights_tensor.to(device))
 
-    best_loss = float('inf')
+    # --- 2. Conditional Loss Function Selection ---
+    if use_focal:
+        print(f"Loss Function: Focal Loss (gamma={config.get('focal_loss_gamma', 2.0)})", flush=True)
+        loss_fn = FocalLoss(
+            gamma=config.get('focal_loss_gamma', 2.0),
+            alpha=weights_tensor,
+            task_type='multi-class',
+            num_classes=len(weights_tensor),
+            reduction='mean'
+        )
+    else:
+        print("Loss Function: Cross Entropy", flush=True)
+        loss_fn = torch.nn.CrossEntropyLoss(weight=weights_tensor)
+
+    # --- 3. Training Loop ---
     epochs_no_improve = 0
-
     train_losses, val_losses = [], []
 
     for epoch in range(config['num_epochs']):
@@ -125,7 +158,14 @@ def train_model(model, train_loader, val_loader, weights_tensor, config):
             labels = labels.to(device)
             optimizer.zero_grad()
             outputs = _forward_model(model, features, device)
+
             loss = loss_fn(outputs, labels)
+
+            # Safety check for NaN
+            if torch.isnan(loss):
+                print("Stopping: Loss became NaN.", flush=True)
+                return model, {'train_losses': train_losses, 'val_losses': val_losses}
+
             loss.backward()
             optimizer.step()
             total_loss += loss.item()
@@ -133,14 +173,30 @@ def train_model(model, train_loader, val_loader, weights_tensor, config):
         train_loss = total_loss / len(train_loader)
         train_losses.append(train_loss)
 
-        val_metrics, val_labels, val_preds, _ = evaluate_model(model, val_loader, loss_fn, device)
+        # Validation
+        val_metrics, _, _, _ = evaluate_model(model, val_loader, loss_fn, device)
         val_loss = val_metrics["Validation_Avg_Loss"]
+        val_mcc = val_metrics["Validation_MCC"]  # Capture MCC
         val_losses.append(val_loss)
 
-        print(f"Epoch {epoch + 1}: Train Loss: {train_loss:.4f}, Validation Loss: {val_loss:.4f}")
+        print(f"Epoch {epoch + 1}: Train Loss: {train_loss:.4f}, Val Loss: {val_loss:.4f}, Val MCC: {val_mcc:.4f}",
+              flush=True)
 
-        if val_loss < best_loss:
-            best_loss = val_loss
+        # --- DYNAMIC CHECKPOINTING LOGIC ---
+        improvement = False
+
+        if use_focal:
+            # If using Focal Loss, we save if MCC increases (Maximize)
+            if val_mcc > best_score:
+                best_score = val_mcc
+                improvement = True
+        else:
+            # If using Cross Entropy, we save if Loss decreases (Minimize)
+            if val_loss < best_score:
+                best_score = val_loss
+                improvement = True
+
+        if improvement:
             epochs_no_improve = 0
             os.makedirs(config['output_dir'], exist_ok=True)
             torch.save(model.state_dict(), os.path.join(config['output_dir'], "best_model.pt"))
@@ -148,14 +204,13 @@ def train_model(model, train_loader, val_loader, weights_tensor, config):
             epochs_no_improve += 1
 
         if epochs_no_improve >= config['early_stopping_patience']:
-            print("Early stopping triggered.")
+            print(f"Early stopping triggered. ({'MCC' if use_focal else 'Loss'} did not improve)", flush=True)
             break
 
-    model.load_state_dict(torch.load(os.path.join(config['output_dir'], "best_model.pt")))
+    # Load best model
+    best_model_path = os.path.join(config['output_dir'], "best_model.pt")
+    if os.path.exists(best_model_path):
+        model.load_state_dict(torch.load(best_model_path, map_location=device))
 
-    history = {
-        'train_losses': train_losses,
-        'val_losses': val_losses
-    }
-
+    history = {'train_losses': train_losses, 'val_losses': val_losses}
     return model, history
