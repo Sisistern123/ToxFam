@@ -56,15 +56,15 @@ class MultiInputMLP(nn.Module):
             hidden_dims = [hidden_dims]
 
         # Embedding branch
-        embed_layers = []
-        prev = embed_dim
-        for h in hidden_dims:
-            embed_layers.append(nn.Linear(prev, h))
-            embed_layers.append(nn.ReLU())
-            embed_layers.append(nn.Dropout(dropout))
-            prev = h
-        self.embed_net = nn.Sequential(*embed_layers)
-        embed_out_dim = prev
+        # embed_layers = []
+        # prev = embed_dim
+        # for h in hidden_dims:
+        #     embed_layers.append(nn.Linear(prev, h))
+        #     embed_layers.append(nn.ReLU())
+        #     embed_layers.append(nn.Dropout(dropout))
+        #     prev = h
+        # self.embed_net = nn.Sequential(*embed_layers)
+        # embed_out_dim = prev
 
         # Taxonomy branch
         self.tax_net = nn.Sequential(
@@ -74,7 +74,7 @@ class MultiInputMLP(nn.Module):
         )
 
         # Joint head
-        joint_in = embed_out_dim + tax_hidden_dim
+        joint_in = embed_dim + tax_hidden_dim
         joint_layers = []
         for h in hidden_dims:
             joint_layers.append(nn.Linear(joint_in, h))
@@ -85,9 +85,9 @@ class MultiInputMLP(nn.Module):
         self.joint = nn.Sequential(*joint_layers)
 
     def forward(self, emb, tax):
-        emb_h = self.embed_net(emb)
+        #emb_h = self.embed_net(emb)
         tax_h = self.tax_net(tax)
-        x = torch.cat([emb_h, tax_h], dim=1)
+        x = torch.cat([emb, tax_h], dim=1)
         return self.joint(x)
 
 
