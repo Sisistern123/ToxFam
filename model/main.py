@@ -15,7 +15,6 @@ from dataset import ToxDataset, analyze_data_splits
 from model_architecture import ModularMLP, MultiInputMLP
 from training import train_model, evaluate_model, get_class_weights
 from visualization import plot_loss_curve, plot_confusion_matrix
-from utils import custom_logging, load_partial_state_dict
 
 # -----------------------------------------------------------------------------
 # Setup & Config Checks
@@ -177,55 +176,56 @@ def run_combined_strategy(train_loader, val_loader, w_tensor, num_classes, out_d
 # STRATEGY 3: Pretrain -> Finetune
 # -----------------------------------------------------------------------------
 def run_pretrain_finetune_strategy(train_loader, val_loader, w_tensor, num_classes, out_dir):
-    print(">>> Running Strategy: PRETRAIN-FINETUNE")
+    print(">>> Running Strategy: PRETRAIN-FINETUNE (Optimized)")
 
-    # --- Stage 1: Tax Only ---
-    print("--- Stage 1: Pretraining on Taxonomy ---")
-    tax_model = ModularMLP(
+    # --- 1. Initialize ONE Model ---
+    # Start with Tax dimensions
+    model = ModularMLP(
         input_dim=CONFIG["tax_dim"],
         hidden_dims=CONFIG["hidden_dims"],
         num_classes=num_classes,
         dropout=CONFIG["dropout"]
     )
 
+    # --- 2. Stage 1: Pretraining on Taxonomy ---
+    print("--- Stage 1: Pretraining on Taxonomy ---")
     s1_cfg = CONFIG.copy()
     s1_cfg['num_epochs'] = CONFIG['tax_epochs']
     s1_cfg['learning_rate'] = CONFIG['tax_lr']
-    s1_cfg['output_dir'] = str(Path(out_dir) / "stage1_tax")
 
-    tax_model, _ = train_model(
-        tax_model,
+    # Train the model (Tax mode)
+    model, _ = train_model(
+        model,
         DataSelector(train_loader, 'tax_only'),
         DataSelector(val_loader, 'tax_only'),
         w_tensor, s1_cfg
     )
 
-    # --- Stage 2: Embeddings Only ---
-    print("--- Stage 2: Finetuning on Embeddings ---")
-    emb_model = ModularMLP(
-        input_dim=CONFIG["embedding_dim"],
-        hidden_dims=CONFIG["hidden_dims"],
-        num_classes=num_classes,
-        dropout=CONFIG["dropout"]
-    )
+    # --- 3. The Swap (In-Place) ---
+    print("--- Swapping Input Layer (Tax -> Embeddings) ---")
+    # This keeps the trained backbone weights!
+    # No new model, no dictionary copying.
+    model.swap_input_layer(new_input_dim=CONFIG["embedding_dim"])
 
-    # Transfer Weights
-    print("Transferring backbone weights...")
-    load_partial_state_dict(emb_model, tax_model.state_dict())
-
+    # Optional: Freeze backbone
     if CONFIG.get("freeze_backbone", False):
-        for param in emb_model.backbone.parameters():
+        print("Freezing backbone layers...")
+        for param in model.backbone.parameters():
             param.requires_grad = False
 
-    emb_model, hist = train_model(
-        emb_model,
+    # --- 4. Stage 2: Finetuning on Embeddings ---
+    print("--- Stage 2: Finetuning on Embeddings ---")
+
+    # Notice we pass the SAME model instance
+    model, hist = train_model(
+        model,
         DataSelector(train_loader, 'emb_only'),
         DataSelector(val_loader, 'emb_only'),
         w_tensor, CONFIG
     )
 
     plot_loss_curve(hist, Path(out_dir) / "loss_finetuned.png")
-    return emb_model
+    return model
 
 
 # -----------------------------------------------------------------------------
@@ -316,22 +316,21 @@ def main():
     strategy = CONFIG["training_strategy"]
     final_model = None
 
-    with custom_logging(out_root):
-        if strategy == "standard":
-            final_model = run_standard_strategy(train_loader, val_loader, w_tensor, train_ds.num_classes, out_root)
-        elif strategy == "combined":
-            final_model = run_combined_strategy(train_loader, val_loader, w_tensor, train_ds.num_classes, out_root)
-        elif strategy == "pretrain_finetune":
-            final_model = run_pretrain_finetune_strategy(train_loader, val_loader, w_tensor, train_ds.num_classes,
-                                                         out_root)
-        else:
-            raise ValueError(f"Unknown training strategy: {strategy}")
+    if strategy == "standard":
+        final_model = run_standard_strategy(train_loader, val_loader, w_tensor, train_ds.num_classes, out_root)
+    elif strategy == "combined":
+        final_model = run_combined_strategy(train_loader, val_loader, w_tensor, train_ds.num_classes, out_root)
+    elif strategy == "pretrain_finetune":
+        final_model = run_pretrain_finetune_strategy(train_loader, val_loader, w_tensor, train_ds.num_classes,
+                                                     out_root)
+    else:
+        raise ValueError(f"Unknown training strategy: {strategy}")
 
-        # 4. Final Evaluation
-        print("\nRunning Final Evaluation...")
-        loss_fn = torch.nn.CrossEntropyLoss()
-        evaluate_label_on_dataset(final_model, val_df, label_col, train_ds.le, loss_fn, "Validation", out_root)
-        evaluate_label_on_dataset(final_model, test_df, label_col, train_ds.le, loss_fn, "Test", out_root)
+    # 4. Final Evaluation
+    print("\nRunning Final Evaluation...")
+    loss_fn = torch.nn.CrossEntropyLoss()
+    evaluate_label_on_dataset(final_model, val_df, label_col, train_ds.le, loss_fn, "Validation", out_root)
+    evaluate_label_on_dataset(final_model, test_df, label_col, train_ds.le, loss_fn, "Test", out_root)
 
     train_ds.close()
     val_ds.close()

@@ -90,40 +90,63 @@ class MultiInputMLP(nn.Module):
         x = torch.cat([emb, tax_h], dim=1)
         return self.joint(x)
 
-
+# use for binary vector taxa pretraining
 class ModularMLP(nn.Module):
     def __init__(self, input_dim, hidden_dims, num_classes, dropout=0.3):
         super().__init__()
-
         if isinstance(hidden_dims, int):
             hidden_dims = [hidden_dims]
 
-        # --- 1. The Input Projector (Variable Size) ---
-        # This layer maps input_dim (56 or 1024) to the first hidden dimension
+        self.dropout_rate = dropout  # Save this to reuse during swap
         first_hidden_dim = hidden_dims[0]
+
+        # 1. Projector (The part we will swap)
         self.projector = nn.Sequential(
             nn.Linear(input_dim, first_hidden_dim),
             nn.ReLU(),
             nn.Dropout(dropout)
         )
 
-        # --- 2. The Backbone (Fixed Size) ---
-        # These layers will be transferred from Tax training to Embedding training
+        # 2. Backbone (The part we keep)
         layers = []
         prev_dim = first_hidden_dim
-
-        # Add remaining hidden layers if any
         for h in hidden_dims[1:]:
             layers.append(nn.Linear(prev_dim, h))
             layers.append(nn.ReLU())
             layers.append(nn.Dropout(dropout))
             prev_dim = h
 
-        # Output layer
         layers.append(nn.Linear(prev_dim, num_classes))
-
         self.backbone = nn.Sequential(*layers)
 
     def forward(self, x):
-        x = self.projector(x)
-        return self.backbone(x)
+        x = self.projector(x)  # Step 1: Map input (Tax or Emb) to hidden size
+        x = self.backbone(x)  # Step 2: Process through shared layers
+        return x
+
+    def swap_input_layer(self, new_input_dim):
+        """
+        Efficiently replaces the projector for a new input dimension
+        while keeping the rest of the model (backbone) intact.
+        """
+        # Get the output dim of the current projector (the input to the backbone)
+        backbone_input_dim = self.projector[0].out_features
+
+        # --- FIX: Capture the OLD dimension here ---
+        old_input_dim = self.projector[0].in_features
+
+        # Create the new layer
+        new_projector = nn.Sequential(
+            nn.Linear(new_input_dim, backbone_input_dim),
+            nn.ReLU(),
+            nn.Dropout(self.dropout_rate)
+        )
+
+        # In-place replacement (The destructive step)
+        self.projector = new_projector
+
+        # Important: If moving to GPU, ensure the new layer is also on GPU
+        device = next(self.backbone.parameters()).device
+        self.projector.to(device)
+
+        print(f"Swapped input layer: {old_input_dim} -> {new_input_dim}")

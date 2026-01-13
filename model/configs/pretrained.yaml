@@ -2,7 +2,7 @@
 input_csv: "data/interm/training_data.csv"
 h5_paths_glob: "data/protspace/training_data.h5"
 tax_h5_path: "data/tax/binary_taxonomy_vectors.h5" # REQUIRED for Stage 1
-output_dir: "model/model_output/pretrain_finetune_run"
+output_dir: "model/model_output/0_pretrain_finetune_run"
 
 # Strategy
 training_strategy: "pretrain_finetune"
