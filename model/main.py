@@ -10,6 +10,7 @@ from torch.utils.data import DataLoader
 from sklearn.metrics import classification_report, roc_curve, auc
 
 # Custom Modules
+from calibration import ModelWithTemperature
 from config import CONFIG
 from dataset import ToxDataset, analyze_data_splits
 from model_architecture import ModularMLP, MultiInputMLP
@@ -301,8 +302,7 @@ def main():
     label_col = "Protein families"
     analyze_label_distribution_for_split(train_df, val_df, test_df, label_col, out_root)
 
-    # 2. Init Datasets (Load both inputs; DataSelector filters them later)
-    # We create the datasets here to get Class Weights and Encoders
+    # 2. Init Datasets
     train_ds = ToxDataset(train_df, CONFIG["h5_paths"], is_train=True, tax_h5_path=CONFIG["tax_h5_path"])
     val_ds = ToxDataset(val_df, CONFIG["h5_paths"], label_encoder=train_ds.le, is_train=False,
                         tax_h5_path=CONFIG["tax_h5_path"])
@@ -326,11 +326,42 @@ def main():
     else:
         raise ValueError(f"Unknown training strategy: {strategy}")
 
-    # 4. Final Evaluation
-    print("\nRunning Final Evaluation...")
+    # Define loss function ONCE here so it's available for both evals
     loss_fn = torch.nn.CrossEntropyLoss()
+
+    # ---------------------------------------------------------
+    # 4. Evaluation: UNCALIBRATED (Baseline)
+    # ---------------------------------------------------------
+    print("\nRunning Final Evaluation (Uncalibrated)...")
     evaluate_label_on_dataset(final_model, val_df, label_col, train_ds.le, loss_fn, "Validation", out_root)
     evaluate_label_on_dataset(final_model, test_df, label_col, train_ds.le, loss_fn, "Test", out_root)
+
+    # ---------------------------------------------------------
+    # 5. Calibration (Temperature Scaling)
+    # ---------------------------------------------------------
+    print("\nRunning Calibration (Temperature Scaling)...")
+
+    # A. Create the correct selector for validation data
+    if strategy == "combined":
+        val_selector = DataSelector(val_loader, "both")
+    elif strategy == "pretrain_finetune":
+        val_selector = DataSelector(val_loader, "emb_only")
+    else:  # standard
+        val_selector = DataSelector(val_loader, "emb_only")
+
+    # B. Wrap and Tune
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    final_model = final_model.to(device)
+
+    scaled_model = ModelWithTemperature(final_model, device)
+    scaled_model.set_temperature(val_selector)
+
+    # ---------------------------------------------------------
+    # 6. Evaluation: CALIBRATED
+    # ---------------------------------------------------------
+    print("\nRunning Final Evaluation (Calibrated)...")
+    evaluate_label_on_dataset(scaled_model, val_df, label_col, train_ds.le, loss_fn, "Validation_Calibrated", out_root)
+    evaluate_label_on_dataset(scaled_model, test_df, label_col, train_ds.le, loss_fn, "Test_Calibrated", out_root)
 
     train_ds.close()
     val_ds.close()

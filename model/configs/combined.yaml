@@ -2,7 +2,7 @@
 input_csv: "data/interm/training_data.csv"
 h5_paths_glob: "data/protspace/training_data.h5"
 tax_h5_path: "data/tax/binary_taxonomy_vectors.h5" # REQUIRED
-output_dir: "model/model_output/combined_run"
+output_dir: "model/model_output/0_CALIBRATED_combined_run"
 
 # Strategy
 training_strategy: "combined"
