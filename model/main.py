@@ -355,6 +355,9 @@ def main():
 
     scaled_model = ModelWithTemperature(final_model, device)
     scaled_model.set_temperature(val_selector)
+    # Save the calibrated model state
+    torch.save(scaled_model.state_dict(), out_root / "best_model_calibrated.pt")
+    print(f"Saved calibrated model to {out_root / 'best_model_calibrated.pt'}")
 
     # ---------------------------------------------------------
     # 6. Evaluation: CALIBRATED
