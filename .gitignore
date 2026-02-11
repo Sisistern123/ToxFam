@@ -47,3 +47,6 @@ data/protspace/*
 
 # Local-only notes
 notes.md
+
+benchmark/new/tmp
+benchmark/new/evaluation/non-metazoa/results/hbi/tmp

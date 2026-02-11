@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from training import _forward_model
+from model.training import _forward_model
 
 class ModelWithTemperature(nn.Module):
     def __init__(self, model, device):

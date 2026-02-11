@@ -4,7 +4,7 @@ h5_paths_glob: "data/protspace/training_data.h5"
 # tax_h5_path is NOT needed for standard, but keeping it empty or defined prevents
 # errors if your dataset class expects the key to exist (even if None).
 tax_h5_path: "data/tax/binary_taxonomy_vectors.h5" # REQUIRED
-output_dir: "model/model_output/new_combined"
+output_dir: "model/model_output/calibrated_combined"
 
 # Strategy
 training_strategy: "combined"

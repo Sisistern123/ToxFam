@@ -304,6 +304,13 @@ def main():
 
     # 2. Init Datasets
     train_ds = ToxDataset(train_df, CONFIG["h5_paths"], is_train=True, tax_h5_path=CONFIG["tax_h5_path"])
+
+    class_indices = {int(i): label for i, label in enumerate(train_ds.le.classes_)}
+    class_json_path = out_root / "class_indices.json"
+    with open(class_json_path, "w") as f:
+        json.dump(class_indices, f, indent=4)
+    print(f"✅ Saved class mapping to {class_json_path}")
+
     val_ds = ToxDataset(val_df, CONFIG["h5_paths"], label_encoder=train_ds.le, is_train=False,
                         tax_h5_path=CONFIG["tax_h5_path"])
 

@@ -1,7 +1,6 @@
 import torch
 import torch.optim as optim
 import os
-from focal_loss import FocalLoss
 
 from collections import Counter
 import numpy as np
@@ -122,29 +121,16 @@ def train_model(model, train_loader, val_loader, weights_tensor, config):
 
     model.to(device)
 
-    # Determine if we are maximizing MCC (Focal) or minimizing Loss (CE)
-    use_focal = config.get('use_focal_loss', False)
-    # If Focal: Start at -1 (maximize). If CE: Start at inf (minimize).
-    best_score = -1.0 if use_focal else float('inf')
+
+    best_score = float('inf')
 
     # Move weights to device once
     weights_tensor = weights_tensor.to(device)
 
     optimizer = optim.Adam(model.parameters(), lr=config['learning_rate'])
 
-    # --- 2. Conditional Loss Function Selection ---
-    if use_focal:
-        print(f"Loss Function: Focal Loss (gamma={config.get('focal_loss_gamma', 2.0)})", flush=True)
-        loss_fn = FocalLoss(
-            gamma=config.get('focal_loss_gamma', 2.0),
-            alpha=weights_tensor,
-            task_type='multi-class',
-            num_classes=len(weights_tensor),
-            reduction='mean'
-        )
-    else:
-        print("Loss Function: Cross Entropy", flush=True)
-        loss_fn = torch.nn.CrossEntropyLoss(weight=weights_tensor)
+    print("Loss Function: Cross Entropy", flush=True)
+    loss_fn = torch.nn.CrossEntropyLoss(weight=weights_tensor)
 
     # --- 3. Training Loop ---
     epochs_no_improve = 0
@@ -185,16 +171,9 @@ def train_model(model, train_loader, val_loader, weights_tensor, config):
         # --- DYNAMIC CHECKPOINTING LOGIC ---
         improvement = False
 
-        if use_focal:
-            # If using Focal Loss, we save if MCC increases (Maximize)
-            if val_mcc > best_score:
-                best_score = val_mcc
-                improvement = True
-        else:
-            # If using Cross Entropy, we save if Loss decreases (Minimize)
-            if val_loss < best_score:
-                best_score = val_loss
-                improvement = True
+        if val_loss < best_score:
+            best_score = val_loss
+            improvement = True
 
         if improvement:
             epochs_no_improve = 0
@@ -204,7 +183,7 @@ def train_model(model, train_loader, val_loader, weights_tensor, config):
             epochs_no_improve += 1
 
         if epochs_no_improve >= config['early_stopping_patience']:
-            print(f"Early stopping triggered. ({'MCC' if use_focal else 'Loss'} did not improve)", flush=True)
+            print(f"Early stopping triggered. Loss did not improve)", flush=True)
             break
 
     # Load best model
