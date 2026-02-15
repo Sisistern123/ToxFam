@@ -1,7 +1,7 @@
 [project]
 name = "toxfam"
-version = "0.1.0"
-description = "Add your description here"
+version = "0.2.0"
+description = "Animal toxin protein family classification using MLP on ProtT5 embeddings"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
@@ -11,10 +11,22 @@ dependencies = [
     "jupyter>=1.1.1",
     "protobuf>=6.33.5",
     "protspace[frontend]==3.1.1",
+    "pydantic>=2.0",
     "pymmseqs>=1.0.4",
     "seaborn>=0.13.2",
     "sentencepiece>=0.2.1",
     "tiktoken>=0.12.0",
     "torch>=2.7.1",
     "transformers>=5.1.0",
+    "typer>=0.15.0",
 ]
+
+[project.scripts]
+toxfam = "toxfam.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/toxfam"]

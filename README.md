@@ -1,6 +1,6 @@
 # ToxFam
 
-**ToxFam** is a research-driven Python framework for classifying animal toxin protein sequences into families.  
+**ToxFam** is a research-driven Python framework for classifying animal toxin protein sequences into families.
 It combines sequence embeddings, optional taxonomy features, and simple neural network models to improve protein family assignments in toxin datasets.
 
 > **Note:** This project is under active development and not intended for external cloning, reuse, or contributions at this time.
@@ -26,22 +26,22 @@ The code is primarily intended for **internal research experiments**, not as a g
 
 ## ✨ Key Features
 
-- **Research-oriented design**  
+- **Research-oriented design**
   Built for iterative experimentation with toxin family classification, not for production deployments.
 
-- **Flexible embeddings**  
+- **Flexible embeddings**
   Pluggable support for different embedding backends (e.g. ProtT5, ProtSpace), making it easy to compare representation choices.
 
-- **Optional taxonomy integration**  
+- **Optional taxonomy integration**
   Retrieval and encoding of taxonomic information as additional features where available.
 
-- **Toxin-focused preprocessing**  
+- **Toxin-focused preprocessing**
   Tools for filtering, deduplicating, and relabeling toxin protein sequences to improve label quality and reduce redundancy.
 
-- **Simple neural models**  
+- **Simple neural models**
   Lightweight MLP models for toxin family prediction, emphasizing interpretability and ease of experimentation.
 
-- **Analysis utilities**  
+- **Analysis utilities**
   Scripts and notebooks for confidence score inspection and benchmarking across models or feature sets.
 
 ---
@@ -65,38 +65,48 @@ Please **do not**:
 
 ## 🧩 High-Level Workflow
 
-A typical ToxFam workflow looks roughly like this:
+All steps are accessible through the unified `toxfam` CLI (run via `uv run toxfam <command>`):
 
-1. **Data preparation**
-   - Collect toxin protein sequences and associated family labels.
-   - Store raw and intermediate data under `data/` (see structure below).
+1. **Data preparation & preprocessing**
+   ```bash
+   uv run toxfam preprocess [--run-signalp6] [--min-seq-id 0.9]
+   ```
+   Filters sequences, reduces redundancy via MMseqs2 clustering, and creates stratified train/val/test splits.
 
-2. **Preprocessing & redundancy reduction**
-   - Filter sequences (e.g. by length, alphabet, or metadata).
-   - Reduce redundancy using sequence similarity thresholds.
-   - Optionally relabel or discard ambiguous entries.
+2. **Feature generation**
+   ```bash
+   # ProtT5 embeddings
+   uv run toxfam embed -i <input.fasta> -o <output.h5> [--per-protein]
 
-3. **Feature generation**
-   - Compute sequence embeddings using a chosen backend (e.g. ProtT5, ProtSpace).
-   - Optionally retrieve taxonomy information (e.g. from external services) and encode it as features.
+   # Taxonomy annotation
+   uv run toxfam taxonomy --input-csv <csv> --output-csv <csv>
 
-4. **Model training & evaluation**
-   - Train MLP-based classifiers on the generated features.
-   - Evaluate model performance across toxin families.
-   - Export predictions, metrics, and confidence scores.
+   # Binary taxonomy vectors
+   uv run toxfam taxonomy-vectors --tax-csv <csv> --input-h5 <h5> --output-h5 <h5>
+   ```
 
-5. **Analysis & benchmarking**
-   - Inspect confidence distributions, misclassifications, and edge cases.
-   - Compare models, feature sets, or preprocessing settings using scripts and notebooks in `analysis/` and `benchmark/`.
+3. **Model training**
+   ```bash
+   uv run toxfam train configs/standard.yaml      # embeddings only
+   uv run toxfam train configs/combined.yaml       # embeddings + taxonomy
+   uv run toxfam train configs/pretrained.yaml     # pretrain on taxonomy, finetune on embeddings
+   ```
 
-> The exact entry points (scripts / notebooks) for each step may evolve as the project develops.  
-> Always refer to the latest internal documentation, notebooks, or commit messages for the current workflow.
+4. **Evaluation & benchmarking**
+   ```bash
+   uv run toxfam eval-test [--model-dir <path>]
+   uv run toxfam eval-nonmetazoan --h5-path <h5> --model-path <pt> --class-map <json>
+   uv run toxfam eval-unreviewed --input-tsv <tsv> --input-fasta <fasta> --input-h5 <h5>
+   ```
+
+5. **Analysis**
+   - Inspect confidence distributions, misclassifications, and edge cases using notebooks in `analysis/` and `benchmark/`.
 
 ---
 
 ## 🚀 Getting Started (Internal Use)
 
-The following steps are **guidelines** for internal users of the repository.  
+The following steps are **guidelines** for internal users of the repository.
 Concrete commands or entry points may differ depending on your environment and current branch.
 
 ### Prerequisites
@@ -115,6 +125,6 @@ cd ToxFam
 # Install dependencies with uv (recommended)
 uv sync
 
-# Alternatively, install via pip in an active virtual environment
-# (Adjust to your internal conventions as needed)
-pip install -e .
+# Verify the CLI works
+uv run toxfam --help
+```

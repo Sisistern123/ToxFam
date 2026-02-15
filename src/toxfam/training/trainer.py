@@ -1,37 +1,30 @@
-import torch
-import torch.optim as optim
-import os
+from __future__ import annotations
 
+import os
 from collections import Counter
+from typing import TYPE_CHECKING
+
 import numpy as np
+import torch
 import torch.nn.functional as F
-from sklearn.metrics import accuracy_score, matthews_corrcoef, classification_report
+import torch.optim as optim
+from sklearn.metrics import accuracy_score, matthews_corrcoef
 from sklearn.preprocessing import label_binarize
+
+if TYPE_CHECKING:
+    from toxfam.config import TrainConfig
 
 
 def _forward_model(model, features, device):
-    """
-    Handle either:
-      - features: Tensor                (embeddings only)
-      - features: (emb_tensor, tax_tensor)
-    """
+    """Handle single-input (Tensor) or multi-input ((emb, tax)) forwarding."""
     if isinstance(features, (tuple, list)):
-        # Multi-input case
         features = [f.to(device) for f in features]
-        return model(*features)  # model(emb, tax)
+        return model(*features)
     else:
-        # Single-input case (old behavior)
         return model(features.to(device))
 
 
 def evaluate_model(model, data_loader, loss_fn, device, dataset_type="Validation"):
-    """
-    Returns:
-      - metrics dict
-      - all_labels (list of ints)
-      - all_preds  (list of ints)
-      - all_scores (np.array shape (N, C))
-    """
     model.eval()
     all_labels, all_preds, all_scores = [], [], []
     total_loss = 0.0
@@ -41,11 +34,10 @@ def evaluate_model(model, data_loader, loss_fn, device, dataset_type="Validation
         for features, labels in data_loader:
             labels = labels.to(device)
             outputs = _forward_model(model, features, device)
-            # shape (B, C)
             if n_classes is None:
-                n_classes = outputs.size(1)        # capture C once
-            probs   = F.softmax(outputs, dim=1)     # (B, C)
-            loss    = loss_fn(outputs, labels)
+                n_classes = outputs.size(1)
+            probs = F.softmax(outputs, dim=1)
+            loss = loss_fn(outputs, labels)
             total_loss += loss.item()
 
             preds = probs.argmax(dim=1).cpu().numpy()
@@ -53,20 +45,17 @@ def evaluate_model(model, data_loader, loss_fn, device, dataset_type="Validation
             all_preds.extend(preds)
             all_scores.append(probs.cpu().numpy())
 
-    # concatenate once
     all_scores = np.concatenate(all_scores, axis=0)
-    avg_loss   = total_loss / len(data_loader)
+    avg_loss = total_loss / len(data_loader)
 
-    # basic metrics
     metrics = {
         f"{dataset_type}_Accuracy": accuracy_score(all_labels, all_preds),
-        f"{dataset_type}_MCC":      matthews_corrcoef(all_labels, all_preds),
+        f"{dataset_type}_MCC": matthews_corrcoef(all_labels, all_preds),
         f"{dataset_type}_Avg_Loss": avg_loss,
     }
 
-    # micro‐MCC on flattened one‐hots using n_classes
     y_true_bin = label_binarize(all_labels, classes=list(range(n_classes)))
-    y_pred_bin = label_binarize(all_preds,  classes=list(range(n_classes)))
+    y_pred_bin = label_binarize(all_preds, classes=list(range(n_classes)))
     metrics[f"{dataset_type}_Micro_MCC"] = matthews_corrcoef(
         y_true_bin.ravel(), y_pred_bin.ravel()
     )
@@ -75,22 +64,17 @@ def evaluate_model(model, data_loader, loss_fn, device, dataset_type="Validation
 
 
 def get_class_weights(train_dataset):
-    """
-    Calculate class weights for imbalanced dataset
-    """
-    encoded_col = train_dataset.label_col + '_encoded'
+    encoded_col = train_dataset.label_col + "_encoded"
     class_counts = Counter(train_dataset.df[encoded_col])
     num_classes = train_dataset.num_classes
 
     encoded_to_label = {
-        enc: train_dataset.le.inverse_transform([enc])[0]
-        for enc in range(num_classes)
+        enc: train_dataset.le.inverse_transform([enc])[0] for enc in range(num_classes)
     }
 
     total_samples = sum(class_counts.values())
     weights_dict = {
-        encoded_to_label[c]: total_samples / class_counts[c]
-        for c in range(num_classes)
+        encoded_to_label[c]: total_samples / class_counts[c] for c in range(num_classes)
     }
 
     max_weight = max(weights_dict.values())
@@ -98,17 +82,13 @@ def get_class_weights(train_dataset):
 
     weights_tensor = torch.tensor(
         [weights_dict[encoded_to_label[i]] for i in range(num_classes)],
-        dtype=torch.float32
+        dtype=torch.float32,
     )
 
     return weights_dict, weights_tensor, encoded_to_label
 
 
-def train_model(model, train_loader, val_loader, weights_tensor, config):
-    """
-    Train model with MPS support and conditional Focal Loss.
-    """
-    # --- 1. Device Selection (MPS / CUDA / CPU) ---
+def train_model(model, train_loader, val_loader, weights_tensor, config: TrainConfig):
     if torch.cuda.is_available():
         device = torch.device("cuda")
         print("Using Device: CUDA", flush=True)
@@ -121,22 +101,19 @@ def train_model(model, train_loader, val_loader, weights_tensor, config):
 
     model.to(device)
 
+    best_score = float("inf")
 
-    best_score = float('inf')
-
-    # Move weights to device once
     weights_tensor = weights_tensor.to(device)
 
-    optimizer = optim.Adam(model.parameters(), lr=config['learning_rate'])
+    optimizer = optim.Adam(model.parameters(), lr=config.learning_rate)
 
     print("Loss Function: Cross Entropy", flush=True)
     loss_fn = torch.nn.CrossEntropyLoss(weight=weights_tensor)
 
-    # --- 3. Training Loop ---
     epochs_no_improve = 0
     train_losses, val_losses = [], []
 
-    for epoch in range(config['num_epochs']):
+    for epoch in range(config.num_epochs):
         model.train()
         total_loss = 0
 
@@ -147,10 +124,9 @@ def train_model(model, train_loader, val_loader, weights_tensor, config):
 
             loss = loss_fn(outputs, labels)
 
-            # Safety check for NaN
             if torch.isnan(loss):
                 print("Stopping: Loss became NaN.", flush=True)
-                return model, {'train_losses': train_losses, 'val_losses': val_losses}
+                return model, {"train_losses": train_losses, "val_losses": val_losses}
 
             loss.backward()
             optimizer.step()
@@ -159,37 +135,39 @@ def train_model(model, train_loader, val_loader, weights_tensor, config):
         train_loss = total_loss / len(train_loader)
         train_losses.append(train_loss)
 
-        # Validation
         val_metrics, _, _, _ = evaluate_model(model, val_loader, loss_fn, device)
         val_loss = val_metrics["Validation_Avg_Loss"]
-        val_mcc = val_metrics["Validation_MCC"]  # Capture MCC
+        val_mcc = val_metrics["Validation_MCC"]
         val_losses.append(val_loss)
 
-        print(f"Epoch {epoch + 1}: Train Loss: {train_loss:.4f}, Val Loss: {val_loss:.4f}, Val MCC: {val_mcc:.4f}",
-              flush=True)
+        print(
+            f"Epoch {epoch + 1}: Train Loss: {train_loss:.4f}, "
+            f"Val Loss: {val_loss:.4f}, Val MCC: {val_mcc:.4f}",
+            flush=True,
+        )
 
-        # --- DYNAMIC CHECKPOINTING LOGIC ---
         improvement = False
-
         if val_loss < best_score:
             best_score = val_loss
             improvement = True
 
         if improvement:
             epochs_no_improve = 0
-            os.makedirs(config['output_dir'], exist_ok=True)
-            torch.save(model.state_dict(), os.path.join(config['output_dir'], "best_model.pt"))
+            output_dir = str(config.output_dir)
+            os.makedirs(output_dir, exist_ok=True)
+            torch.save(
+                model.state_dict(), os.path.join(output_dir, "best_model.pt")
+            )
         else:
             epochs_no_improve += 1
 
-        if epochs_no_improve >= config['early_stopping_patience']:
-            print(f"Early stopping triggered. Loss did not improve)", flush=True)
+        if epochs_no_improve >= config.early_stopping_patience:
+            print("Early stopping triggered. Loss did not improve)", flush=True)
             break
 
-    # Load best model
-    best_model_path = os.path.join(config['output_dir'], "best_model.pt")
+    best_model_path = os.path.join(str(config.output_dir), "best_model.pt")
     if os.path.exists(best_model_path):
         model.load_state_dict(torch.load(best_model_path, map_location=device))
 
-    history = {'train_losses': train_losses, 'val_losses': val_losses}
+    history = {"train_losses": train_losses, "val_losses": val_losses}
     return model, history
