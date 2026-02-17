@@ -79,8 +79,15 @@ def sanitize_filename(name: str) -> str:
 
 # ---------- Preprocessing ----------
 def load_and_prepare_raw() -> Tuple[pd.DataFrame, pd.DataFrame]:
-    tox = pd.read_csv(RAW_DIR / "0800.tsv", sep="\t").dropna(subset=["Protein families"]).copy()
+    # --- Toxic proteins ---
+    tox_raw = pd.read_csv(RAW_DIR / "0800.tsv", sep="\t")
+    print(f"Loaded tox table with {len(tox_raw)} rows.")
+    tox = tox_raw.dropna(subset=["Protein families"]).copy()
+    print(f"Tox after dropping rows without 'Protein families': {len(tox)} rows.")
     tox.rename(columns={"Entry": "identifier"}, inplace=True)
+
+    # Keep a copy to track changes to family labels
+    original_families = tox["Protein families"].copy()
 
     # --- basic normalization ---
     tox["Protein families"] = tox["Protein families"].str.split(";").str[0]
@@ -115,16 +122,30 @@ def load_and_prepare_raw() -> Tuple[pd.DataFrame, pd.DataFrame]:
     for pattern, replacement in mapping.items():
         tox["Protein families"] = tox["Protein families"].str.replace(pattern, replacement, regex=True)
 
+    # Report how many family labels changed (approximate mapping effect)
+    changed_families = (tox["Protein families"] != original_families).sum()
+    print(f"Tox entries whose family label changed after normalization/mapping: {changed_families}")
+
     # Group rare families into "other"
+    family_counts_before_other = tox["Protein families"].value_counts()
     tox["Protein families"] = tox["Protein families"].where(
         tox["Protein families"].map(tox["Protein families"].value_counts()) >= 10, "other"
     )
+    n_other = (tox["Protein families"] == "other").sum()
+    print("Tox family distribution before grouping rare families (top 10):")
+    print(family_counts_before_other.head(10).to_string())
+    print(f"Tox entries assigned to 'other' family: {n_other}")
 
     # --- Non-toxic proteins ---
-    nontox = pd.read_csv(RAW_DIR / "nontox.tsv", sep="\t").copy()
-    nontox.rename(columns={"Entry": "identifier"}, inplace=True)
-    cutoff = nontox["Sequence"].str.len().nlargest(int(np.ceil(len(nontox) * 0.01))).min()
-    nontox = nontox[nontox["Sequence"].str.len() <= cutoff].reset_index(drop=True)
+    nontox_raw = pd.read_csv(RAW_DIR / "nontox.tsv", sep="\t").copy()
+    print(f"Loaded nontox table with {len(nontox_raw)} rows.")
+    nontox_raw.rename(columns={"Entry": "identifier"}, inplace=True)
+    cutoff = nontox_raw["Sequence"].str.len().nlargest(int(np.ceil(len(nontox_raw) * 0.01))).min()
+    nontox = nontox_raw[nontox_raw["Sequence"].str.len() <= cutoff].reset_index(drop=True)
+    print(
+        f"Nontox after length filtering: {len(nontox)} rows "
+        f"(filtered out {len(nontox_raw) - len(nontox)} longest sequences)."
+    )
     nontox["Protein families"] = "nontox"
 
     return tox, nontox
@@ -144,8 +165,20 @@ def apply_signalp_filtered_sequences(tox: pd.DataFrame, nontox: pd.DataFrame) ->
     tox_filt = load_signalp_output(SP6_TOX_DIR / "processed_entries.fasta", SP6_TOX_DIR / "output.gff3")
     nontox_filt = load_signalp_output(SP6_NONTox_DIR / "processed_entries.fasta", SP6_NONTox_DIR / "output.gff3")
 
+    print(
+        f"SignalP6 filtered sequences: {len(tox_filt)} tox and {len(nontox_filt)} nontox "
+        f"entries with score > 0.8."
+    )
+
     tox = tox.merge(tox_filt, on="identifier", how="left")
     nontox = nontox.merge(nontox_filt, on="identifier", how="left")
+
+    tox_changed = tox["Sequence_new"].notna().sum()
+    nontox_changed = nontox["Sequence_new"].notna().sum()
+    print(
+        "SignalP6 sequence updates (proxy for signal peptide removal): "
+        f"{tox_changed} tox and {nontox_changed} nontox sequences updated."
+    )
 
     tox["Sequence"] = tox["Sequence_new"].fillna(tox["Sequence"])
     nontox["Sequence"] = nontox["Sequence_new"].fillna(nontox["Sequence"])
@@ -183,6 +216,11 @@ def cluster_per_family_and_collect(data: pd.DataFrame, min_seq_id: float = 0.9) 
     FAMILIES_DIR.mkdir(parents=True, exist_ok=True)
     MMSEQS_DIR.mkdir(parents=True, exist_ok=True)
     failures: List[Tuple[str, str, str]] = []
+
+    print(
+        f"Clustering {len(data)} sequences across {data['Protein families'].nunique()} "
+        f"protein families with MMseqs2 (min_seq_id={min_seq_id})."
+    )
 
     for family, group in data.groupby("Protein families"):
         safe = sanitize_filename(family)
@@ -233,6 +271,11 @@ def cluster_per_family_and_collect(data: pd.DataFrame, min_seq_id: float = 0.9) 
         df["Protein families"] = df["Protein families"].where(
             df["Protein families"].map(df["Protein families"].value_counts()) >= 10, "other"
         )
+
+    print(
+        f"Cluster representatives: {len(rep_df_all)} total "
+        f"({len(rep_df_tox)} toxic, {len(rep_df_all) - len(rep_df_tox)} nontox)."
+    )
     return rep_df_all, rep_df_tox
 
 
@@ -241,6 +284,11 @@ def multilabel_stratified_splits(rep_df_all: pd.DataFrame):
     df["fam_list"] = df["Protein families"].apply(lambda x: x.split(",") if isinstance(x, str) else [])
     mlb = MultiLabelBinarizer()
     Y = mlb.fit_transform(df["fam_list"])
+
+    print(
+        f"Preparing stratified splits on {len(df)} cluster representatives "
+        f"covering {len(mlb.classes_)} unique protein families."
+    )
 
     msss1 = MultilabelStratifiedShuffleSplit(n_splits=1, test_size=0.15, random_state=42)
     trainval_idx, test_idx = next(msss1.split(df, Y))
@@ -253,6 +301,18 @@ def multilabel_stratified_splits(rep_df_all: pd.DataFrame):
     train_df = df_trainval.iloc[train_idx].reset_index(drop=True)
     val_df = df_trainval.iloc[val_idx].reset_index(drop=True)
     test_df = test_df.reset_index(drop=True)
+
+    def _split_stats(name: str, subset: pd.DataFrame) -> None:
+        fam_lists = subset["fam_list"]
+        n_clusters = len(subset)
+        families: Set[str] = set()
+        for fams in fam_lists:
+            families.update(fams)
+        print(f"{name} split: {n_clusters} cluster representatives, {len(families)} unique protein families.")
+
+    _split_stats("Train", train_df)
+    _split_stats("Validation", val_df)
+    _split_stats("Test", test_df)
 
     for subset in (train_df, val_df, test_df):
         subset["Protein families"] = subset["fam_list"].apply(",".join)
