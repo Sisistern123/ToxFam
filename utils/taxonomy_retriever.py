@@ -74,24 +74,44 @@ class UniProtTaxonomyRetriever(BaseFeatureRetriever):
         """
         Fetch taxonomy lineage information for each UniProt ID.
         """
+        print(f"Processing {len(self.uniprot_ids)} UniProt IDs...")
+        
         # Step 1. Get mapping: UniProt ID → taxon ID
         uniprot_to_taxid = self._get_taxon_ids_from_uniprot(self.uniprot_ids)
+        
+        n_with_taxid = sum(1 for tid in uniprot_to_taxid.values() if tid is not None)
+        n_missing_taxid = len(uniprot_to_taxid) - n_with_taxid
+        print(f"Retrieved taxon IDs: {n_with_taxid} successful, {n_missing_taxid} missing/not found.")
 
         # Step 2. Initialize the taxonomy retriever with the unique taxon IDs
         unique_taxids = list({tid for tid in uniprot_to_taxid.values() if tid is not None})
+        print(f"Unique taxon IDs to look up: {len(unique_taxids)}")
+        
         self.tax_retriever = TaxonomyRetriever(unique_taxids, features=self.features)
         tax_data = self.tax_retriever.fetch_features()
 
         # Step 3. Map taxonomy info back to UniProt IDs (include taxon_id)
         result = {}
+        n_with_features = 0
+        n_missing_features = 0
+        
         for uid, taxid in uniprot_to_taxid.items():
             entry = {"taxon_id": taxid}
             if taxid in tax_data:
                 entry["features"] = tax_data[taxid]["features"]
+                # Check if features are non-empty (at least one field has a value)
+                if any(v for v in entry["features"].values() if isinstance(v, str) and v):
+                    n_with_features += 1
+                else:
+                    n_missing_features += 1
             else:
                 entry["features"] = dict.fromkeys(self.features, "")
+                n_missing_features += 1
             result[uid] = entry
 
+        print(f"Taxonomy retrieval complete: {n_with_features} entries with taxonomy data, "
+              f"{n_missing_features} entries with missing/empty taxonomy data.")
+        
         return result
 
     def _get_taxon_ids_from_uniprot(self, uniprot_ids: list[str]) -> dict[str, int | None]:
@@ -102,6 +122,8 @@ class UniProtTaxonomyRetriever(BaseFeatureRetriever):
         base_url = "https://rest.uniprot.org/uniprotkb/search"
         batch_size = 100  # keep URL short & stable
         result: dict[str, int | None] = {}
+        total_batches = (len(uniprot_ids) - 1) // batch_size + 1
+        print(f"Fetching taxon IDs from UniProt in {total_batches} batches (batch size: {batch_size})...")
 
         for i in range(0, len(uniprot_ids), batch_size):
             batch = uniprot_ids[i:i + batch_size]
@@ -113,30 +135,41 @@ class UniProtTaxonomyRetriever(BaseFeatureRetriever):
                 "size": batch_size,
             }
 
+            batch_num = i // batch_size + 1
             for attempt in range(3):
                 try:
                     r = requests.get(base_url, params=params, timeout=30)
                     r.raise_for_status()
                     break
                 except requests.RequestException as e:
-                    logger.warning(f"Batch {i // batch_size + 1}: {e}, retrying...")
+                    logger.warning(f"Batch {batch_num}/{total_batches}: {e}, retrying...")
                     time.sleep(2 ** attempt)
             else:
                 for uid in batch:
                     result[uid] = None
+                tqdm.write(f"Batch {batch_num}/{total_batches}: Failed after 3 attempts, marking as missing.")
                 continue
 
             lines = r.text.strip().splitlines()
-            for line in lines[1:]:
-                acc, taxid = line.split("\t")
+            n_found_in_batch = 0
+            for line in lines[1:]:  # Skip header
+                if not line.strip():  # Skip empty lines
+                    continue
+                parts = line.split("\t")
+                if len(parts) < 2:
+                    # Malformed line, skip it
+                    continue
+                acc, taxid = parts[0], parts[1]
                 result[acc] = int(taxid) if taxid.isdigit() else None
+                if result[acc] is not None:
+                    n_found_in_batch += 1
 
             # fill any IDs not returned
             for uid in batch:
                 result.setdefault(uid, None)
 
             tqdm.write(
-                f"Fetched {len(batch)} (batch {i // batch_size + 1}/{(len(uniprot_ids) - 1) // batch_size + 1})"
+                f"Batch {batch_num}/{total_batches}: Found {n_found_in_batch}/{len(batch)} taxon IDs"
             )
             time.sleep(0.3)  # polite pause
 
@@ -171,6 +204,7 @@ class TaxonomyRetriever(BaseFeatureRetriever):
         self.taxdb = self._initialize_taxdb()
 
     def fetch_features(self) -> dict[int, dict[str, Any]]:
+        print(f"Fetching taxonomy features for {len(self.taxon_ids)} taxon IDs...")
         result = {}
 
         with tqdm(
@@ -178,13 +212,24 @@ class TaxonomyRetriever(BaseFeatureRetriever):
         ) as pbar:
             taxonomies_info = self._get_taxonomy_info(self.taxon_ids)
 
+            n_successful = 0
+            n_failed = 0
+            
             for taxon_id in self.taxon_ids:
                 if taxon_id in taxonomies_info:
                     result[taxon_id] = {"features": taxonomies_info[taxon_id]}
+                    # Check if we got valid data (not all empty)
+                    features = taxonomies_info[taxon_id]
+                    if any(v for k, v in features.items() if k != "tax_array" and v):
+                        n_successful += 1
+                    else:
+                        n_failed += 1
                 else:
                     result[taxon_id] = {"features": dict.fromkeys(self.features, "")}
+                    n_failed += 1
                 pbar.update(1)
 
+        print(f"Taxonomy lookup complete: {n_successful} successful, {n_failed} failed/missing.")
         return result
 
     def _validate_taxon_ids(self, taxon_ids: list[int]) -> list[int]:
@@ -378,12 +423,20 @@ def annotate_csv_with_taxonomy(input_csv: str, output_csv: str):
     Reads a CSV with column 'identifier' (UniProt IDs),
     fetches taxonomy data, and writes results to a new CSV.
     """
+    print(f"\n{'='*60}")
+    print(f"Taxonomy Annotation Pipeline")
+    print(f"{'='*60}")
+    print(f"Reading input CSV: {input_csv}")
+    
     df = pd.read_csv(input_csv)
+    print(f"Loaded CSV with {len(df)} rows and {len(df.columns)} columns.")
 
     if "identifier" not in df.columns:
         raise ValueError("CSV must contain a column named 'identifier' (UniProt ID).")
 
     uniprot_ids = df["identifier"].dropna().astype(str).tolist()
+    print(f"Found {len(uniprot_ids)} non-null identifiers (out of {len(df)} total rows).")
+    
     retriever = UniProtTaxonomyRetriever(uniprot_ids)
     taxonomy_results = retriever.fetch_features()
 
@@ -398,12 +451,29 @@ def annotate_csv_with_taxonomy(input_csv: str, output_csv: str):
 
     # Merge taxonomy info back into original CSV
     merged = df.merge(tax_df, on="identifier", how="left")
+    
+    # Statistics on final output
+    n_with_taxid = merged["taxon_id"].notna().sum()
+    n_with_species = merged["species"].notna().sum() if "species" in merged.columns else 0
+    n_with_genus = merged["genus"].notna().sum() if "genus" in merged.columns else 0
+    n_with_phylum = merged["phylum"].notna().sum() if "phylum" in merged.columns else 0
+    
+    print(f"\n{'='*60}")
+    print(f"Final Statistics:")
+    print(f"{'='*60}")
+    print(f"Total rows in output: {len(merged)}")
+    print(f"Rows with taxon_id: {n_with_taxid} ({100*n_with_taxid/len(merged):.1f}%)")
+    print(f"Rows with species: {n_with_species} ({100*n_with_species/len(merged):.1f}%)")
+    print(f"Rows with genus: {n_with_genus} ({100*n_with_genus/len(merged):.1f}%)")
+    print(f"Rows with phylum: {n_with_phylum} ({100*n_with_phylum/len(merged):.1f}%)")
+    
     merged.to_csv(output_csv, index=False)
     print(f"\n✅ Annotated CSV saved to {output_csv}")
+    print(f"{'='*60}\n")
 
 
 if __name__ == "__main__":
     # Example usage
-    input_csv = "../data/interm/training_data.csv"
-    output_csv = "../data/tax/training_tax.csv"
+    input_csv = "./data/interm/training_data.csv"
+    output_csv = "./data/tax/training_tax.csv"
     annotate_csv_with_taxonomy(input_csv, output_csv)

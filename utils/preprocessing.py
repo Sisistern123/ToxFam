@@ -121,7 +121,6 @@ def load_and_prepare_raw() -> Tuple[pd.DataFrame, pd.DataFrame]:
 
     for pattern, replacement in mapping.items():
         tox["Protein families"] = tox["Protein families"].str.replace(pattern, replacement, regex=True)
-
     # Report how many family labels changed (approximate mapping effect)
     changed_families = (tox["Protein families"] != original_families).sum()
     print(f"Tox entries whose family label changed after normalization/mapping: {changed_families}")
@@ -132,8 +131,8 @@ def load_and_prepare_raw() -> Tuple[pd.DataFrame, pd.DataFrame]:
         tox["Protein families"].map(tox["Protein families"].value_counts()) >= 10, "other"
     )
     n_other = (tox["Protein families"] == "other").sum()
-    print("Tox family distribution before grouping rare families (top 10):")
-    print(family_counts_before_other.head(10).to_string())
+    print("Tox family distribution before grouping rare families (top 30):")
+    print(family_counts_before_other.head(30).to_string())
     print(f"Tox entries assigned to 'other' family: {n_other}")
 
     # --- Non-toxic proteins ---
