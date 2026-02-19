@@ -11,32 +11,11 @@ app = typer.Typer(
     name="toxfam",
     help="Animal toxin protein family classification using MLP on ProtT5 embeddings.",
     no_args_is_help=True,
+    context_settings={"help_option_names": ["-h", "--help"]},
 )
 
 
-# ---------- toxfam train ----------
-
-
-@app.command()
-def train(
-    config: Annotated[
-        Path,
-        typer.Argument(
-            help="Path to training config YAML (e.g. configs/standard.yaml)",
-            exists=True,
-            readable=True,
-        ),
-    ],
-) -> None:
-    """Train a model using the specified config file."""
-    from toxfam.config import TrainConfig
-    from toxfam.training.orchestrator import run_training
-
-    cfg = TrainConfig.from_yaml(config)
-    run_training(cfg)
-
-
-# ---------- toxfam preprocess ----------
+# ---------- Step 1: toxfam preprocess ----------
 
 
 @app.command()
@@ -61,7 +40,7 @@ def preprocess(
     )
 
 
-# ---------- toxfam embed ----------
+# ---------- Step 2: toxfam embed ----------
 
 
 @app.command()
@@ -103,7 +82,7 @@ def embed(
     )
 
 
-# ---------- toxfam taxonomy ----------
+# ---------- Step 3a: toxfam taxonomy ----------
 
 
 @app.command()
@@ -122,7 +101,7 @@ def taxonomy(
     annotate_csv_with_taxonomy(str(input_csv), str(output_csv))
 
 
-# ---------- toxfam taxonomy-vectors ----------
+# ---------- Step 3b: toxfam taxonomy-vectors ----------
 
 
 @app.command("taxonomy-vectors")
@@ -165,7 +144,29 @@ def taxonomy_vectors(
         raise typer.Exit(code=1)
 
 
-# ---------- toxfam eval-test ----------
+# ---------- Step 4: toxfam train ----------
+
+
+@app.command()
+def train(
+    config: Annotated[
+        Path,
+        typer.Argument(
+            help="Path to training config YAML (e.g. configs/standard.yaml)",
+            exists=True,
+            readable=True,
+        ),
+    ],
+) -> None:
+    """Train a model using the specified config file."""
+    from toxfam.config import TrainConfig
+    from toxfam.training.orchestrator import run_training
+
+    cfg = TrainConfig.from_yaml(config)
+    run_training(cfg)
+
+
+# ---------- Step 5a: toxfam eval-test ----------
 
 
 @app.command("eval-test")
@@ -181,7 +182,7 @@ def eval_test(
     run_eval_test_set(model_dir=model_dir)
 
 
-# ---------- toxfam eval-nonmetazoan ----------
+# ---------- Step 5b: toxfam eval-nonmetazoan ----------
 
 
 @app.command("eval-nonmetazoan")
@@ -209,7 +210,7 @@ def eval_nonmetazoan(
     )
 
 
-# ---------- toxfam eval-unreviewed ----------
+# ---------- Step 5c: toxfam eval-unreviewed ----------
 
 
 @app.command("eval-unreviewed")
