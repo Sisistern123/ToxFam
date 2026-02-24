@@ -10,6 +10,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 from sklearn.metrics import accuracy_score, matthews_corrcoef
 from sklearn.preprocessing import label_binarize
+import wandb
 
 if TYPE_CHECKING:
     from toxfam.config import TrainConfig
@@ -146,6 +147,17 @@ def train_model(model, train_loader, val_loader, weights_tensor, config: TrainCo
             flush=True,
         )
 
+        # Log epoch metrics to wandb if a run is active.
+        if wandb.run is not None:
+            wandb.log(
+                {
+                    "epoch": epoch + 1,
+                    "train_loss": train_loss,
+                    "val_loss": val_loss,
+                    "val_mcc": val_mcc,
+                }
+            )
+
         improvement = False
         if val_loss < best_score:
             best_score = val_loss
@@ -155,9 +167,22 @@ def train_model(model, train_loader, val_loader, weights_tensor, config: TrainCo
             epochs_no_improve = 0
             output_dir = str(config.output_dir)
             os.makedirs(output_dir, exist_ok=True)
-            torch.save(
-                model.state_dict(), os.path.join(output_dir, "best_model.pt")
-            )
+            best_model_path = os.path.join(output_dir, "best_model.pt")
+            torch.save(model.state_dict(), best_model_path)
+
+            # Log best model checkpoint as a wandb artifact for model tracking.
+            if wandb.run is not None:
+                artifact = wandb.Artifact(
+                    name="toxfam-best-model",
+                    type="model",
+                    metadata={
+                        "epoch": epoch + 1,
+                        "val_loss": val_loss,
+                        "val_mcc": val_mcc,
+                    },
+                )
+                artifact.add_file(best_model_path)
+                wandb.log_artifact(artifact)
         else:
             epochs_no_improve += 1
 
