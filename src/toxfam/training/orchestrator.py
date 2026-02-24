@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 
 import pandas as pd
 import torch
 from torch.utils.data import DataLoader
+import wandb
 
 from toxfam.config import TrainConfig
 from toxfam.data.dataset import ToxDataset, analyze_data_splits
@@ -24,6 +26,32 @@ from toxfam.visualization.analysis import analyze_label_distribution_for_split
 def run_training(config: TrainConfig) -> None:
     out_root = Path(config.output_dir)
     out_root.mkdir(parents=True, exist_ok=True)
+
+    # ---- Weights & Biases (wandb) setup ----
+    # Can be overridden from the shell; these are just sensible defaults.
+    os.environ.setdefault("WANDB_PROJECT", "toxfam")
+    os.environ.setdefault("WANDB_LOG_MODEL", "true")
+
+    # Initial login (expects WANDB_API_KEY to be configured externally if needed).
+    wandb.login()
+
+    device = torch.device(
+        "mps"
+        if torch.backends.mps.is_available()
+        else "cuda"
+        if torch.cuda.is_available()
+        else "cpu"
+    )
+    print("Using device: ", device, flush=True)
+
+    # Initialize a run and log key hyperparameters.
+    wandb_config = {
+        "batch_size": config.batch_size,
+        "learning_rate": config.learning_rate,
+        "num_epochs": config.num_epochs,
+        "training_strategy": config.training_strategy,
+    }
+    wandb.init(project=os.environ["WANDB_PROJECT"], config=wandb_config)
 
     # 1. Load Data
     print("Loading data...")
@@ -105,8 +133,19 @@ def run_training(config: TrainConfig) -> None:
 
     scaled_model = ModelWithTemperature(final_model, device)
     scaled_model.set_temperature(val_selector)
-    torch.save(scaled_model.state_dict(), out_root / "best_model_calibrated.pt")
-    print(f"Saved calibrated model to {out_root / 'best_model_calibrated.pt'}")
+    calibrated_path = out_root / "best_model_calibrated.pt"
+    torch.save(scaled_model.state_dict(), calibrated_path)
+    print(f"Saved calibrated model to {calibrated_path}")
+
+    # Log calibrated model as a wandb artifact (model generation tracking).
+    if wandb.run is not None:
+        calibrated_artifact = wandb.Artifact(
+            name="toxfam-best-model-calibrated",
+            type="model",
+            metadata={"strategy": strategy},
+        )
+        calibrated_artifact.add_file(str(calibrated_path))
+        wandb.log_artifact(calibrated_artifact)
 
     # 6. Evaluation: Calibrated
     print("\nRunning Final Evaluation (Calibrated)...")
