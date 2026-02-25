@@ -50,9 +50,11 @@ def load_data(test_data_path: Path, train_data_path: Path):
     return test_df, train_df
 
 
-def run_hbi_search(test_df, train_df, test_fasta: Path, train_fasta: Path):
+def run_hbi_search(
+    test_df, train_df, test_fasta: Path, train_fasta: Path, results_dir: Path
+):
     print("Running HBI evaluation...")
-    tmp_dir = Path("tmp")
+    tmp_dir = results_dir / "tmp"
     tmp_dir.mkdir(parents=True, exist_ok=True)
 
     query_db = createdb(str(test_fasta), str(tmp_dir / "query_db"))
@@ -217,8 +219,8 @@ def run_eval_test_set(model_dir: Path | None = None) -> None:
             / "calibrated_combined"
         )
 
-    nn_preds_path = model_dir / "test_calibrated_predictions.csv"
-    nn_metrics_path = model_dir / "test_calibrated_metrics.json"
+    nn_preds_path = model_dir / "predictions" / "test_calibrated_predictions.csv"
+    nn_metrics_path = model_dir / "metrics" / "test_calibrated_metrics.json"
 
     summary_metrics = []
 
@@ -227,7 +229,7 @@ def run_eval_test_set(model_dir: Path | None = None) -> None:
 
     # 2) HBI search
     hbi_results = run_hbi_search(
-        test_df, train_df, paths["test_fasta"], paths["train_fasta"]
+        test_df, train_df, paths["test_fasta"], paths["train_fasta"], results_dir
     )
 
     # 3) Combine + align

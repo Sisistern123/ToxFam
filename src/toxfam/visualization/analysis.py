@@ -27,7 +27,11 @@ def analyze_label_distribution_for_split(
         }
     ).fillna(0)
 
-    dist_json = Path(output_dir, f"{label_col.replace(' ', '_')}_distribution.json")
+    out = Path(output_dir)
+    metrics_dir = out / "metrics"
+    plots_dir = out / "plots"
+
+    dist_json = metrics_dir / f"{label_col.replace(' ', '_')}_distribution.json"
     dist_df.to_json(dist_json, orient="index")
 
     fig, ax = plt.subplots(figsize=(10, 6))
@@ -38,14 +42,14 @@ def analyze_label_distribution_for_split(
     ax.set_title(f"Distribution of {label_col} Across Splits (log scale)")
     ax.set_ylabel("Count (log scale)")
     fig.savefig(
-        Path(output_dir, f"{label_col.replace(' ', '_')}_distribution_log.png")
+        plots_dir / f"{label_col.replace(' ', '_')}_distribution_log.png"
     )
     plt.close(fig)
 
     chi2, p, dof, expected = chi2_contingency(dist_df.T)
-    with Path(
-        output_dir, f"{label_col.replace(' ', '_')}_chi_square.json"
-    ).open("w") as fp:
+    with (metrics_dir / f"{label_col.replace(' ', '_')}_chi_square.json").open(
+        "w"
+    ) as fp:
         json.dump({"chi2": chi2, "p_value": p, "dof": dof}, fp, indent=4)
 
 

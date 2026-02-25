@@ -24,7 +24,7 @@ env/
 
 # Project data (keep out of git)
 benchmark/uniprot/
-benchmark/HBI/tmp/
+**/tmp/
 model/model_output/
 
 # Ignore all contents of data/
@@ -47,6 +47,3 @@ data/protspace/*
 
 # Local-only notes
 notes.md
-
-benchmark/new/tmp
-benchmark/new/evaluation/non-metazoa/results/hbi/tmp

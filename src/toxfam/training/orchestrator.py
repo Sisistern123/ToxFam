@@ -53,6 +53,13 @@ def run_training(config: TrainConfig) -> None:
     }
     wandb.init(project=os.environ["WANDB_PROJECT"], config=wandb_config)
 
+    # Create organized subdirectories
+    plots_dir = out_root / "plots"
+    metrics_dir = out_root / "metrics"
+    predictions_dir = out_root / "predictions"
+    for d in (plots_dir, metrics_dir, predictions_dir):
+        d.mkdir(exist_ok=True)
+
     # 1. Load Data
     print("Loading data...")
     df = pd.read_csv(config.input_csv)

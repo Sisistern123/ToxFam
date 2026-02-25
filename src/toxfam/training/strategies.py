@@ -68,7 +68,7 @@ def run_standard_strategy(
         w_tensor,
         config,
     )
-    plot_loss_curve(hist, Path(out_dir) / "loss_standard.png")
+    plot_loss_curve(hist, Path(out_dir) / "plots" / "loss_standard.png")
     return model
 
 
@@ -90,7 +90,7 @@ def run_combined_strategy(
         w_tensor,
         config,
     )
-    plot_loss_curve(hist, Path(out_dir) / "loss_combined.png")
+    plot_loss_curve(hist, Path(out_dir) / "plots" / "loss_combined.png")
     return model
 
 
@@ -139,7 +139,7 @@ def run_pretrain_finetune_strategy(
         config,
     )
 
-    plot_loss_curve(hist, Path(out_dir) / "loss_finetuned.png")
+    plot_loss_curve(hist, Path(out_dir) / "plots" / "loss_finetuned.png")
     return model
 
 
@@ -182,10 +182,11 @@ def evaluate_label_on_dataset(
         }
     )
 
-    conf_df.to_csv(Path(out_dir) / f"{tag.lower()}_predictions.csv", index=False)
+    out_path = Path(out_dir)
+    conf_df.to_csv(out_path / "predictions" / f"{tag.lower()}_predictions.csv", index=False)
 
     plot_confusion_matrix(
-        y_true, y_pred, ds.le, Path(out_dir) / f"{tag.lower()}_confusion_matrix.png"
+        y_true, y_pred, ds.le, out_path / "plots" / f"{tag.lower()}_confusion_matrix.png"
     )
 
     report = classification_report(
@@ -195,13 +196,13 @@ def evaluate_label_on_dataset(
         output_dict=True,
         zero_division=0,
     )
-    (Path(out_dir) / f"{tag.lower()}_metrics.json").write_text(
+    (out_path / "metrics" / f"{tag.lower()}_metrics.json").write_text(
         json.dumps(
             {"numeric_metrics": metrics, "classification_report": report}, indent=4
         )
     )
 
     plot_multiclass_roc_from_scores(
-        y_true, y_scores, ds.le.classes_, Path(out_dir) / f"{tag.lower()}_roc.png"
+        y_true, y_scores, ds.le.classes_, out_path / "plots" / f"{tag.lower()}_roc.png"
     )
     ds.close()
