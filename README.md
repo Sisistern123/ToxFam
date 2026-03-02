@@ -89,7 +89,6 @@ All steps are accessible through the unified `toxfam` CLI (run via `uv run toxfa
    ```bash
    uv run toxfam train configs/standard.yaml      # embeddings only
    uv run toxfam train configs/combined.yaml       # embeddings + taxonomy
-   uv run toxfam train configs/pretrained.yaml     # pretrain on taxonomy, finetune on embeddings
    ```
 
 4. **Evaluation & benchmarking**

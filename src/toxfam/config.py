@@ -15,7 +15,7 @@ class TrainConfig(BaseModel):
     tax_h5_path: Path | None = None
     output_dir: Path
 
-    training_strategy: Literal["standard", "combined", "pretrain_finetune"]
+    training_strategy: Literal["standard", "combined"]
 
     embedding_dim: int = 1024
     tax_dim: int = 56
@@ -25,11 +25,6 @@ class TrainConfig(BaseModel):
     num_epochs: int = 200
     learning_rate: float = 0.0001
     early_stopping_patience: int = 10
-
-    # Pretrain-finetune specific
-    tax_epochs: int = 50
-    tax_lr: float = 0.001
-    freeze_backbone: bool = False
 
     model_config = {"extra": "ignore"}
 

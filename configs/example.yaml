@@ -7,11 +7,10 @@ tax_h5_path: "data/tax/binary_taxonomy_vectors.h5"
 output_dir: "model/model_output/finetune"
 
 # 2. STRATEGY (The Master Switch)
-# Options: "standard" | "combined" | "pretrain_finetune"
+# Options: "standard" | "combined"
 # standard is one MLP
 # combined is a taxa and a tox MLP getting combined in the end
-# pretrain_finetune is a MLP getting pretrained on taxa and then on tox
-training_strategy: "pretrain_finetune"
+training_strategy: "standard"
 
 # 3. HYPERPARAMETERS
 use_focal_loss: true
@@ -25,12 +24,7 @@ hidden_dims: [256, 256]
 embedding_dim: 1024
 tax_dim: 56
 
-# Standard / Combined / Stage 2 Settings
+# Training Settings
 num_epochs: 200
 learning_rate: 0.0001
 early_stopping_patience: 10
-freeze_backbone: false  # Only for pretrain_finetune stage 2
-
-# Pretrain Stage 1 Settings (Only for pretrain_finetune)
-tax_epochs: 50
-tax_lr: 0.001

@@ -40,12 +40,10 @@ uv run toxfam taxonomy-vectors --tax-csv <csv> --input-h5 <h5> --output-h5 <h5> 
 ```bash
 uv run toxfam train configs/standard.yaml
 uv run toxfam train configs/combined.yaml
-uv run toxfam train configs/pretrained.yaml
 ```
 The config YAML selects the training strategy. Available configs in `configs/`:
 - `standard.yaml` — embeddings-only MLP
 - `combined.yaml` — two-branch MLP (embeddings + taxonomy)
-- `pretrained.yaml` — pretrain on taxonomy, finetune on embeddings
 - `example.yaml` — annotated reference config
 
 ### Evaluation / Benchmarking
@@ -93,11 +91,10 @@ src/toxfam/
 
 ### Training Strategies (the central design axis)
 
-The system supports three training strategies, selected via `training_strategy` in the YAML config:
+The system supports two training strategies, selected via `training_strategy` in the YAML config:
 
 1. **`standard`** — `ModularMLP` fed with ProtT5 embeddings only (1024-dim)
 2. **`combined`** — `MultiInputMLP` with two branches: one for embeddings, one for binary taxonomy vectors (56-dim), concatenated before a joint head
-3. **`pretrain_finetune`** — `ModularMLP` pretrained on taxonomy vectors, then the projector (input layer) is swapped in-place via `swap_input_layer()` to accept embeddings for finetuning while keeping trained backbone weights
 
 ### Config
 
@@ -120,7 +117,7 @@ Training config is a Pydantic `TrainConfig` model (`src/toxfam/config.py`) loade
 - `toxfam.training.strategies` — `DataSelector` wraps DataLoaders to route the correct inputs per strategy
 - `toxfam.training.orchestrator` — `run_training(config)` orchestrates the full training → evaluation → calibration pipeline
 - `toxfam.model.calibration` — `ModelWithTemperature` wraps trained model with learned temperature scaling
-- `toxfam.model.architectures` — `ModularMLP` (projector + backbone, supports `swap_input_layer`), `MultiInputMLP` (two-branch), legacy `MLP`
+- `toxfam.model.architectures` — `ModularMLP` (projector + backbone), `MultiInputMLP` (two-branch), legacy `MLP`
 
 ### Data Format Conventions
 

@@ -24,7 +24,7 @@ class DataSelector:
 
     def __init__(self, loader, mode):
         self.loader = loader
-        self.mode = mode  # 'emb_only', 'tax_only', 'both'
+        self.mode = mode  # 'emb_only', 'both'
 
     def __iter__(self):
         for batch in self.loader:
@@ -42,8 +42,6 @@ class DataSelector:
                 emb, tax = features
                 if self.mode == "emb_only":
                     yield emb, label
-                elif self.mode == "tax_only":
-                    yield tax, label
                 else:
                     yield (emb, tax), label
 
@@ -91,55 +89,6 @@ def run_combined_strategy(
         config,
     )
     plot_loss_curve(hist, Path(out_dir) / "plots" / "loss_combined.png")
-    return model
-
-
-def run_pretrain_finetune_strategy(
-    train_loader, val_loader, w_tensor, num_classes, out_dir, config: TrainConfig
-):
-    print(">>> Running Strategy: PRETRAIN-FINETUNE (Optimized)")
-
-    model = ModularMLP(
-        input_dim=config.tax_dim,
-        hidden_dims=config.hidden_dims,
-        num_classes=num_classes,
-        dropout=config.dropout,
-    )
-
-    # Stage 1: Pretraining on Taxonomy
-    print("--- Stage 1: Pretraining on Taxonomy ---")
-    s1_cfg = config.model_copy()
-    s1_cfg.num_epochs = config.tax_epochs
-    s1_cfg.learning_rate = config.tax_lr
-
-    model, _ = train_model(
-        model,
-        DataSelector(train_loader, "tax_only"),
-        DataSelector(val_loader, "tax_only"),
-        w_tensor,
-        s1_cfg,
-    )
-
-    # The Swap (In-Place)
-    print("--- Swapping Input Layer (Tax -> Embeddings) ---")
-    model.swap_input_layer(new_input_dim=config.embedding_dim)
-
-    if config.freeze_backbone:
-        print("Freezing backbone layers...")
-        for param in model.backbone.parameters():
-            param.requires_grad = False
-
-    # Stage 2: Finetuning on Embeddings
-    print("--- Stage 2: Finetuning on Embeddings ---")
-    model, hist = train_model(
-        model,
-        DataSelector(train_loader, "emb_only"),
-        DataSelector(val_loader, "emb_only"),
-        w_tensor,
-        config,
-    )
-
-    plot_loss_curve(hist, Path(out_dir) / "plots" / "loss_finetuned.png")
     return model
 
 

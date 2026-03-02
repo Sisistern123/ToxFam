@@ -16,7 +16,6 @@ from toxfam.training.strategies import (
     DataSelector,
     evaluate_label_on_dataset,
     run_combined_strategy,
-    run_pretrain_finetune_strategy,
     run_standard_strategy,
 )
 from toxfam.training.trainer import get_class_weights
@@ -105,10 +104,6 @@ def run_training(config: TrainConfig) -> None:
         )
     elif strategy == "combined":
         final_model = run_combined_strategy(
-            train_loader, val_loader, w_tensor, train_ds.num_classes, out_root, config
-        )
-    elif strategy == "pretrain_finetune":
-        final_model = run_pretrain_finetune_strategy(
             train_loader, val_loader, w_tensor, train_ds.num_classes, out_root, config
         )
     else:

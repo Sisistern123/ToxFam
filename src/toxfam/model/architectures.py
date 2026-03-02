@@ -65,7 +65,7 @@ class MultiInputMLP(nn.Module):
 
 
 class ModularMLP(nn.Module):
-    """MLP with swappable projector for pretrain-finetune strategy."""
+    """MLP with separate projector and backbone."""
 
     def __init__(self, input_dim, hidden_dims, num_classes, dropout=0.3):
         super().__init__()
@@ -97,21 +97,3 @@ class ModularMLP(nn.Module):
         x = self.backbone(x)
         return x
 
-    def swap_input_layer(self, new_input_dim):
-        """Replace the projector for a new input dimension,
-        keeping the backbone intact."""
-        backbone_input_dim = self.projector[0].out_features
-        old_input_dim = self.projector[0].in_features
-
-        new_projector = nn.Sequential(
-            nn.Linear(new_input_dim, backbone_input_dim),
-            nn.ReLU(),
-            nn.Dropout(self.dropout_rate),
-        )
-
-        self.projector = new_projector
-
-        device = next(self.backbone.parameters()).device
-        self.projector.to(device)
-
-        print(f"Swapped input layer: {old_input_dim} -> {new_input_dim}")
