@@ -7,7 +7,6 @@ Merges functionality from:
 
 from __future__ import annotations
 
-import ast
 import logging
 import os
 import shutil
@@ -171,9 +170,7 @@ class UniProtTaxonomyRetriever(BaseFeatureRetriever):
                     r.raise_for_status()
                     break
                 except requests.RequestException as e:
-                    logger.warning(
-                        f"Batch {i // batch_size + 1}: {e}, retrying..."
-                    )
+                    logger.warning(f"Batch {i // batch_size + 1}: {e}, retrying...")
                     time.sleep(2**attempt)
             else:
                 for uid in batch:
@@ -218,9 +215,7 @@ class TaxonomyRetriever(BaseFeatureRetriever):
                 if taxon_id in taxonomies_info:
                     result[taxon_id] = {"features": taxonomies_info[taxon_id]}
                 else:
-                    result[taxon_id] = {
-                        "features": dict.fromkeys(self.features, "")
-                    }
+                    result[taxon_id] = {"features": dict.fromkeys(self.features, "")}
                 pbar.update(1)
 
         return result
@@ -239,64 +234,30 @@ class TaxonomyRetriever(BaseFeatureRetriever):
                 taxon = taxopy.Taxon(taxon_id, self.taxdb)
 
                 rank_name_dict = taxon.rank_name_dictionary
-                ranks = taxon.rank_lineage
-                taxids = taxon.taxid_lineage
-                rank_id_dict = {r: tid for r, tid in zip(ranks, taxids) if r}
-
                 root_name = rank_name_dict.get(
                     "cellular root", ""
                 ) or rank_name_dict.get("acellular root", "")
-                root_id = rank_id_dict.get(
-                    "cellular root", ""
-                ) or rank_id_dict.get("acellular root", "")
-                domain_name = rank_name_dict.get(
-                    "domain", ""
-                ) or rank_name_dict.get("realm", "")
-                domain_id = rank_id_dict.get(
-                    "domain", ""
-                ) or rank_id_dict.get("realm", "")
+                domain_name = rank_name_dict.get("domain", "") or rank_name_dict.get(
+                    "realm", ""
+                )
 
                 full_taxonomy_info = {
                     "root": root_name,
-                    "root_id": root_id,
                     "domain": domain_name,
-                    "domain_id": domain_id,
                     "kingdom": rank_name_dict.get("kingdom", ""),
-                    "kingdom_id": rank_id_dict.get("kingdom", 0),
                     "phylum": rank_name_dict.get("phylum", ""),
-                    "phylum_id": rank_id_dict.get("phylum", 0),
                     "class": rank_name_dict.get("class", ""),
-                    "class_id": rank_id_dict.get("class", 0),
                     "order": rank_name_dict.get("order", ""),
-                    "order_id": rank_id_dict.get("order", 0),
                     "family": rank_name_dict.get("family", ""),
-                    "family_id": rank_id_dict.get("family", 0),
                     "genus": rank_name_dict.get("genus", ""),
-                    "genus_id": rank_id_dict.get("genus", 0),
                     "species": rank_name_dict.get("species", ""),
-                    "species_id": rank_id_dict.get("species", 0),
                 }
-
-                ranks_of_interest = [
-                    "phylum",
-                    "class",
-                    "order",
-                    "family",
-                    "genus",
-                    "species",
-                ]
-                tax_array = [int(rank_id_dict.get(r, 0)) for r in ranks_of_interest]
-                full_taxonomy_info["tax_array"] = tax_array
 
                 result[taxon_id] = full_taxonomy_info
 
             except Exception as e:
                 logger.error(f"Failed to get taxonomy for {taxon_id}: {e}")
-                empty_info = {f: "" for f in TAXONOMY_FEATURES}
-                for f in TAXONOMY_FEATURES:
-                    empty_info[f + "_id"] = 0
-                empty_info["tax_array"] = [0, 0, 0, 0, 0, 0]
-                result[taxon_id] = empty_info
+                result[taxon_id] = {f: "" for f in TAXONOMY_FEATURES}
 
         return result
 
@@ -349,9 +310,7 @@ class TaxonomyRetriever(BaseFeatureRetriever):
 
         if existing_db_present:
             if needs_refresh:
-                logger.info(
-                    "Taxonomy cache is stale. Attempting safe refresh."
-                )
+                logger.info("Taxonomy cache is stale. Attempting safe refresh.")
                 temp_dir_path = None
                 try:
                     temp_dir_path = Path(tempfile.mkdtemp(prefix="taxopy_tmp_"))
@@ -413,9 +372,7 @@ def annotate_csv_with_taxonomy(input_csv: str | Path, output_csv: str | Path) ->
     df = pd.read_csv(input_csv)
 
     if "identifier" not in df.columns:
-        raise ValueError(
-            "CSV must contain a column named 'identifier' (UniProt ID)."
-        )
+        raise ValueError("CSV must contain a column named 'identifier' (UniProt ID).")
 
     uniprot_ids = df["identifier"].dropna().astype(str).tolist()
     retriever = UniProtTaxonomyRetriever(uniprot_ids)
@@ -471,9 +428,7 @@ def build_binary_tax_dict(
     taxa_norm = [t.strip().lower() for t in TAXA]
 
     for original_name, norm_name in zip(TAXA, taxa_norm):
-        df[original_name] = (
-            (df[tax_cols] == norm_name).any(axis=1).astype(np.float32)
-        )
+        df[original_name] = (df[tax_cols] == norm_name).any(axis=1).astype(np.float32)
 
     tax_dict = {}
     for _, row in df.iterrows():
@@ -496,9 +451,7 @@ def run_binary_taxonomy_pipeline(
     tax_dict = build_binary_tax_dict(tax_csv_path, id_col=id_col)
     vec_len = len(TAXA)
 
-    with h5py.File(input_h5_path, "r") as f_in, h5py.File(
-        output_h5_path, "w"
-    ) as f_out:
+    with h5py.File(input_h5_path, "r") as f_in, h5py.File(output_h5_path, "w") as f_out:
         total_entries = len(f_in.keys())
         matched = 0
         unmatched = 0
@@ -528,91 +481,3 @@ def run_binary_taxonomy_pipeline(
 
     print(f"\nBinary taxonomy pipeline finished.")
     print(f"Output file (only one-hot vectors): {output_h5_path}")
-
-
-def run_numeric_taxonomy_pipeline(
-    tax_csv_path: str | Path,
-    input_h5_path: str | Path,
-    output_h5_path: str | Path,
-    normalize: bool = True,
-) -> None:
-    """Append numeric taxonomy vectors to embeddings."""
-    tax = pd.read_csv(tax_csv_path)
-
-    tax["tax_array"] = tax["tax_array"].apply(
-        lambda x: ast.literal_eval(x) if isinstance(x, str) else x
-    )
-
-    tax_dict = dict(zip(tax["identifier"], tax["tax_array"]))
-
-    if len(tax_dict) > 0:
-        example_array = next(iter(tax_dict.values()))
-        tax_vec_len = len(example_array)
-    else:
-        tax_vec_len = 0
-
-    normalize_taxonomy = None
-    if normalize and tax_vec_len > 0:
-        all_tax_values = []
-        for tax_array in tax_dict.values():
-            all_tax_values.extend(tax_array)
-
-        tax_min = min(all_tax_values)
-        tax_max = max(all_tax_values)
-
-        print(f"Taxonomy value range: [{tax_min}, {tax_max}]")
-        print("Will normalize to range: [-2, 2]\n")
-
-        def normalize_taxonomy(tax_array):
-            tax_array = np.array(tax_array, dtype=np.float32)
-            normalized = (tax_array - tax_min) / (tax_max - tax_min)
-            normalized = normalized * 4 - 2
-            return normalized
-
-    else:
-        print("Taxonomy normalization: DISABLED\n")
-
-    print(f"Loaded {len(tax_dict)} numeric taxonomy entries")
-
-    with h5py.File(input_h5_path, "r") as f_in, h5py.File(
-        output_h5_path, "w"
-    ) as f_out:
-        total_entries = len(f_in.keys())
-        matched = 0
-        unmatched = 0
-        unmatched_ids = []
-
-        for i, protein_id in enumerate(f_in.keys()):
-            embedding = f_in[protein_id][:]
-
-            if protein_id in tax_dict:
-                tax_array = tax_dict[protein_id]
-
-                if normalize_taxonomy is not None:
-                    tax_array = normalize_taxonomy(tax_array)
-                else:
-                    tax_array = np.array(tax_array, dtype=embedding.dtype)
-
-                combined = np.concatenate([embedding, tax_array])
-                matched += 1
-            else:
-                tax_array = np.zeros(tax_vec_len, dtype=embedding.dtype)
-                combined = np.concatenate([embedding, tax_array])
-                unmatched += 1
-                unmatched_ids.append(protein_id)
-
-            f_out.create_dataset(protein_id, data=combined)
-
-            if (i + 1) % 10000 == 0:
-                print(f"Processed {i + 1}/{total_entries} entries...")
-
-        print(f"\nProcessing complete! (numeric taxonomy)")
-        print(f"Total entries: {total_entries}")
-        print(f"Matched with taxonomy: {matched}")
-        print(f"Unmatched (filled with zeros): {unmatched}")
-        print(f"Normalization applied: {normalize and (normalize_taxonomy is not None)}")
-
-        if unmatched > 0:
-            print(f"\nFirst 10 unmatched IDs: {unmatched_ids[:10]}")
-
-    print("\nNumeric taxonomy pipeline finished.")

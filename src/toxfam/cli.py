@@ -27,8 +27,6 @@ DATA_ASSETS = {
     "training_data.h5": "embeddings/training_data.h5",
     "training_tax.csv": "taxonomy/training_tax.csv",
     "binary_taxonomy_vectors.h5": "taxonomy/binary_taxonomy_vectors.h5",
-    "training_data_with_tax.h5": "taxonomy/training_data_with_tax.h5",
-    "normed_training_data_with_tax.h5": "taxonomy/normed_training_data_with_tax.h5",
 }
 
 
@@ -159,33 +157,17 @@ def taxonomy_vectors(
         typer.Option(help="Input H5 with protein embeddings", exists=True),
     ],
     output_h5: Annotated[
-        Path, typer.Option(help="Output H5 for taxonomy vectors")
+        Path, typer.Option(help="Output H5 for binary taxonomy vectors")
     ],
-    mode: Annotated[
-        str, typer.Option(help="Vector mode: 'binary' or 'numeric'")
-    ] = "binary",
 ) -> None:
-    """Generate taxonomy vectors from annotated CSV."""
-    from toxfam.data.taxonomy import (
-        run_binary_taxonomy_pipeline,
-        run_numeric_taxonomy_pipeline,
-    )
+    """Generate binary taxonomy vectors from annotated CSV."""
+    from toxfam.data.taxonomy import run_binary_taxonomy_pipeline
 
-    if mode == "binary":
-        run_binary_taxonomy_pipeline(
-            tax_csv_path=str(tax_csv),
-            input_h5_path=str(input_h5),
-            output_h5_path=str(output_h5),
-        )
-    elif mode == "numeric":
-        run_numeric_taxonomy_pipeline(
-            tax_csv_path=str(tax_csv),
-            input_h5_path=str(input_h5),
-            output_h5_path=str(output_h5),
-        )
-    else:
-        typer.echo(f"Unknown mode: {mode}. Use 'binary' or 'numeric'.", err=True)
-        raise typer.Exit(code=1)
+    run_binary_taxonomy_pipeline(
+        tax_csv_path=str(tax_csv),
+        input_h5_path=str(input_h5),
+        output_h5_path=str(output_h5),
+    )
 
 
 # ---------- Step 4: toxfam train ----------

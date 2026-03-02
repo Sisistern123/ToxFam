@@ -38,7 +38,7 @@ uv run toxfam embed -i <input.fasta> -o <output.h5>
 uv run toxfam taxonomy --input-csv <csv> --output-csv <csv>
 
 # Build binary taxonomy vectors for model input
-uv run toxfam taxonomy-vectors --tax-csv <csv> --input-h5 <h5> --output-h5 <h5> [--mode binary|numeric]
+uv run toxfam taxonomy-vectors --tax-csv <csv> --input-h5 <h5> --output-h5 <h5>
 ```
 
 ### Train a Model
@@ -124,9 +124,7 @@ data/
 │   │   └── training_data.h5    # ProtT5 embeddings
 │   └── taxonomy/
 │       ├── training_tax.csv
-│       ├── binary_taxonomy_vectors.h5
-│       ├── training_data_with_tax.h5
-│       └── normed_training_data_with_tax.h5
+│       └── binary_taxonomy_vectors.h5
 ```
 
 ### Data Flow
