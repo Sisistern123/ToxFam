@@ -10,9 +10,9 @@
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 BASE_DIR="$(dirname "$SCRIPT_DIR")"
 
-RAW_DIR="$BASE_DIR/data/raw"
-SP6_TOX_DIR="$BASE_DIR/data/sp6/tox"
-SP6_NONTox_DIR="$BASE_DIR/data/sp6/nontox"
+FASTA_DIR="$BASE_DIR/data/intermediate/fasta"
+SP6_TOX_DIR="$BASE_DIR/data/intermediate/sp6/tox"
+SP6_NONTox_DIR="$BASE_DIR/data/intermediate/sp6/nontox"
 
 # Custom model directory
 MODEL_DIR="$HOME/Desktop/Uni/signalp6/signalp-6-package/models"
@@ -25,14 +25,14 @@ source "$(conda info --base)/etc/profile.d/conda.sh"
 conda activate signalp6
 
 echo "🚀 Running SignalP6 on tox.fasta"
-signalp6 --fastafile "$RAW_DIR/tox.fasta" \
+signalp6 --fastafile "$FASTA_DIR/tox.fasta" \
          --output_dir "$SP6_TOX_DIR" \
          --organism eukarya \
          --mode fast \
          --model_dir "$MODEL_DIR"
 
 echo "🚀 Running SignalP6 on nontox.fasta"
-signalp6 --fastafile "$RAW_DIR/nontox.fasta" \
+signalp6 --fastafile "$FASTA_DIR/nontox.fasta" \
          --output_dir "$SP6_NONTox_DIR" \
          --organism eukarya \
          --mode fast \

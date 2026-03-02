@@ -52,7 +52,7 @@ def read_fasta(fasta_path: str | Path) -> dict[str, str]:
     return sequences
 
 
-def _process_batch(batch, hf_file, model, tokenizer, device, per_protein):
+def _process_batch(batch, hf_file, model, tokenizer, device):
     pdb_ids, seqs, seq_lens = zip(*batch)
 
     token_encoding = tokenizer(
@@ -77,10 +77,7 @@ def _process_batch(batch, hf_file, model, tokenizer, device, per_protein):
     for batch_idx, identifier in enumerate(pdb_ids):
         s_len = seq_lens[batch_idx]
         emb = embedding_repr.last_hidden_state[batch_idx, :s_len]
-
-        if per_protein:
-            emb = emb.mean(dim=0)
-
+        emb = emb.mean(dim=0)
         emb_np = emb.cpu().numpy()
 
         if identifier in hf_file:
@@ -93,13 +90,12 @@ def generate_embeddings(
     input_fasta: str | Path,
     output_h5: str | Path,
     *,
-    per_protein: bool = False,
     model_dir: str | None = None,
     model_name: str = "Rostlab/prot_t5_xl_half_uniref50-enc",
     max_residues: int = 4000,
     max_batch: int = 100,
 ) -> None:
-    """Generate ProtT5 embeddings from a FASTA file and write to HDF5."""
+    """Generate per-protein ProtT5 embeddings from a FASTA file and write to HDF5."""
     device = get_device()
     logging.info(f"Using device: {device}")
 
@@ -127,7 +123,7 @@ def generate_embeddings(
                 if (len(batch) >= max_batch) or (
                     batch_res_count + seq_len > max_residues
                 ):
-                    _process_batch(batch, hf, model, tokenizer, device, per_protein)
+                    _process_batch(batch, hf, model, tokenizer, device)
                     batch = []
                     batch_res_count = 0
 
@@ -135,6 +131,6 @@ def generate_embeddings(
             batch_res_count += seq_len
 
             if seq_idx == len(seq_dict):
-                _process_batch(batch, hf, model, tokenizer, device, per_protein)
+                _process_batch(batch, hf, model, tokenizer, device)
 
     logging.info(f"Finished in {time.time() - start_time:.2f} seconds")

@@ -11,20 +11,25 @@ ToxFam is a research project for classifying animal toxin protein sequences into
 - Python >=3.11, managed with [uv](https://github.com/astral-sh/uv)
 - Install: `uv sync`
 - Key deps: PyTorch, transformers (ProtT5), biopython, scikit-learn, h5py, pymmseqs, protspace, iterative-stratification, pydantic, typer
-- Large data files (HDF5, CSV) are tracked via Git LFS (see `.gitattributes`)
+- Large processed data files (HDF5, CSV) are distributed via GitHub Releases; download with `uv run toxfam download-data`
 
 ## Common Commands
 
 All commands are run via the `toxfam` CLI using `uv run`:
 
+### Download Processed Data
+```bash
+uv run toxfam download-data
+```
+
 ### Data Preprocessing Pipeline
 ```bash
-uv run toxfam preprocess [--run-signalp6] [--min-seq-id 0.9]
+uv run toxfam preprocess [--no-signalp6] [--min-seq-id 0.9]
 ```
 
 ### Generate ProtT5 Embeddings
 ```bash
-uv run toxfam embed -i <input.fasta> -o <output.h5> [--per-protein]
+uv run toxfam embed -i <input.fasta> -o <output.h5>
 ```
 
 ### Taxonomy Feature Generation
@@ -100,14 +105,38 @@ The system supports two training strategies, selected via `training_strategy` in
 
 Training config is a Pydantic `TrainConfig` model (`src/toxfam/config.py`) loaded from YAML. It replaces the old global `CONFIG` dict. Every function that needs config receives it as a `config: TrainConfig` parameter.
 
+### Data Directory Layout
+
+```
+data/
+├── raw/                        # Manually obtained inputs (committed to git)
+│   ├── 0800.tsv
+│   └── nontox.tsv
+├── intermediate/               # All pipeline-generated intermediates (gitignored)
+│   ├── fasta/                  # tox.fasta, nontox.fasta, *_noSP.fasta
+│   ├── families/               # Per-family FASTAs for MMseqs2
+│   ├── mmseqs/                 # MMseqs2 clustering output
+│   ├── sp6/                    # SignalP6 output (tox/, nontox/)
+│   └── representatives/        # Post-clustering rep seqs (CSV + FASTA)
+├── processed/                  # Final outputs consumed by training (gitignored, via GitHub Releases)
+│   ├── training_data.csv       # Train/val/test split CSV
+│   ├── embeddings/
+│   │   └── training_data.h5    # ProtT5 embeddings
+│   └── taxonomy/
+│       ├── training_tax.csv
+│       ├── binary_taxonomy_vectors.h5
+│       ├── training_data_with_tax.h5
+│       └── normed_training_data_with_tax.h5
+```
+
 ### Data Flow
 
 1. **Raw data** (`data/raw/`) — UniProt TSVs of toxin/non-toxin proteins
-2. **Preprocessing** (`toxfam.data.preprocessing`) — normalizes family labels, runs optional SignalP6 signal peptide removal, clusters per-family with MMseqs2 at 90% identity, creates multilabel-stratified train/val/test splits
+2. **Preprocessing** (`toxfam.data.preprocessing`) — normalizes family labels, runs optional SignalP6 signal peptide removal, clusters per-family with MMseqs2 at 90% identity, creates multilabel-stratified train/val/test splits; intermediates go to `data/intermediate/`, final split CSV to `data/processed/`
 3. **Feature generation**:
-   - `toxfam.data.embedding` — ProtT5 per-protein embeddings → HDF5
-   - `toxfam.data.taxonomy` — UniProt ID → NCBI taxonomy lineage; taxonomy CSV → binary (one-hot) vectors over 56 predefined taxa → separate HDF5
-4. **Training** (`toxfam.training.orchestrator`) — loads CSV + HDF5 files, dispatches to strategy, trains with early stopping, applies temperature scaling calibration, evaluates on val/test sets
+   - `toxfam.data.embedding` — ProtT5 per-protein embeddings → `data/processed/embeddings/`
+   - `toxfam.data.taxonomy` — UniProt ID → NCBI taxonomy lineage; taxonomy CSV → binary (one-hot) vectors over 56 predefined taxa → `data/processed/taxonomy/`
+4. **Training** (`toxfam.training.orchestrator`) — loads CSV + HDF5 files from `data/processed/`, dispatches to strategy, trains with early stopping, applies temperature scaling calibration, evaluates on val/test sets
 5. **Outputs** (configured via `output_dir` in YAML) — `best_model.pt`, `best_model_calibrated.pt`, confusion matrices, ROC curves, predictions CSV, metrics JSON
 
 ### Key Module Relationships

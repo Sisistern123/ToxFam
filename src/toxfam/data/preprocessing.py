@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
+import io
 import os
 import re
 import subprocess
-from pathlib import Path
+from contextlib import redirect_stdout
 from typing import Dict, List, Set, Tuple
 
 import numpy as np
@@ -13,33 +14,34 @@ import pandas as pd
 from Bio import SeqIO
 from iterstrat.ml_stratifiers import MultilabelStratifiedShuffleSplit
 from pymmseqs.commands import easy_cluster
+from rich.console import Console
+from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, MofNCompleteColumn
+from rich.table import Table
 from sklearn.preprocessing import MultiLabelBinarizer
 
-from toxfam._paths import get_project_root
+from toxfam._paths import get_project_root, data_dir, raw_dir, intermediate_dir, processed_dir
 
-
-def _base_dir() -> Path:
-    return get_project_root()
-
-
-def _data_dir() -> Path:
-    return _base_dir() / "data"
+console = Console()
 
 
 # ---------- Utilities ----------
 
 
 def ensure_dirs() -> None:
+    interm = intermediate_dir()
+    proc = processed_dir()
     dirs = [
-        _data_dir() / "raw",
-        _data_dir() / "interm",
-        _data_dir() / "protspace",
-        _data_dir() / "sp6" / "tox",
-        _data_dir() / "sp6" / "nontox",
-        _data_dir() / "families",
-        _data_dir() / "mmseqs",
-        _base_dir() / "benchmark" / "HBI",
-        _base_dir() / "benchmark",
+        raw_dir(),
+        interm / "fasta",
+        interm / "families",
+        interm / "mmseqs",
+        interm / "sp6" / "tox",
+        interm / "sp6" / "nontox",
+        interm / "representatives",
+        proc / "embeddings",
+        proc / "taxonomy",
+        get_project_root() / "benchmark" / "HBI",
+        get_project_root() / "benchmark",
     ]
     for p in dirs:
         p.mkdir(parents=True, exist_ok=True)
@@ -69,10 +71,10 @@ def sanitize_filename(name: str) -> str:
 
 
 def load_and_prepare_raw() -> Tuple[pd.DataFrame, pd.DataFrame]:
-    raw_dir = _data_dir() / "raw"
+    raw = raw_dir()
 
     tox = (
-        pd.read_csv(raw_dir / "0800.tsv", sep="\t")
+        pd.read_csv(raw / "0800.tsv", sep="\t")
         .dropna(subset=["Protein families"])
         .copy()
     )
@@ -114,7 +116,7 @@ def load_and_prepare_raw() -> Tuple[pd.DataFrame, pd.DataFrame]:
         "other",
     )
 
-    nontox = pd.read_csv(raw_dir / "nontox.tsv", sep="\t").copy()
+    nontox = pd.read_csv(raw / "nontox.tsv", sep="\t").copy()
     nontox.rename(columns={"Entry": "identifier"}, inplace=True)
     cutoff = (
         nontox["Sequence"]
@@ -131,8 +133,8 @@ def load_and_prepare_raw() -> Tuple[pd.DataFrame, pd.DataFrame]:
 def apply_signalp_filtered_sequences(
     tox: pd.DataFrame, nontox: pd.DataFrame
 ) -> Tuple[pd.DataFrame, pd.DataFrame]:
-    sp6_tox_dir = _data_dir() / "sp6" / "tox"
-    sp6_nontox_dir = _data_dir() / "sp6" / "nontox"
+    sp6_tox_dir = intermediate_dir() / "sp6" / "tox"
+    sp6_nontox_dir = intermediate_dir() / "sp6" / "nontox"
 
     def load_signalp_output(proc_path, gff_path):
         df_proc = fasta_to_dataframe(proc_path)
@@ -177,10 +179,10 @@ def apply_signalp_filtered_sequences(
 
 
 def maybe_run_signalp6(extra_args: str = "--organism euk") -> None:
-    sp6_tox_dir = _data_dir() / "sp6" / "tox"
-    sp6_nontox_dir = _data_dir() / "sp6" / "nontox"
+    sp6_tox_dir = intermediate_dir() / "sp6" / "tox"
+    sp6_nontox_dir = intermediate_dir() / "sp6" / "nontox"
 
-    script_path = _base_dir() / "scripts" / "run_signalp6.sh"
+    script_path = get_project_root() / "scripts" / "run_signalp6.sh"
 
     if all(
         [
@@ -190,17 +192,17 @@ def maybe_run_signalp6(extra_args: str = "--organism euk") -> None:
             (sp6_nontox_dir / "processed_entries.fasta").exists(),
         ]
     ):
-        print("SignalP6 outputs already exist -- skipping SignalP6 run.")
+        console.print("  Using cached SignalP6 output")
         return
 
-    print("Running SignalP6 preprocessing via conda env 'signalp6'...")
+    console.print("  Running SignalP6 via conda env 'signalp6'...")
     try:
         subprocess.run(
             ["bash", str(script_path), "--extra-args", extra_args], check=True
         )
-        print("SignalP6 completed successfully.")
+        console.print("  SignalP6 completed")
     except subprocess.CalledProcessError as e:
-        print(f"SignalP6 failed: {e}. Continuing with unprocessed sequences.")
+        console.print(f"  [yellow]SignalP6 failed: {e}[/]")
 
 
 # ---------- MMseqs2 & splitting ----------
@@ -209,39 +211,58 @@ def maybe_run_signalp6(extra_args: str = "--organism euk") -> None:
 def cluster_per_family_and_collect(
     data: pd.DataFrame, min_seq_id: float = 0.9
 ) -> Tuple[pd.DataFrame, pd.DataFrame]:
-    families_dir = _data_dir() / "families"
-    mmseqs_dir = _data_dir() / "mmseqs"
+    families_dir = intermediate_dir() / "families"
+    mmseqs_dir = intermediate_dir() / "mmseqs"
     families_dir.mkdir(parents=True, exist_ok=True)
     mmseqs_dir.mkdir(parents=True, exist_ok=True)
     failures: List[Tuple[str, str, str]] = []
 
-    for family, group in data.groupby("Protein families"):
-        safe = sanitize_filename(family)
-        family_fa = families_dir / f"{safe}.fasta"
-        write_fasta(group, family_fa)
+    grouped = list(data.groupby("Protein families"))
 
-        fam_mm_dir = mmseqs_dir / safe
-        fam_mm_dir.mkdir(parents=True, exist_ok=True)
-        cluster_prefix = fam_mm_dir / "cluster"
-        tmp_dir = fam_mm_dir / "tmp"
-        tmp_dir.mkdir(parents=True, exist_ok=True)
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        BarColumn(),
+        MofNCompleteColumn(),
+        console=console,
+        transient=True,
+        refresh_per_second=30,
+    ) as progress:
+        task = progress.add_task(
+            "Clustering families", total=len(grouped)
+        )
+        for family, group in grouped:
+            safe = sanitize_filename(family)
+            progress.update(task, description=f"Clustering [cyan]{safe}[/]", refresh=True)
+            family_fa = families_dir / f"{safe}.fasta"
+            write_fasta(group, family_fa)
 
-        try:
-            easy_cluster(
-                fasta_files=str(family_fa),
-                cluster_prefix=str(cluster_prefix),
-                tmp_dir=str(tmp_dir),
-                min_seq_id=min_seq_id,
-            )
-        except Exception as e:
-            print(f"MMseqs easy-cluster failed for {safe}: {e}")
-            failures.append((str(family_fa), str(cluster_prefix), str(tmp_dir)))
+            fam_mm_dir = mmseqs_dir / safe
+            fam_mm_dir.mkdir(parents=True, exist_ok=True)
+            cluster_prefix = fam_mm_dir / "cluster"
+            tmp_dir = fam_mm_dir / "tmp"
+            tmp_dir.mkdir(parents=True, exist_ok=True)
+
+            try:
+                # Suppress pymmseqs' hardcoded print output
+                with redirect_stdout(io.StringIO()):
+                    easy_cluster(
+                        fasta_files=str(family_fa),
+                        cluster_prefix=str(cluster_prefix),
+                        tmp_dir=str(tmp_dir),
+                        min_seq_id=min_seq_id,
+                    )
+            except Exception as e:
+                console.print(f"[red]MMseqs easy-cluster failed for {safe}: {e}[/]")
+                failures.append((str(family_fa), str(cluster_prefix), str(tmp_dir)))
+
+            progress.advance(task)
 
     if failures:
-        print("\nManual mmseqs2 commands for failed entries:")
+        console.print(f"\n[red]Failed:[/] {len(failures)} families")
         for fasta, out, tmp in failures:
-            print(
-                f"mmseqs easy-cluster {fasta} {out} {tmp} --min-seq-id {min_seq_id}"
+            console.print(
+                f"  mmseqs easy-cluster {fasta} {out} {tmp} --min-seq-id {min_seq_id}"
             )
 
     rep_seqs_all, rep_seqs_tox = [], []
@@ -282,20 +303,19 @@ def multilabel_stratified_splits(rep_df_all: pd.DataFrame):
     Y = mlb.fit_transform(df["fam_list"])
 
     msss1 = MultilabelStratifiedShuffleSplit(
-        n_splits=1, test_size=0.15, random_state=42
+        n_splits=1, test_size=0.30, random_state=42
     )
-    trainval_idx, test_idx = next(msss1.split(df, Y))
-    df_trainval, test_df = df.iloc[trainval_idx], df.iloc[test_idx]
-    Y_trainval = Y[trainval_idx]
+    train_idx, valtest_idx = next(msss1.split(df, Y))
+    train_df, df_valtest = df.iloc[train_idx], df.iloc[valtest_idx]
+    Y_valtest = Y[valtest_idx]
 
-    val_frac = 0.15 / 0.85
     msss2 = MultilabelStratifiedShuffleSplit(
-        n_splits=1, test_size=val_frac, random_state=42
+        n_splits=1, test_size=0.50, random_state=42
     )
-    train_idx, val_idx = next(msss2.split(df_trainval, Y_trainval))
-    train_df = df_trainval.iloc[train_idx].reset_index(drop=True)
-    val_df = df_trainval.iloc[val_idx].reset_index(drop=True)
-    test_df = test_df.reset_index(drop=True)
+    val_idx, test_idx = next(msss2.split(df_valtest, Y_valtest))
+    train_df = train_df.reset_index(drop=True)
+    val_df = df_valtest.iloc[val_idx].reset_index(drop=True)
+    test_df = df_valtest.iloc[test_idx].reset_index(drop=True)
 
     for subset in (train_df, val_df, test_df):
         subset["Protein families"] = subset["fam_list"].apply(",".join)
@@ -306,7 +326,7 @@ def multilabel_stratified_splits(rep_df_all: pd.DataFrame):
 def build_train_all_members(
     data: pd.DataFrame, train_df: pd.DataFrame
 ) -> pd.DataFrame:
-    mmseqs_dir = _data_dir() / "mmseqs"
+    mmseqs_dir = intermediate_dir() / "mmseqs"
     train_reps = set(train_df["identifier"])
     rep2members: Dict[str, Set[str]] = {}
     for family in os.listdir(mmseqs_dir):
@@ -335,60 +355,88 @@ def build_train_all_members(
 
 def run_preprocessing_pipeline(
     *,
-    run_signalp6: bool = False,
+    run_signalp6: bool = True,
     signalp6_extra: str = "--organism euk",
     min_seq_id: float = 0.9,
 ) -> None:
     """Run the full preprocessing pipeline."""
-    raw_dir = _data_dir() / "raw"
-    interm_dir = _data_dir() / "interm"
-    protspace_dir = _data_dir() / "protspace"
-    sp6_tox_dir = _data_dir() / "sp6" / "tox"
-    sp6_nontox_dir = _data_dir() / "sp6" / "nontox"
-    bench_dir = _base_dir() / "benchmark"
+    interm = intermediate_dir()
+    fasta_dir = interm / "fasta"
+    rep_dir = interm / "representatives"
+    proc = processed_dir()
+    sp6_tox_dir = interm / "sp6" / "tox"
+    sp6_nontox_dir = interm / "sp6" / "nontox"
+    bench_dir = get_project_root() / "benchmark"
     bench_hbi_dir = bench_dir / "HBI"
 
     ensure_dirs()
+
+    # -- Step 1: Load raw data --
+    console.print("\n[bold]1.[/] Loading raw data")
     tox, nontox = load_and_prepare_raw()
+    n_families = tox["Protein families"].nunique()
+    console.print(
+        f"   {len(tox)} toxin sequences ({n_families} families), "
+        f"{len(nontox)} non-toxin sequences"
+    )
 
-    write_fasta(tox, raw_dir / "tox.fasta")
-    write_fasta(nontox, raw_dir / "nontox.fasta")
+    write_fasta(tox, fasta_dir / "tox.fasta")
+    write_fasta(nontox, fasta_dir / "nontox.fasta")
 
-    if run_signalp6:
-        maybe_run_signalp6(signalp6_extra)
-    else:
-        print("Skipping SignalP6 call (use --run-signalp6 to enable).")
-
-    if (sp6_tox_dir / "output.gff3").exists() and (
+    # -- Step 2: SignalP6 --
+    console.print("\n[bold]2.[/] SignalP6 signal peptide removal")
+    has_sp6 = (sp6_tox_dir / "output.gff3").exists() and (
         sp6_nontox_dir / "output.gff3"
-    ).exists():
+    ).exists()
+    if run_signalp6 and not has_sp6:
+        maybe_run_signalp6(signalp6_extra)
+        has_sp6 = (sp6_tox_dir / "output.gff3").exists() and (
+            sp6_nontox_dir / "output.gff3"
+        ).exists()
+    elif not run_signalp6 and not has_sp6:
+        console.print("   Skipped (use --run-signalp6 to enable)")
+
+    if has_sp6:
         tox, nontox = apply_signalp_filtered_sequences(tox, nontox)
+        console.print("   Applied signal peptide removal")
     else:
-        print("No SignalP6 output found -- continuing with unprocessed sequences.")
+        console.print("   No SignalP6 output found, using raw sequences")
 
     nontox["Protein families"] = "nontox"
     data = pd.concat([tox, nontox], ignore_index=True)
 
-    write_fasta(tox, interm_dir / "tox_noSP.fasta")
-    write_fasta(nontox, interm_dir / "nontox_noSP.fasta")
+    write_fasta(tox, fasta_dir / "tox_noSP.fasta")
+    write_fasta(nontox, fasta_dir / "nontox_noSP.fasta")
 
+    # -- Step 3: MMseqs2 clustering --
+    n_families_total = data["Protein families"].nunique()
+    console.print(
+        f"\n[bold]3.[/] MMseqs2 clustering "
+        f"({n_families_total} families, min_seq_id={min_seq_id})"
+    )
     rep_df_all, rep_df_tox = cluster_per_family_and_collect(
         data, min_seq_id=min_seq_id
     )
+    console.print(
+        f"   {len(rep_df_all)} representative sequences "
+        f"({len(rep_df_tox)} toxin, {len(rep_df_all) - len(rep_df_tox)} non-toxin)"
+    )
 
     rep_df_tox[["identifier", "Protein families"]].to_csv(
-        protspace_dir / "tox.csv", index=False
+        rep_dir / "tox.csv", index=False
     )
     rep_df_all[["identifier", "Protein families"]].to_csv(
-        protspace_dir / "all.csv", index=False
+        rep_dir / "all.csv", index=False
     )
-    write_fasta(rep_df_tox, protspace_dir / "tox.fasta")
-    write_fasta(rep_df_all, protspace_dir / "all.fasta")
+    write_fasta(rep_df_tox, rep_dir / "tox.fasta")
+    write_fasta(rep_df_all, rep_dir / "all.fasta")
 
+    # -- Step 4: Stratified splits --
+    console.print("\n[bold]4.[/] Stratified train/val/test splits")
     train_df, val_df, test_df = multilabel_stratified_splits(rep_df_all)
     train_df["Split"], val_df["Split"], test_df["Split"] = "train", "val", "test"
     training_data = pd.concat([train_df, val_df, test_df], ignore_index=True)
-    training_data.to_csv(interm_dir / "training_data.csv", index=False)
+    training_data.to_csv(proc / "training_data.csv", index=False)
 
     train_all_df = build_train_all_members(data, train_df)
     bench_hbi_dir.mkdir(parents=True, exist_ok=True)
@@ -399,4 +447,19 @@ def run_preprocessing_pipeline(
     val_df.to_csv(bench_dir / "val_data.csv", index=False)
     write_fasta(val_df, bench_dir / "val_data.fasta")
 
-    print("Pipeline finished successfully.")
+    # -- Summary table --
+    console.print()
+    table = Table(show_header=True, header_style="bold", padding=(0, 1))
+    table.add_column("Split", style="cyan")
+    table.add_column("Sequences", justify="right")
+    table.add_column("Families", justify="right")
+    for name, df in [("train (reps)", train_df), ("val", val_df), ("test", test_df)]:
+        table.add_row(name, str(len(df)), str(df["Protein families"].nunique()))
+    table.add_row(
+        "train (all members)",
+        str(len(train_all_df)),
+        str(train_all_df["Protein families"].nunique()),
+        style="dim",
+    )
+    console.print(table)
+    console.print("\n[bold green]Done.[/]")

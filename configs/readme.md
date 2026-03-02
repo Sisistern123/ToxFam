@@ -8,9 +8,9 @@ Parameters applied to all models.
 
 ```yaml
 # 1. DATA PATHS
-input_csv: "data/interm/training_data.csv"
-h5_paths_glob: "data/protspace/training_data.h5"
-tax_h5_path: "data/tax/binary_taxonomy_vectors.h5"
+input_csv: "data/processed/training_data.csv"
+h5_paths_glob: "data/processed/embeddings/training_data.h5"
+tax_h5_path: "data/processed/taxonomy/binary_taxonomy_vectors.h5"
 output_dir: "model/model_output/experiment_name"
 
 # 2. MODEL SPECS

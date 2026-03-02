@@ -15,5 +15,17 @@ def data_dir() -> Path:
     return get_project_root() / "data"
 
 
+def raw_dir() -> Path:
+    return data_dir() / "raw"
+
+
+def intermediate_dir() -> Path:
+    return data_dir() / "intermediate"
+
+
+def processed_dir() -> Path:
+    return data_dir() / "processed"
+
+
 def configs_dir() -> Path:
     return get_project_root() / "configs"

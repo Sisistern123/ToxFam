@@ -15,14 +15,62 @@ app = typer.Typer(
 )
 
 
+# ---------- Step 0: toxfam download-data ----------
+
+
+GITHUB_REPO = "Sisistern123/ToxFam"
+RELEASE_TAG = "data-v1"
+
+# Files to download and their relative paths under data/processed/
+DATA_ASSETS = {
+    "training_data.csv": "training_data.csv",
+    "training_data.h5": "embeddings/training_data.h5",
+    "training_tax.csv": "taxonomy/training_tax.csv",
+    "binary_taxonomy_vectors.h5": "taxonomy/binary_taxonomy_vectors.h5",
+    "training_data_with_tax.h5": "taxonomy/training_data_with_tax.h5",
+    "normed_training_data_with_tax.h5": "taxonomy/normed_training_data_with_tax.h5",
+}
+
+
+@app.command("download-data")
+def download_data(
+    tag: Annotated[
+        str, typer.Option(help="GitHub release tag to download from")
+    ] = RELEASE_TAG,
+) -> None:
+    """Download processed data files from GitHub Releases."""
+    import urllib.request
+
+    from toxfam._paths import processed_dir
+
+    proc = processed_dir()
+    base_url = f"https://github.com/{GITHUB_REPO}/releases/download/{tag}"
+
+    for asset_name, rel_path in DATA_ASSETS.items():
+        dest = proc / rel_path
+        if dest.exists():
+            typer.echo(f"  skip {rel_path} (exists)")
+            continue
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        url = f"{base_url}/{asset_name}"
+        typer.echo(f"  downloading {rel_path} ...")
+        try:
+            urllib.request.urlretrieve(url, dest)
+        except Exception as e:
+            typer.echo(f"  FAILED: {e}", err=True)
+            raise typer.Exit(code=1)
+
+    typer.echo("Done.")
+
+
 # ---------- Step 1: toxfam preprocess ----------
 
 
 @app.command()
 def preprocess(
     run_signalp6: Annotated[
-        bool, typer.Option("--run-signalp6", help="Run SignalP6 preprocessing")
-    ] = False,
+        bool, typer.Option("--run-signalp6/--no-signalp6", help="Run SignalP6 preprocessing")
+    ] = True,
     signalp6_extra: Annotated[
         str, typer.Option(help="Extra args for SignalP6")
     ] = "--organism euk",
@@ -52,9 +100,6 @@ def embed(
     output: Annotated[
         Path, typer.Option("-o", "--output", help="Output H5 file")
     ],
-    per_protein: Annotated[
-        bool, typer.Option("--per-protein", help="Mean-pooled per-protein embeddings")
-    ] = False,
     model_dir: Annotated[
         Optional[Path], typer.Option(help="Cache directory for model")
     ] = None,
@@ -68,13 +113,12 @@ def embed(
         int, typer.Option(help="Max sequences per batch")
     ] = 100,
 ) -> None:
-    """Generate ProtT5 embeddings from a FASTA file."""
+    """Generate per-protein ProtT5 embeddings from a FASTA file."""
     from toxfam.data.embedding import generate_embeddings
 
     generate_embeddings(
         input_fasta=input,
         output_h5=output,
-        per_protein=per_protein,
         model_dir=str(model_dir) if model_dir else None,
         model_name=model_name,
         max_residues=max_residues,
