@@ -59,9 +59,9 @@ data/raw/nontox.tsv ┘                                       (per family)      
 
 1. Groups the combined dataset by `Protein families`.
 2. For each family separately:
-   - Writes a per-family FASTA to `data/intermediate/families/{family}.fasta`.
+   - Writes a per-family FASTA to `data/intermediate/mmseqs/{family}/input.fasta`.
    - Runs `mmseqs easy-cluster` at the configured `--min-seq-id` (default 0.9).
-   - Results go to `data/intermediate/mmseqs/{family}/`.
+   - Cluster results are stored alongside the input in `data/intermediate/mmseqs/{family}/`.
 3. Collects all representative sequences from every family's `cluster_rep_seq.fasta`.
 4. Re-applies the <10 member threshold (families that dropped below 10 reps after clustering get collapsed to `"other"` again).
 
@@ -70,7 +70,7 @@ data/raw/nontox.tsv ┘                                       (per family)      
 - `rep_df_all` — all representative sequences (toxin + non-toxin)
 - `rep_df_tox` — toxin reps only
 
-Both are saved as CSV + FASTA to `data/intermediate/representatives/`.
+Both are saved as CSV + FASTA to `data/intermediate/mmseqs/representatives/`.
 
 ## Step 4 — Multilabel-stratified train/val/test splits
 

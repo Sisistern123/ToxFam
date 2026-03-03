@@ -93,7 +93,7 @@ def embed(
     input: Annotated[
         Path,
         typer.Option("-i", "--input", help="Input FASTA file", exists=True),
-    ] = Path("data/intermediate/representatives/all.fasta"),
+    ] = Path("data/intermediate/mmseqs/representatives/all.fasta"),
     output: Annotated[
         Path, typer.Option("-o", "--output", help="Output H5 file")
     ] = Path("data/processed/embeddings.h5"),

@@ -3,7 +3,7 @@
 # SignalP6 preprocessing (runs via tools/signalp6 uv project)
 # =========================================================
 # Usage:
-#   ./scripts/run_signalp6.sh [--extra-args "--organism eukarya"]
+#   ./scripts/run_signalp6.sh [--extra-args "--organism eukarya"] [--bsize 10]
 #
 # Requires: SignalP6 set up in tools/signalp6/
 #   See docs/signalp6_setup.md for installation instructions.
@@ -21,10 +21,15 @@ SP6_PROJECT="$BASE_DIR/tools/signalp6"
 
 # Parse arguments
 EXTRA_ARGS="--organism eukarya"
+BATCH_SIZE=10
 while [[ $# -gt 0 ]]; do
     case $1 in
         --extra-args)
             EXTRA_ARGS="$2"
+            shift 2
+            ;;
+        --bsize)
+            BATCH_SIZE="$2"
             shift 2
             ;;
         *)
@@ -36,14 +41,14 @@ done
 
 # Verify SignalP6 is set up
 if [ ! -f "$SP6_PROJECT/pyproject.toml" ]; then
-    echo "ERROR: SignalP6 project not found at $SP6_PROJECT"
-    echo "See docs/signalp6_setup.md for installation instructions."
+    echo "ERROR: SignalP6 project not found at $SP6_PROJECT" >&2
+    echo "See docs/signalp6_setup.md for installation instructions." >&2
     exit 1
 fi
 
 if [ ! -d "$SP6_PROJECT/bin/signalp-6-package" ]; then
-    echo "ERROR: signalp-6-package not found in $SP6_PROJECT/bin/"
-    echo "See docs/signalp6_setup.md for installation instructions."
+    echo "ERROR: signalp-6-package not found in $SP6_PROJECT/bin/" >&2
+    echo "See docs/signalp6_setup.md for installation instructions." >&2
     exit 1
 fi
 
@@ -60,41 +65,42 @@ if [ -d "$MODEL_DIR/sequential_models_signalp6" ]; then
     SP6_MODE="slow-sequential"
 else
     SP6_MODE="fast"
-    echo "Warning: sequential models not found, falling back to fast mode"
 fi
-echo "Using SignalP6 mode: $SP6_MODE"
+
+# Print mode for the Python caller to parse
+echo "SP6_MODE=${SP6_MODE}"
 
 mkdir -p "$SP6_TOX_DIR" "$SP6_NONTOX_DIR"
 
 # Verify input FASTA files exist
 if [ ! -f "$FASTA_DIR/tox.fasta" ]; then
-    echo "ERROR: tox.fasta not found at $FASTA_DIR/tox.fasta"
-    echo "Run the preprocessing pipeline first to generate input FASTAs."
+    echo "ERROR: tox.fasta not found at $FASTA_DIR/tox.fasta" >&2
+    echo "Run the preprocessing pipeline first to generate input FASTAs." >&2
     exit 1
 fi
 
 if [ ! -f "$FASTA_DIR/nontox.fasta" ]; then
-    echo "ERROR: nontox.fasta not found at $FASTA_DIR/nontox.fasta"
-    echo "Run the preprocessing pipeline first to generate input FASTAs."
+    echo "ERROR: nontox.fasta not found at $FASTA_DIR/nontox.fasta" >&2
+    echo "Run the preprocessing pipeline first to generate input FASTAs." >&2
     exit 1
 fi
 
-echo "Running SignalP6 on tox.fasta ..."
-uv run --project "$SP6_PROJECT" signalp6 \
-    --fastafile "$FASTA_DIR/tox.fasta" \
-    --output_dir "$SP6_TOX_DIR" \
-    --model_dir "$MODEL_DIR" \
-    $EXTRA_ARGS \
-    --mode "$SP6_MODE" \
-    --format none
+run_signalp6() {
+    local label="$1"
+    local fasta="$2"
+    local outdir="$3"
 
-echo "Running SignalP6 on nontox.fasta ..."
-uv run --project "$SP6_PROJECT" signalp6 \
-    --fastafile "$FASTA_DIR/nontox.fasta" \
-    --output_dir "$SP6_NONTOX_DIR" \
-    --model_dir "$MODEL_DIR" \
-    $EXTRA_ARGS \
-    --mode "$SP6_MODE" \
-    --format none
+    echo "SP6_START=${label}"
+    uv run --quiet --project "$SP6_PROJECT" signalp6 \
+        --fastafile "$fasta" \
+        --output_dir "$outdir" \
+        --model_dir "$MODEL_DIR" \
+        $EXTRA_ARGS \
+        --mode "$SP6_MODE" \
+        --bsize "$BATCH_SIZE" \
+        --format none >&2
+    echo "SP6_DONE=${label}"
+}
 
-echo "SignalP6 preprocessing completed successfully."
+run_signalp6 "tox"    "$FASTA_DIR/tox.fasta"    "$SP6_TOX_DIR"
+run_signalp6 "nontox" "$FASTA_DIR/nontox.fasta"  "$SP6_NONTOX_DIR"

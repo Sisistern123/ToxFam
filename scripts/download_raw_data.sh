@@ -39,30 +39,34 @@ download() {
     local name="$1"
     local query="$2"
     local dest="$3"
+    local basename
+    basename=$(basename "$dest")
 
     if [ -f "$dest" ]; then
-        echo "  skip $name (already exists: $dest)"
+        echo "   ${basename}: already exists, skipping"
         return 0
     fi
 
-    echo "  downloading $name ..."
+    printf "   ${basename}: downloading ..."
     local http_code
     http_code=$(curl -s -w "%{http_code}" -o "$dest" \
         --retry 3 --retry-delay 5 \
-        "${API}?query=${query}&format=tsv&fields=${FIELDS}")
+        --get \
+        --data-urlencode "query=${query}" \
+        --data-urlencode "format=tsv" \
+        --data-urlencode "fields=${FIELDS}" \
+        "${API}")
 
     if [ "$http_code" -ne 200 ]; then
-        echo "  FAILED: HTTP $http_code" >&2
+        echo " FAILED (HTTP $http_code)" >&2
         rm -f "$dest"
         return 1
     fi
 
     local lines
     lines=$(wc -l < "$dest" | tr -d ' ')
-    echo "  $name: $((lines - 1)) proteins"
+    echo " $((lines - 1)) proteins"
 }
 
-echo "Downloading raw UniProt data to $RAW_DIR"
-download "0800.tsv (toxins)"     "$TOX_QUERY"    "$RAW_DIR/0800.tsv"
+download "0800.tsv (toxins)"       "$TOX_QUERY"    "$RAW_DIR/0800.tsv"
 download "nontox.tsv (non-toxins)" "$NONTOX_QUERY" "$RAW_DIR/nontox.tsv"
-echo "Done."

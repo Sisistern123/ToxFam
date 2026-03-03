@@ -114,10 +114,10 @@ data/
 │   └── nontox.tsv
 ├── intermediate/               # All pipeline-generated intermediates (gitignored)
 │   ├── fasta/                  # tox.fasta, nontox.fasta, *_noSP.fasta
-│   ├── families/               # Per-family FASTAs for MMseqs2
-│   ├── mmseqs/                 # MMseqs2 clustering output
+│   ├── mmseqs/                 # All MMseqs2-related files
+│   │   ├── {family}/           # Per-family: input.fasta + cluster output
+│   │   └── representatives/    # Post-clustering rep seqs (CSV + FASTA)
 │   ├── sp6/                    # SignalP6 output (tox/, nontox/)
-│   ├── representatives/        # Post-clustering rep seqs (CSV + FASTA)
 │   └── taxonomy/               # Taxonomy CSV + binary vectors
 │       ├── training_tax.csv
 │       └── binary_taxonomy_vectors.h5

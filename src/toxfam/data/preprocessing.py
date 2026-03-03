@@ -33,25 +33,6 @@ console = Console()
 # ---------- Utilities ----------
 
 
-def ensure_dirs() -> None:
-    interm = intermediate_dir()
-    dirs = [
-        raw_dir(),
-        processed_dir(),
-        interm / "fasta",
-        interm / "families",
-        interm / "mmseqs",
-        interm / "sp6" / "tox",
-        interm / "sp6" / "nontox",
-        interm / "representatives",
-        interm / "taxonomy",
-        get_project_root() / "benchmark" / "HBI",
-        get_project_root() / "benchmark",
-    ]
-    for p in dirs:
-        p.mkdir(parents=True, exist_ok=True)
-
-
 def write_fasta(df: pd.DataFrame, filename: os.PathLike | str) -> None:
     with open(filename, "w") as f:
         for _, row in df.iterrows():
@@ -195,26 +176,41 @@ def maybe_run_signalp6(extra_args: str = "--organism eukarya") -> None:
             (sp6_nontox_dir / "processed_entries.fasta").exists(),
         ]
     ):
-        console.print("  Using cached SignalP6 output")
+        console.print("   Using cached SignalP6 output")
         return
 
     # Check that the SignalP6 tool is set up
     if not (sp6_project / "bin" / "signalp-6-package").exists():
         console.print(
-            "  [yellow]SignalP6 not installed.[/] "
+            "   [yellow]SignalP6 not installed.[/] "
             "See docs/signalp6_setup.md for setup instructions.\n"
-            "  Skipping signal peptide removal."
+            "   Skipping signal peptide removal."
         )
         return
 
-    console.print("  Running SignalP6 via tools/signalp6 ...")
     try:
-        subprocess.run(
-            ["bash", str(script_path), "--extra-args", extra_args], check=True
+        proc = subprocess.Popen(
+            ["bash", str(script_path), "--extra-args", extra_args],
+            stdout=subprocess.PIPE,
+            text=True,
         )
-        console.print("  SignalP6 completed")
-    except subprocess.CalledProcessError as e:
-        console.print(f"  [yellow]SignalP6 failed: {e}[/]")
+        for line in proc.stdout:
+            line = line.rstrip()
+            if line.startswith("SP6_MODE="):
+                console.print(f"   Mode: [cyan]{line.split('=', 1)[1]}[/]")
+            elif line.startswith("SP6_START="):
+                console.print(f"   Predicting [cyan]{line.split('=', 1)[1]}[/] ...")
+            elif line.startswith("SP6_DONE="):
+                pass
+        proc.wait()
+        if proc.returncode != 0:
+            console.print(f"   [yellow]SignalP6 failed (exit code {proc.returncode})[/]")
+    except KeyboardInterrupt:
+        proc.terminate()
+        proc.wait()
+        raise
+    except Exception as e:
+        console.print(f"   [yellow]SignalP6 failed: {e}[/]")
 
 
 # ---------- MMseqs2 & splitting ----------
@@ -223,9 +219,7 @@ def maybe_run_signalp6(extra_args: str = "--organism eukarya") -> None:
 def cluster_per_family_and_collect(
     data: pd.DataFrame, min_seq_id: float = 0.9
 ) -> Tuple[pd.DataFrame, pd.DataFrame]:
-    families_dir = intermediate_dir() / "families"
     mmseqs_dir = intermediate_dir() / "mmseqs"
-    families_dir.mkdir(parents=True, exist_ok=True)
     mmseqs_dir.mkdir(parents=True, exist_ok=True)
     failures: List[Tuple[str, str, str]] = []
 
@@ -246,11 +240,10 @@ def cluster_per_family_and_collect(
             progress.update(
                 task, description=f"Clustering [cyan]{safe}[/]", refresh=True
             )
-            family_fa = families_dir / f"{safe}.fasta"
-            write_fasta(group, family_fa)
-
             fam_mm_dir = mmseqs_dir / safe
             fam_mm_dir.mkdir(parents=True, exist_ok=True)
+            family_fa = fam_mm_dir / "input.fasta"
+            write_fasta(group, family_fa)
             cluster_prefix = fam_mm_dir / "cluster"
             tmp_dir = fam_mm_dir / "tmp"
             tmp_dir.mkdir(parents=True, exist_ok=True)
@@ -372,14 +365,19 @@ def run_preprocessing_pipeline(
     """Run the full preprocessing pipeline."""
     interm = intermediate_dir()
     fasta_dir = interm / "fasta"
-    rep_dir = interm / "representatives"
+    rep_dir = interm / "mmseqs" / "representatives"
     proc = processed_dir()
     sp6_tox_dir = interm / "sp6" / "tox"
     sp6_nontox_dir = interm / "sp6" / "nontox"
     bench_dir = get_project_root() / "benchmark"
     bench_hbi_dir = bench_dir / "HBI"
 
-    ensure_dirs()
+    # -- Step 0: Download raw data if missing --
+    raw = raw_dir()
+    if not (raw / "0800.tsv").exists() or not (raw / "nontox.tsv").exists():
+        console.print("\n[bold]0.[/] Downloading raw data from UniProt")
+        script = get_project_root() / "scripts" / "download_raw_data.sh"
+        subprocess.run(["bash", str(script)], check=True)
 
     # -- Step 1: Load raw data --
     console.print("\n[bold]1.[/] Loading raw data")
@@ -390,6 +388,7 @@ def run_preprocessing_pipeline(
         f"{len(nontox)} non-toxin sequences"
     )
 
+    fasta_dir.mkdir(parents=True, exist_ok=True)
     write_fasta(tox, fasta_dir / "tox.fasta")
     write_fasta(nontox, fasta_dir / "nontox.fasta")
 
@@ -430,6 +429,7 @@ def run_preprocessing_pipeline(
         f"({len(rep_df_tox)} toxin, {len(rep_df_all) - len(rep_df_tox)} non-toxin)"
     )
 
+    rep_dir.mkdir(parents=True, exist_ok=True)
     rep_df_tox[["identifier", "Protein families"]].to_csv(
         rep_dir / "tox.csv", index=False
     )
@@ -444,12 +444,14 @@ def run_preprocessing_pipeline(
     train_df, val_df, test_df = multilabel_stratified_splits(rep_df_all)
     train_df["Split"], val_df["Split"], test_df["Split"] = "train", "val", "test"
     training_data = pd.concat([train_df, val_df, test_df], ignore_index=True)
+    proc.mkdir(parents=True, exist_ok=True)
     training_data.to_csv(proc / "training_data.csv", index=False)
 
     train_all_df = build_train_all_members(data, train_df)
     bench_hbi_dir.mkdir(parents=True, exist_ok=True)
     train_all_df.to_csv(bench_hbi_dir / "train_all_df.csv", index=False)
     write_fasta(train_all_df, bench_hbi_dir / "train_all_members.fasta")
+    bench_dir.mkdir(parents=True, exist_ok=True)
     test_df.to_csv(bench_dir / "test_data.csv", index=False)
     write_fasta(test_df, bench_dir / "test_data.fasta")
     val_df.to_csv(bench_dir / "val_data.csv", index=False)
