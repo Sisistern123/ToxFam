@@ -133,7 +133,7 @@ data/
 3. **Feature generation**:
    - `toxfam.data.embedding` — ProtT5 per-protein embeddings → `data/processed/embeddings.h5`
    - `toxfam.data.taxonomy` — UniProt ID → NCBI taxonomy lineage; taxonomy CSV → binary (one-hot) vectors over 56 predefined taxa → `data/intermediate/taxonomy/`
-4. **Training** (`toxfam.training.orchestrator`) — loads CSV + HDF5 files from `data/processed/`, dispatches to strategy, trains with early stopping, applies temperature scaling calibration, evaluates on val/test sets
+4. **Training** (`toxfam.training.orchestrator`) — loads split CSV + embeddings from `data/processed/` and optionally taxonomy vectors from `data/intermediate/taxonomy/`; dispatches to strategy, trains with early stopping, applies temperature scaling calibration, evaluates on val/test sets
 5. **Outputs** (configured via `output_dir` in YAML) — `best_model.pt`, `best_model_calibrated.pt`, confusion matrices, ROC curves, predictions CSV, metrics JSON
 
 ### Key Module Relationships
