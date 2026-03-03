@@ -40,10 +40,12 @@ data/raw/nontox.tsv ┘                                       (per family)      
 
 **Controlled by:** `--run-signalp6` (default) / `--no-signalp6`
 
+**Requires:** SignalP6 set up in `tools/signalp6/` (see [SignalP6 Setup](signalp6_setup.md)). If not installed, the pipeline skips this step with a warning.
+
 **What happens:**
 
 1. If SignalP6 output already exists in `data/intermediate/sp6/{tox,nontox}/`, the cached results are used.
-2. Otherwise, runs SignalP6 via an external bash script (`scripts/run_signalp6.sh`) in a conda env.
+2. Otherwise, runs SignalP6 via `scripts/run_signalp6.sh` using the isolated `tools/signalp6` uv project.
 3. For proteins where SignalP6 detects a signal peptide with score > 0.8, the sequence is replaced with the mature (signal-peptide-removed) version.
 4. Proteins without a detected signal peptide keep their original sequence.
 

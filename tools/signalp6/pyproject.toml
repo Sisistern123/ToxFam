@@ -1,0 +1,12 @@
+[project]
+name = "toxfam-signalp6"
+version = "0.1.0"
+description = "Isolated SignalP6 environment for ToxFam preprocessing"
+requires-python = ">=3.10,<3.11"
+dependencies = [
+    "numpy<2",
+    "signalp6",
+]
+
+[tool.uv.sources]
+signalp6 = { path = "./bin/signalp-6-package" }

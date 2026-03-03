@@ -180,11 +180,12 @@ def apply_signalp_filtered_sequences(
 # ---------- SignalP6 wrapper ----------
 
 
-def maybe_run_signalp6(extra_args: str = "--organism euk") -> None:
+def maybe_run_signalp6(extra_args: str = "--organism eukarya") -> None:
     sp6_tox_dir = intermediate_dir() / "sp6" / "tox"
     sp6_nontox_dir = intermediate_dir() / "sp6" / "nontox"
 
     script_path = get_project_root() / "scripts" / "run_signalp6.sh"
+    sp6_project = get_project_root() / "tools" / "signalp6"
 
     if all(
         [
@@ -197,7 +198,16 @@ def maybe_run_signalp6(extra_args: str = "--organism euk") -> None:
         console.print("  Using cached SignalP6 output")
         return
 
-    console.print("  Running SignalP6 via conda env 'signalp6'...")
+    # Check that the SignalP6 tool is set up
+    if not (sp6_project / "bin" / "signalp-6-package").exists():
+        console.print(
+            "  [yellow]SignalP6 not installed.[/] "
+            "See docs/signalp6_setup.md for setup instructions.\n"
+            "  Skipping signal peptide removal."
+        )
+        return
+
+    console.print("  Running SignalP6 via tools/signalp6 ...")
     try:
         subprocess.run(
             ["bash", str(script_path), "--extra-args", extra_args], check=True

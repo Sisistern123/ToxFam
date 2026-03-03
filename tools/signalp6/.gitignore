@@ -1,0 +1,8 @@
+# Virtual environment
+.venv/
+
+# uv lock file (environment-specific)
+uv.lock
+
+# SignalP6 package and models (large, not distributable)
+bin/
