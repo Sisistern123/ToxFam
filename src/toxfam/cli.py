@@ -24,7 +24,7 @@ RELEASE_TAG = "data-v1"
 # Files to download and their relative paths under data/processed/
 DATA_ASSETS = {
     "training_data.csv": "training_data.csv",
-    "training_data.h5": "embeddings/training_data.h5",
+    "training_data.h5": "embeddings.h5",
 }
 
 

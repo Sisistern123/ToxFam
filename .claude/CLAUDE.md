@@ -123,8 +123,7 @@ data/
 │       └── binary_taxonomy_vectors.h5
 ├── processed/                  # Expensive outputs (gitignored, via GitHub Releases)
 │   ├── training_data.csv       # Train/val/test split CSV
-│   └── embeddings/
-│       └── training_data.h5    # ProtT5 embeddings
+│   └── embeddings.h5           # ProtT5 embeddings
 ```
 
 ### Data Flow
@@ -132,7 +131,7 @@ data/
 1. **Raw data** (`data/raw/`) — UniProt TSVs of toxin/non-toxin proteins
 2. **Preprocessing** (`toxfam.data.preprocessing`) — normalizes family labels, runs optional SignalP6 signal peptide removal, clusters per-family with MMseqs2 at 90% identity, creates multilabel-stratified train/val/test splits; intermediates go to `data/intermediate/`, final split CSV to `data/processed/`
 3. **Feature generation**:
-   - `toxfam.data.embedding` — ProtT5 per-protein embeddings → `data/processed/embeddings/`
+   - `toxfam.data.embedding` — ProtT5 per-protein embeddings → `data/processed/embeddings.h5`
    - `toxfam.data.taxonomy` — UniProt ID → NCBI taxonomy lineage; taxonomy CSV → binary (one-hot) vectors over 56 predefined taxa → `data/intermediate/taxonomy/`
 4. **Training** (`toxfam.training.orchestrator`) — loads CSV + HDF5 files from `data/processed/`, dispatches to strategy, trains with early stopping, applies temperature scaling calibration, evaluates on val/test sets
 5. **Outputs** (configured via `output_dir` in YAML) — `best_model.pt`, `best_model_calibrated.pt`, confusion matrices, ROC curves, predictions CSV, metrics JSON
