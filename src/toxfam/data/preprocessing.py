@@ -282,11 +282,14 @@ def cluster_per_family_and_collect(
         if family_dir != "nontox":
             rep_seqs_tox.extend(seqs)
 
+    merge_cols = ["identifier", "Protein families"]
+    if "Organism (ID)" in data.columns:
+        merge_cols.append("Organism (ID)")
     rep_df_all = pd.DataFrame(rep_seqs_all).merge(
-        data[["identifier", "Protein families"]], on="identifier", how="left"
+        data[merge_cols], on="identifier", how="left"
     )
     rep_df_tox = pd.DataFrame(rep_seqs_tox).merge(
-        data[["identifier", "Protein families"]], on="identifier", how="left"
+        data[merge_cols], on="identifier", how="left"
     )
 
     for df in (rep_df_all, rep_df_tox):

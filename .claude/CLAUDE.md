@@ -33,13 +33,9 @@ uv run toxfam preprocess [--min-seq-id 0.9]
 uv run toxfam embed -i <input.fasta> -o <output.h5>
 ```
 
-### Taxonomy Feature Generation
+### Taxonomy Binary Vectors
 ```bash
-# Annotate training data with NCBI taxonomy
-uv run toxfam taxonomy --input-csv <csv> --output-csv <csv>
-
-# Build binary taxonomy vectors for model input
-uv run toxfam taxonomy-vectors --tax-csv <csv> --input-h5 <h5> --output-h5 <h5>
+uv run toxfam taxonomy [--input-csv <csv>] [--input-h5 <h5>] [--output-h5 <h5>]
 ```
 
 ### Train a Model
@@ -80,7 +76,7 @@ src/toxfam/
 │   ├── taxonomy.py           # Taxonomy retrieval + binary vector generation
 │   └── signalp.py            # SignalP6 signal peptide removal
 ├── model/                    # Neural network architectures
-│   ├── architectures.py      # MLP, ModularMLP, MultiInputMLP
+│   ├── architectures.py      # ModularMLP, MultiInputMLP
 │   └── calibration.py        # ModelWithTemperature
 ├── training/                 # Training loop, strategies, orchestration
 │   ├── trainer.py            # train_model, evaluate_model, get_class_weights
@@ -119,8 +115,7 @@ data/
 │   │   ├── {family}/           # Per-family: input.fasta + cluster output
 │   │   └── representatives/    # Post-clustering rep seqs (CSV + FASTA)
 │   ├── sp6/                    # SignalP6 output (tox/, nontox/)
-│   └── taxonomy/               # Taxonomy CSV + binary vectors
-│       ├── training_tax.csv
+│   └── taxonomy/               # Binary taxonomy vectors
 │       └── binary_taxonomy_vectors.h5
 ├── processed/                  # Expensive outputs (gitignored, via GitHub Releases)
 │   ├── training_data.csv       # Train/val/test split CSV
@@ -133,7 +128,7 @@ data/
 2. **Preprocessing** (`toxfam.data.preprocessing`) — normalizes family labels, runs SignalP6 signal peptide removal, clusters per-family with MMseqs2 at 90% identity, creates multilabel-stratified train/val/test splits; intermediates go to `data/intermediate/`, final split CSV to `data/processed/`
 3. **Feature generation**:
    - `toxfam.data.embedding` — ProtT5 per-protein embeddings → `data/processed/embeddings.h5`
-   - `toxfam.data.taxonomy` — UniProt ID → NCBI taxonomy lineage; taxonomy CSV → binary (one-hot) vectors over 56 predefined taxa → `data/intermediate/taxonomy/`
+   - `toxfam.data.taxonomy` — reads `Organism (ID)` from training CSV → taxopy lineage → binary (one-hot) vectors over 56 predefined taxa → `data/intermediate/taxonomy/`
 4. **Training** (`toxfam.training.orchestrator`) — loads split CSV + embeddings from `data/processed/` and optionally taxonomy vectors from `data/intermediate/taxonomy/`; dispatches to strategy, trains with early stopping, applies temperature scaling calibration, evaluates on val/test sets
 5. **Outputs** (configured via `output_dir` in YAML) — `best_model.pt`, `best_model_calibrated.pt`, confusion matrices, ROC curves, predictions CSV, metrics JSON
 
@@ -144,7 +139,7 @@ data/
 - `toxfam.training.strategies` — `DataSelector` wraps DataLoaders to route the correct inputs per strategy
 - `toxfam.training.orchestrator` — `run_training(config)` orchestrates the full training → evaluation → calibration pipeline
 - `toxfam.model.calibration` — `ModelWithTemperature` wraps trained model with learned temperature scaling
-- `toxfam.model.architectures` — `ModularMLP` (projector + backbone), `MultiInputMLP` (two-branch), legacy `MLP`
+- `toxfam.model.architectures` — `ModularMLP` (projector + backbone), `MultiInputMLP` (two-branch)
 
 ### Data Format Conventions
 

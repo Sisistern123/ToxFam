@@ -122,45 +122,29 @@ def embed(
     )
 
 
-# ---------- Step 3a: toxfam taxonomy ----------
+# ---------- Step 3: toxfam taxonomy ----------
 
 
 @app.command()
 def taxonomy(
     input_csv: Annotated[
         Path,
-        typer.Option(help="Input CSV with 'identifier' column", exists=True),
-    ],
-    output_csv: Annotated[Path, typer.Option(help="Output annotated CSV")],
-) -> None:
-    """Annotate proteins with NCBI taxonomy lineage."""
-    from toxfam.data.taxonomy import annotate_csv_with_taxonomy
-
-    annotate_csv_with_taxonomy(str(input_csv), str(output_csv))
-
-
-# ---------- Step 3b: toxfam taxonomy-vectors ----------
-
-
-@app.command("taxonomy-vectors")
-def taxonomy_vectors(
-    tax_csv: Annotated[
-        Path,
-        typer.Option(help="Taxonomy-annotated CSV", exists=True),
-    ],
+        typer.Option(help="Training CSV with 'Organism (ID)' column", exists=True),
+    ] = Path("data/processed/training_data.csv"),
     input_h5: Annotated[
         Path,
         typer.Option(help="Input H5 with protein embeddings", exists=True),
-    ],
+    ] = Path("data/processed/embeddings.h5"),
     output_h5: Annotated[
         Path, typer.Option(help="Output H5 for binary taxonomy vectors")
-    ],
+    ] = Path("data/intermediate/taxonomy/binary_taxonomy_vectors.h5"),
 ) -> None:
-    """Generate binary taxonomy vectors from annotated CSV."""
+    """Generate binary taxonomy vectors from training CSV with taxon IDs."""
     from toxfam.data.taxonomy import run_binary_taxonomy_pipeline
 
+    output_h5.parent.mkdir(parents=True, exist_ok=True)
     run_binary_taxonomy_pipeline(
-        tax_csv_path=str(tax_csv),
+        input_csv=str(input_csv),
         input_h5_path=str(input_h5),
         output_h5_path=str(output_h5),
     )

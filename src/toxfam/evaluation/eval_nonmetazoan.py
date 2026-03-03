@@ -105,7 +105,7 @@ def run_hbi_evaluation(
 def load_calibrated_model(
     model_path: Path, class_map_path: Path, h5_path: Path, device: str = "cpu"
 ):
-    from toxfam.model.architectures import MultiInputMLP
+    from toxfam.model.architectures import ModularMLP, MultiInputMLP
     from toxfam.model.calibration import ModelWithTemperature
 
     with open(class_map_path, "r") as f:
@@ -116,22 +116,58 @@ def load_calibrated_model(
         first_key = list(f.keys())[0]
         embedding_dim = f[first_key][:].shape[0]
 
-    print(
-        f"Reconstructing model: embedding_dim={embedding_dim}, "
-        f"num_classes={num_classes}"
-    )
+    state_dict = torch.load(model_path, map_location=torch.device(device))
 
-    base_model = MultiInputMLP(
-        embed_dim=embedding_dim,
-        tax_dim=7,
-        hidden_dims=[512, 256],
-        num_classes=num_classes,
-        dropout=0.3,
-    )
+    # Detect model architecture from state dict keys
+    is_multi_input = any(k.startswith("model.tax_net.") for k in state_dict)
+
+    if is_multi_input:
+        # Infer tax_dim from the first tax_net layer weight shape
+        tax_dim = state_dict["model.tax_net.0.weight"].shape[1]
+        tax_hidden_dim = state_dict["model.tax_net.0.weight"].shape[0]
+
+        # Infer hidden_dims from joint layer weights
+        hidden_dims = []
+        i = 0
+        while f"model.joint.{i}.weight" in state_dict:
+            hidden_dims.append(state_dict[f"model.joint.{i}.weight"].shape[0])
+            i += 3  # Linear + ReLU + Dropout
+        # Last entry is the output layer, not a hidden dim
+        if hidden_dims:
+            hidden_dims.pop()
+
+        print(
+            f"Reconstructing MultiInputMLP: embedding_dim={embedding_dim}, "
+            f"tax_dim={tax_dim}, hidden_dims={hidden_dims}, num_classes={num_classes}"
+        )
+        base_model = MultiInputMLP(
+            embed_dim=embedding_dim,
+            tax_dim=tax_dim,
+            hidden_dims=hidden_dims,
+            num_classes=num_classes,
+            tax_hidden_dim=tax_hidden_dim,
+        )
+    else:
+        # Infer hidden_dims from projector + backbone weights
+        hidden_dims = [state_dict["model.projector.0.weight"].shape[0]]
+        i = 0
+        while f"model.backbone.{i}.weight" in state_dict:
+            hidden_dims.append(state_dict[f"model.backbone.{i}.weight"].shape[0])
+            i += 3
+        if hidden_dims and len(hidden_dims) > 1:
+            hidden_dims.pop()  # last is output layer
+
+        print(
+            f"Reconstructing ModularMLP: embedding_dim={embedding_dim}, "
+            f"hidden_dims={hidden_dims}, num_classes={num_classes}"
+        )
+        base_model = ModularMLP(
+            input_dim=embedding_dim,
+            hidden_dims=hidden_dims,
+            num_classes=num_classes,
+        )
 
     scaled_model = ModelWithTemperature(base_model, torch.device(device))
-
-    state_dict = torch.load(model_path, map_location=torch.device(device))
     scaled_model.load_state_dict(state_dict)
 
     scaled_model.eval()
@@ -140,7 +176,7 @@ def load_calibrated_model(
         f"{scaled_model.temperature.item():.3f}"
     )
 
-    return scaled_model
+    return scaled_model, is_multi_input
 
 
 def run_model_inference(
@@ -154,21 +190,30 @@ def run_model_inference(
         if torch.backends.mps.is_available()
         else ("cuda" if torch.cuda.is_available() else "cpu")
     )
-    model = load_calibrated_model(model_path, class_map_path, h5_path, device=device)
+    model, is_multi_input = load_calibrated_model(
+        model_path, class_map_path, h5_path, device=device
+    )
 
     with open(class_map_path, "r") as f:
         idx_to_label = {int(k): v for k, v in json.load(f).items()}
+
+    # Infer tax_dim from the model if it's a MultiInputMLP
+    if is_multi_input:
+        tax_dim = model.model.tax_net[0].in_features
+    else:
+        tax_dim = None
 
     preds = []
     with h5py.File(h5_path, "r") as f:
         for ident in df["Entry"]:
             emb = torch.tensor(f[ident][:]).unsqueeze(0).to(device)
 
-            tax_dim = 7
-            dummy_tax = torch.zeros(1, tax_dim).to(device)
-
             with torch.no_grad():
-                outputs = model(emb, dummy_tax)
+                if is_multi_input:
+                    dummy_tax = torch.zeros(1, tax_dim).to(device)
+                    outputs = model(emb, dummy_tax)
+                else:
+                    outputs = model(emb)
                 pred_idx = torch.argmax(outputs, dim=1).item()
             preds.append(idx_to_label.get(pred_idx, "other"))
 

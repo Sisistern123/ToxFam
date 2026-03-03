@@ -1,8 +1,8 @@
-"""Taxonomy retrieval and binary vector generation.
+"""Taxonomy lineage resolution and binary vector generation.
 
-Merges functionality from:
-- utils/taxonomy_retriever.py (UniProt ID -> NCBI taxonomy lineage)
-- utils/taxonomy_analysis.py (taxonomy CSV -> binary vectors -> HDF5)
+Reads NCBI taxon IDs (already present in the training CSV as ``Organism (ID)``),
+resolves full lineage via taxopy, and encodes membership in 56 predefined animal
+taxa as binary (one-hot) vectors stored in HDF5.
 """
 
 from __future__ import annotations
@@ -11,9 +11,6 @@ import logging
 import os
 import shutil
 import tempfile
-import time
-from abc import ABC, abstractmethod
-from collections import namedtuple
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
@@ -21,7 +18,6 @@ from typing import Any
 import h5py
 import numpy as np
 import pandas as pd
-import requests
 import taxopy
 from tqdm import tqdm
 
@@ -101,106 +97,15 @@ TAXA = [
     "Soricidae",
 ]
 
-# ---------- Base classes ----------
-
-ProteinFeatures = namedtuple("ProteinFeatures", ["identifier", "features"])
-
-
-class BaseFeatureRetriever(ABC):
-    def __init__(self, headers: list[str] | None = None, features: list | None = None):
-        self.headers = headers if headers else []
-        self.features = features
-
-    @abstractmethod
-    def fetch_features(self) -> list[ProteinFeatures]:
-        raise NotImplementedError("Subclasses must implement fetch_features()")
-
-
 # ---------- Taxonomy retrieval ----------
 
 
-class UniProtTaxonomyRetriever(BaseFeatureRetriever):
-    """Retrieves taxonomy lineages for UniProt protein accessions."""
-
-    def __init__(self, uniprot_ids: list[str], features: list | None = None):
-        super().__init__(headers=uniprot_ids, features=features or TAXONOMY_FEATURES)
-        self.uniprot_ids = uniprot_ids
-        self.tax_retriever = None
-
-    def fetch_features(self) -> dict[str, dict[str, Any]]:
-        uniprot_to_taxid = self._get_taxon_ids_from_uniprot(self.uniprot_ids)
-
-        unique_taxids = list(
-            {tid for tid in uniprot_to_taxid.values() if tid is not None}
-        )
-        self.tax_retriever = TaxonomyRetriever(unique_taxids, features=self.features)
-        tax_data = self.tax_retriever.fetch_features()
-
-        result = {}
-        for uid, taxid in uniprot_to_taxid.items():
-            entry = {"taxon_id": taxid}
-            if taxid in tax_data:
-                entry["features"] = tax_data[taxid]["features"]
-            else:
-                entry["features"] = dict.fromkeys(self.features, "")
-            result[uid] = entry
-
-        return result
-
-    def _get_taxon_ids_from_uniprot(
-        self, uniprot_ids: list[str]
-    ) -> dict[str, int | None]:
-        base_url = "https://rest.uniprot.org/uniprotkb/search"
-        batch_size = 100
-        result: dict[str, int | None] = {}
-
-        for i in range(0, len(uniprot_ids), batch_size):
-            batch = uniprot_ids[i : i + batch_size]
-            query = " OR ".join(f"accession:{uid}" for uid in batch)
-            params = {
-                "query": query,
-                "fields": "accession,organism_id",
-                "format": "tsv",
-                "size": batch_size,
-            }
-
-            for attempt in range(3):
-                try:
-                    r = requests.get(base_url, params=params, timeout=30)
-                    r.raise_for_status()
-                    break
-                except requests.RequestException as e:
-                    logger.warning(f"Batch {i // batch_size + 1}: {e}, retrying...")
-                    time.sleep(2**attempt)
-            else:
-                for uid in batch:
-                    result[uid] = None
-                continue
-
-            lines = r.text.strip().splitlines()
-            for line in lines[1:]:
-                acc, taxid = line.split("\t")
-                result[acc] = int(taxid) if taxid.isdigit() else None
-
-            for uid in batch:
-                result.setdefault(uid, None)
-
-            tqdm.write(
-                f"Fetched {len(batch)} "
-                f"(batch {i // batch_size + 1}/"
-                f"{(len(uniprot_ids) - 1) // batch_size + 1})"
-            )
-            time.sleep(0.3)
-
-        return result
-
-
-class TaxonomyRetriever(BaseFeatureRetriever):
-    """Retrieves taxonomy lineage data from NCBI."""
+class TaxonomyRetriever:
+    """Resolves NCBI taxonomy lineage for a list of taxon IDs using taxopy."""
 
     def __init__(self, taxon_ids: list[int], features: list | None = None):
         self.taxon_ids = self._validate_taxon_ids(taxon_ids)
-        self.features = features
+        self.features = features or TAXONOMY_FEATURES
         self.taxdb = self._initialize_taxdb()
 
     def fetch_features(self) -> dict[int, dict[str, Any]]:
@@ -364,47 +269,17 @@ class TaxonomyRetriever(BaseFeatureRetriever):
         return taxdb
 
 
-# ---------- CSV annotation ----------
-
-
-def annotate_csv_with_taxonomy(input_csv: str | Path, output_csv: str | Path) -> None:
-    """Read a CSV with 'identifier' column, fetch taxonomy, write annotated CSV."""
-    df = pd.read_csv(input_csv)
-
-    if "identifier" not in df.columns:
-        raise ValueError("CSV must contain a column named 'identifier' (UniProt ID).")
-
-    uniprot_ids = df["identifier"].dropna().astype(str).tolist()
-    retriever = UniProtTaxonomyRetriever(uniprot_ids)
-    taxonomy_results = retriever.fetch_features()
-
-    tax_df = (
-        pd.DataFrame.from_dict(
-            {
-                uid: {**{"taxon_id": data["taxon_id"]}, **data["features"]}
-                for uid, data in taxonomy_results.items()
-            },
-            orient="index",
-        )
-        .reset_index()
-        .rename(columns={"index": "identifier"})
-    )
-
-    merged = df.merge(tax_df, on="identifier", how="left")
-    merged.to_csv(output_csv, index=False)
-    print(f"\nAnnotated CSV saved to {output_csv}")
-
-
 # ---------- Binary taxonomy vectors ----------
 
 
-def build_binary_tax_dict(
-    detailed_tax_csv_path: str | Path,
+def _build_binary_vectors(
+    df: pd.DataFrame,
     id_col: str = "identifier",
 ) -> dict[str, np.ndarray]:
-    """Build dict: identifier -> np.array of 0/1 (len = len(TAXA))."""
-    df = pd.read_csv(detailed_tax_csv_path)
+    """Build dict: identifier -> np.array of 0/1 (len = len(TAXA)).
 
+    Expects *df* to contain taxonomy lineage columns (domain, kingdom, …).
+    """
     tax_cols = [
         "domain",
         "kingdom",
@@ -418,9 +293,7 @@ def build_binary_tax_dict(
 
     missing = [c for c in tax_cols if c not in df.columns]
     if missing:
-        raise ValueError(
-            f"Missing taxonomy columns in {detailed_tax_csv_path}: {missing}"
-        )
+        raise ValueError(f"Missing taxonomy columns: {missing}")
 
     for c in tax_cols:
         df[c] = df[c].astype(str).str.strip().str.lower()
@@ -430,7 +303,7 @@ def build_binary_tax_dict(
     for original_name, norm_name in zip(TAXA, taxa_norm):
         df[original_name] = (df[tax_cols] == norm_name).any(axis=1).astype(np.float32)
 
-    tax_dict = {}
+    tax_dict: dict[str, np.ndarray] = {}
     for _, row in df.iterrows():
         identifier = row[id_col]
         tax_array = row[TAXA].to_numpy(dtype=np.float32)
@@ -442,20 +315,62 @@ def build_binary_tax_dict(
 
 
 def run_binary_taxonomy_pipeline(
-    tax_csv_path: str | Path,
+    input_csv: str | Path,
     input_h5_path: str | Path,
     output_h5_path: str | Path,
     id_col: str = "identifier",
 ) -> None:
-    """Create binary taxonomy vectors in a separate H5 file."""
-    tax_dict = build_binary_tax_dict(tax_csv_path, id_col=id_col)
+    """Create binary taxonomy vectors from a CSV that contains ``Organism (ID)``.
+
+    1. Reads the CSV (must have *id_col* and ``Organism (ID)`` columns).
+    2. Resolves taxonomy lineage for each unique taxon ID via :class:`TaxonomyRetriever`.
+    3. Encodes membership in the 56 predefined TAXA as binary vectors.
+    4. Writes one vector per protein (keyed by *id_col*) into *output_h5_path*,
+       but only for proteins that are also present in *input_h5_path*.
+    """
+    df = pd.read_csv(input_csv)
+
+    if "Organism (ID)" not in df.columns:
+        raise ValueError(
+            "CSV must contain an 'Organism (ID)' column with NCBI taxon IDs. "
+            "Re-run `toxfam preprocess` to regenerate training_data.csv."
+        )
+
+    # Parse taxon IDs, dropping any NaN / non-numeric values
+    df["_taxon_id"] = pd.to_numeric(df["Organism (ID)"], errors="coerce")
+    valid = df["_taxon_id"].notna()
+    unique_taxids = df.loc[valid, "_taxon_id"].astype(int).unique().tolist()
+
+    print(f"Resolving lineage for {len(unique_taxids)} unique taxon IDs ...")
+    retriever = TaxonomyRetriever(unique_taxids)
+    tax_data = retriever.fetch_features()
+
+    # Map taxon_id -> lineage dict, then join onto df
+    lineage_rows = []
+    for taxid, info in tax_data.items():
+        row = {"_taxon_id": taxid}
+        row.update(info["features"])
+        lineage_rows.append(row)
+    lineage_df = pd.DataFrame(lineage_rows)
+
+    df = df.merge(lineage_df, on="_taxon_id", how="left")
+
+    # Fill missing lineage columns with empty strings
+    for col in TAXONOMY_FEATURES:
+        if col not in df.columns:
+            df[col] = ""
+        df[col] = df[col].fillna("")
+
+    tax_dict = _build_binary_vectors(df, id_col=id_col)
     vec_len = len(TAXA)
 
-    with h5py.File(input_h5_path, "r") as f_in, h5py.File(output_h5_path, "w") as f_out:
+    with h5py.File(input_h5_path, "r") as f_in, h5py.File(
+        output_h5_path, "w"
+    ) as f_out:
         total_entries = len(f_in.keys())
         matched = 0
         unmatched = 0
-        unmatched_ids = []
+        unmatched_ids: list[str] = []
 
         for i, protein_id in enumerate(f_in.keys()):
             if protein_id in tax_dict:

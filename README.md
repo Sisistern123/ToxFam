@@ -12,7 +12,7 @@ Supported workflows:
 
 - Sequence preprocessing and redundancy reduction (MMseqs2 clustering)
 - ProtT5 embedding generation
-- Optional taxonomy retrieval and encoding
+- Optional taxonomy encoding from NCBI taxon IDs
 - MLP-based toxin family classification
 - Evaluation and benchmarking
 
@@ -60,12 +60,11 @@ Downloads raw data from UniProt, removes signal peptides via [SignalP6](docs/sig
 # ProtT5 embeddings (GPU recommended)
 uv run toxfam embed -i <input.fasta> -o <output.h5>
 
-# Taxonomy annotation and binary vectors
-uv run toxfam taxonomy --input-csv <csv> --output-csv <csv>
-uv run toxfam taxonomy-vectors --tax-csv <csv> --input-h5 <h5> --output-h5 <h5>
+# Taxonomy binary vectors (optional, for combined strategy)
+uv run toxfam taxonomy [--input-csv <csv>] [--input-h5 <h5>] [--output-h5 <h5>]
 ```
 
-See [docs/embedding.md](docs/embedding.md) for embedding options, resume support, and performance notes.
+See [docs/embedding.md](docs/embedding.md) for embedding options and [docs/taxonomy.md](docs/taxonomy.md) for how taxonomy vectors are built.
 
 ### 3. Training
 
@@ -90,6 +89,7 @@ uv run toxfam eval-unreviewed --input-tsv <tsv> --input-fasta <fasta> --input-h5
 | ------------------------------------------------ | --------------------------------------------------------- |
 | [docs/preprocessing.md](docs/preprocessing.md)   | Step-by-step preprocessing pipeline walkthrough           |
 | [docs/embedding.md](docs/embedding.md)           | Embedding generation options, resume support, performance |
+| [docs/taxonomy.md](docs/taxonomy.md)             | Taxonomy binary vector generation pipeline                |
 | [docs/signalp6_setup.md](docs/signalp6_setup.md) | SignalP6 installation and setup guide                     |
 | [configs/readme.md](configs/readme.md)           | Training configuration and architecture diagrams          |
 
@@ -104,7 +104,7 @@ The raw data in `data/raw/` are TSV exports from [UniProt](https://www.uniprot.o
 | `0800.tsv`   | `(taxonomy_id:33208) AND (reviewed:true) AND (fragment:false) AND (keyword:KW-0800)` |
 | `nontox.tsv` | `(taxonomy_id:33208) AND (reviewed:true) AND (fragment:false) NOT (keyword:KW-0800)` |
 
-Exported columns: Entry, Protein names, Protein families, Organism, Sequence, InterPro, Pfam, Tissue specificity, Signal peptide.
+Exported columns: Entry, Protein families, Organism (ID), Sequence, Signal peptide.
 
 ### Directory layout
 
