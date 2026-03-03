@@ -29,17 +29,16 @@ console = Console()
 
 def ensure_dirs() -> None:
     interm = intermediate_dir()
-    proc = processed_dir()
     dirs = [
         raw_dir(),
+        processed_dir(),
         interm / "fasta",
         interm / "families",
         interm / "mmseqs",
         interm / "sp6" / "tox",
         interm / "sp6" / "nontox",
         interm / "representatives",
-        proc / "embeddings",
-        proc / "taxonomy",
+        interm / "taxonomy",
         get_project_root() / "benchmark" / "HBI",
         get_project_root() / "benchmark",
     ]
