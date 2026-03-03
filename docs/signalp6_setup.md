@@ -16,7 +16,7 @@ SignalP 6.0 is distributed by DTU Health Technology. You need the Python package
 **Academic users:**
 1. Go to <https://services.healthtech.dtu.dk/services/SignalP-6.0/>
 2. Navigate to the Downloads section
-3. Download the `signalp-6-package` archive (choose the `fast` model at minimum)
+3. Download the `signalp-6-package` archive (choose the `slow-sequential` model for best accuracy)
 
 **Non-academic users:**
 - Contact DTU at health-software@dtu.dk for licensing
@@ -63,11 +63,11 @@ If the model weights are not already in `signalp-6-package/models/`, copy them t
 cp -r /path/to/downloaded/models/* tools/signalp6/bin/signalp-6-package/models/
 ```
 
-At minimum, the `fast` mode requires:
-- `models/distilled_model_signalp6.pt`
-
-For `slow-sequential` mode (optional):
+The `slow-sequential` mode (used by ToxFam) requires:
 - `models/sequential_models_signalp6/` (6 cross-validation models + viterbi decoder)
+
+For `fast` mode (lower accuracy, lower memory):
+- `models/distilled_model_signalp6.pt`
 
 ## Step 4: Create the environment
 
@@ -93,11 +93,10 @@ uv run --project tools/signalp6 signalp6 --version
 SignalP6 runs automatically during preprocessing:
 
 ```bash
-uv run toxfam preprocess              # with SignalP6 (default)
-uv run toxfam preprocess --no-signalp6  # skip SignalP6
+uv run toxfam preprocess
 ```
 
-If SignalP6 is not installed, the pipeline prints a warning and continues without signal peptide removal.
+SignalP6 is required. If it is not installed, the pipeline will fail with an error.
 
 ### Standalone
 
@@ -108,13 +107,13 @@ uv run --project tools/signalp6 signalp6 \
     --fastafile input.fasta \
     --output_dir output/ \
     --organism eukarya \
-    --mode fast \
+    --mode slow-sequential \
     --format none
 ```
 
 Key options:
 - `--organism`: `eukarya` (limits to Sec/SPI predictions) or `other`
-- `--mode`: `fast` (recommended), `slow` (>14GB RAM), or `slow-sequential`
+- `--mode`: `slow-sequential` (recommended, used by ToxFam) or `fast` (lower accuracy)
 - `--format`: `none` (summary only), `txt`, `png`, `eps`, or `all`
 - `--bsize`: batch size (default 10, tune for memory)
 - `--model_dir`: custom model weights path (if not in default location)

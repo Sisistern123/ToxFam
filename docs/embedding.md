@@ -19,15 +19,15 @@ uv run toxfam embed [-i <input.fasta>] [-o <output.h5>] [--force]
 
 ## CLI options
 
-| Option | Default | Description |
-|---|---|---|
-| `-i`, `--input` | `data/intermediate/mmseqs/representatives/all.fasta` | Input FASTA file |
-| `-o`, `--output` | `data/processed/embeddings.h5` | Output HDF5 file |
-| `--force` | off | Overwrite the H5 file instead of resuming |
-| `--model-dir` | HuggingFace cache | Custom cache directory for the model |
-| `--model-name` | `Rostlab/prot_t5_xl_half_uniref50-enc` | HuggingFace model identifier |
-| `--max-residues` | 4000 | Max total residues per batch |
-| `--max-batch` | 100 | Max sequences per batch |
+| Option           | Default                                              | Description                               |
+| ---------------- | ---------------------------------------------------- | ----------------------------------------- |
+| `-i`, `--input`  | `data/intermediate/mmseqs/representatives/all.fasta` | Input FASTA file                          |
+| `-o`, `--output` | `data/processed/embeddings.h5`                       | Output HDF5 file                          |
+| `--force`        | off                                                  | Overwrite the H5 file instead of resuming |
+| `--model-dir`    | HuggingFace cache                                    | Custom cache directory for the model      |
+| `--model-name`   | `Rostlab/prot_t5_xl_half_uniref50-enc`               | HuggingFace model identifier              |
+| `--max-residues` | 4000                                                 | Max total residues per batch              |
+| `--max-batch`    | 100                                                  | Max sequences per batch                   |
 
 ## Resume support
 

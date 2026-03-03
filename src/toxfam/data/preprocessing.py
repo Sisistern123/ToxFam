@@ -181,12 +181,10 @@ def maybe_run_signalp6(extra_args: str = "--organism eukarya") -> None:
 
     # Check that the SignalP6 tool is set up
     if not (sp6_project / "bin" / "signalp-6-package").exists():
-        console.print(
-            "   [yellow]SignalP6 not installed.[/] "
-            "See docs/signalp6_setup.md for setup instructions.\n"
-            "   Skipping signal peptide removal."
+        raise RuntimeError(
+            "SignalP6 not installed. "
+            "See docs/signalp6_setup.md for setup instructions."
         )
-        return
 
     try:
         proc = subprocess.Popen(
@@ -358,7 +356,6 @@ def build_train_all_members(data: pd.DataFrame, train_df: pd.DataFrame) -> pd.Da
 
 def run_preprocessing_pipeline(
     *,
-    run_signalp6: bool = True,
     signalp6_extra: str = "--organism euk",
     min_seq_id: float = 0.9,
 ) -> None:
@@ -367,8 +364,6 @@ def run_preprocessing_pipeline(
     fasta_dir = interm / "fasta"
     rep_dir = interm / "mmseqs" / "representatives"
     proc = processed_dir()
-    sp6_tox_dir = interm / "sp6" / "tox"
-    sp6_nontox_dir = interm / "sp6" / "nontox"
     bench_dir = get_project_root() / "benchmark"
     bench_hbi_dir = bench_dir / "HBI"
 
@@ -394,22 +389,9 @@ def run_preprocessing_pipeline(
 
     # -- Step 2: SignalP6 --
     console.print("\n[bold]2.[/] SignalP6 signal peptide removal")
-    has_sp6 = (sp6_tox_dir / "output.gff3").exists() and (
-        sp6_nontox_dir / "output.gff3"
-    ).exists()
-    if run_signalp6 and not has_sp6:
-        maybe_run_signalp6(signalp6_extra)
-        has_sp6 = (sp6_tox_dir / "output.gff3").exists() and (
-            sp6_nontox_dir / "output.gff3"
-        ).exists()
-    elif not run_signalp6 and not has_sp6:
-        console.print("   Skipped (use --run-signalp6 to enable)")
-
-    if has_sp6:
-        tox, nontox = apply_signalp_filtered_sequences(tox, nontox)
-        console.print("   Applied signal peptide removal")
-    else:
-        console.print("   No SignalP6 output found, using raw sequences")
+    maybe_run_signalp6(signalp6_extra)
+    tox, nontox = apply_signalp_filtered_sequences(tox, nontox)
+    console.print("   Applied signal peptide removal")
 
     nontox["Protein families"] = "nontox"
     data = pd.concat([tox, nontox], ignore_index=True)

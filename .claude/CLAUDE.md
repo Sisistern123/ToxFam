@@ -11,6 +11,7 @@ ToxFam is a research project for classifying animal toxin protein sequences into
 - Python >=3.11, managed with [uv](https://github.com/astral-sh/uv)
 - Install: `uv sync`
 - Key deps: PyTorch, transformers (ProtT5), biopython, scikit-learn, h5py, pymmseqs, protspace, iterative-stratification, pydantic, typer
+- SignalP6 required for preprocessing (setup: `docs/signalp6_setup.md`)
 - Large processed data files (HDF5, CSV) are distributed via GitHub Releases; download with `uv run toxfam download-data`
 
 ## Common Commands
@@ -24,7 +25,7 @@ uv run toxfam download-data
 
 ### Data Preprocessing Pipeline
 ```bash
-uv run toxfam preprocess [--no-signalp6] [--min-seq-id 0.9]
+uv run toxfam preprocess [--min-seq-id 0.9]
 ```
 
 ### Generate ProtT5 Embeddings
@@ -129,7 +130,7 @@ data/
 ### Data Flow
 
 1. **Raw data** (`data/raw/`) — UniProt TSVs of toxin/non-toxin proteins
-2. **Preprocessing** (`toxfam.data.preprocessing`) — normalizes family labels, runs optional SignalP6 signal peptide removal, clusters per-family with MMseqs2 at 90% identity, creates multilabel-stratified train/val/test splits; intermediates go to `data/intermediate/`, final split CSV to `data/processed/`
+2. **Preprocessing** (`toxfam.data.preprocessing`) — normalizes family labels, runs SignalP6 signal peptide removal, clusters per-family with MMseqs2 at 90% identity, creates multilabel-stratified train/val/test splits; intermediates go to `data/intermediate/`, final split CSV to `data/processed/`
 3. **Feature generation**:
    - `toxfam.data.embedding` — ProtT5 per-protein embeddings → `data/processed/embeddings.h5`
    - `toxfam.data.taxonomy` — UniProt ID → NCBI taxonomy lineage; taxonomy CSV → binary (one-hot) vectors over 56 predefined taxa → `data/intermediate/taxonomy/`

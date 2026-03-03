@@ -22,6 +22,7 @@ Supported workflows:
 
 - Python >= 3.11
 - [uv](https://github.com/astral-sh/uv)
+- [SignalP6](docs/signalp6_setup.md) (required for preprocessing)
 - GPU recommended for embedding generation
 
 ### Installation
@@ -48,10 +49,10 @@ All steps use the unified CLI via `uv run toxfam <command>`:
 ### 1. Preprocessing
 
 ```bash
-uv run toxfam preprocess [--no-signalp6] [--min-seq-id 0.9]
+uv run toxfam preprocess [--min-seq-id 0.9]
 ```
 
-Filters sequences, reduces redundancy via MMseqs2, and creates stratified train/val/test splits. See [docs/preprocessing.md](docs/preprocessing.md) for a detailed step-by-step walkthrough.
+Downloads raw data from UniProt, removes signal peptides via [SignalP6](docs/signalp6_setup.md), reduces redundancy via per-family MMseqs2 clustering, and creates stratified train/val/test splits. See [docs/preprocessing.md](docs/preprocessing.md) for details.
 
 ### 2. Feature Generation
 
@@ -63,6 +64,8 @@ uv run toxfam embed -i <input.fasta> -o <output.h5>
 uv run toxfam taxonomy --input-csv <csv> --output-csv <csv>
 uv run toxfam taxonomy-vectors --tax-csv <csv> --input-h5 <h5> --output-h5 <h5>
 ```
+
+See [docs/embedding.md](docs/embedding.md) for embedding options, resume support, and performance notes.
 
 ### 3. Training
 
@@ -81,15 +84,24 @@ uv run toxfam eval-nonmetazoan --h5-path <h5> --model-path <pt> --class-map <jso
 uv run toxfam eval-unreviewed --input-tsv <tsv> --input-fasta <fasta> --input-h5 <h5>
 ```
 
+## Further Documentation
+
+| Document                                         | Description                                               |
+| ------------------------------------------------ | --------------------------------------------------------- |
+| [docs/preprocessing.md](docs/preprocessing.md)   | Step-by-step preprocessing pipeline walkthrough           |
+| [docs/embedding.md](docs/embedding.md)           | Embedding generation options, resume support, performance |
+| [docs/signalp6_setup.md](docs/signalp6_setup.md) | SignalP6 installation and setup guide                     |
+| [configs/readme.md](configs/readme.md)           | Training configuration and architecture diagrams          |
+
 ## Data Directory
 
 ### Raw data
 
 The raw data in `data/raw/` are TSV exports from [UniProt](https://www.uniprot.org/) using the following queries (reviewed metazoan proteins, no fragments):
 
-| File | UniProt query |
-|---|---|
-| `0800.tsv` | `(taxonomy_id:33208) AND (reviewed:true) AND (fragment:false) AND (keyword:KW-0800)` |
+| File         | UniProt query                                                                        |
+| ------------ | ------------------------------------------------------------------------------------ |
+| `0800.tsv`   | `(taxonomy_id:33208) AND (reviewed:true) AND (fragment:false) AND (keyword:KW-0800)` |
 | `nontox.tsv` | `(taxonomy_id:33208) AND (reviewed:true) AND (fragment:false) NOT (keyword:KW-0800)` |
 
 Exported columns: Entry, Protein names, Protein families, Organism, Sequence, InterPro, Pfam, Tissue specificity, Signal peptide.

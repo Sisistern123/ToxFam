@@ -64,10 +64,6 @@ def download_data(
 
 @app.command()
 def preprocess(
-    run_signalp6: Annotated[
-        bool,
-        typer.Option("--run-signalp6/--no-signalp6", help="Run SignalP6 preprocessing"),
-    ] = True,
     signalp6_extra: Annotated[
         str, typer.Option(help="Extra args for SignalP6")
     ] = "--organism eukarya",
@@ -79,7 +75,6 @@ def preprocess(
     from toxfam.data.preprocessing import run_preprocessing_pipeline
 
     run_preprocessing_pipeline(
-        run_signalp6=run_signalp6,
         signalp6_extra=signalp6_extra,
         min_seq_id=min_seq_id,
     )

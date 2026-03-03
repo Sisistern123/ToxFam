@@ -3,7 +3,7 @@
 The preprocessing pipeline (`uv run toxfam preprocess`) transforms raw UniProt data into clustered, split-ready datasets for model training.
 
 ```bash
-uv run toxfam preprocess [--no-signalp6] [--min-seq-id 0.9]
+uv run toxfam preprocess [--min-seq-id 0.9]
 ```
 
 ## Data Flow
@@ -38,9 +38,7 @@ data/raw/nontox.tsv ┘                                       (per family)      
 
 ## Step 2 — SignalP6 signal peptide removal
 
-**Controlled by:** `--run-signalp6` (default) / `--no-signalp6`
-
-**Requires:** SignalP6 set up in `tools/signalp6/` (see [SignalP6 Setup](signalp6_setup.md)). If not installed, the pipeline skips this step with a warning.
+**Requires:** SignalP6 set up in `tools/signalp6/` (see [SignalP6 Setup](signalp6_setup.md)). The pipeline will fail if SignalP6 is not installed.
 
 **What happens:**
 
@@ -83,10 +81,10 @@ Both are saved as CSV + FASTA to `data/intermediate/mmseqs/representatives/`.
 
 **Output files:**
 
-| File | Description |
-|---|---|
-| `data/processed/training_data.csv` | Combined CSV with `Split` column (`train`/`val`/`test`) |
-| `benchmark/test_data.csv` + `.fasta` | Test split |
-| `benchmark/val_data.csv` + `.fasta` | Validation split |
-| `benchmark/HBI/train_all_df.csv` | All members of train clusters |
-| `benchmark/HBI/train_all_members.fasta` | FASTA for HBI baseline |
+| File                                    | Description                                             |
+| --------------------------------------- | ------------------------------------------------------- |
+| `data/processed/training_data.csv`      | Combined CSV with `Split` column (`train`/`val`/`test`) |
+| `benchmark/test_data.csv` + `.fasta`    | Test split                                              |
+| `benchmark/val_data.csv` + `.fasta`     | Validation split                                        |
+| `benchmark/HBI/train_all_df.csv`        | All members of train clusters                           |
+| `benchmark/HBI/train_all_members.fasta` | FASTA for HBI baseline                                  |
