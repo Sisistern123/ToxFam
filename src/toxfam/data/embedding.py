@@ -1,17 +1,24 @@
 from __future__ import annotations
 
-import logging
+import os
 import time
 from pathlib import Path
 
 import h5py
 import torch
-from tqdm import tqdm
+from rich.console import Console
+from rich.progress import (
+    BarColumn,
+    MofNCompleteColumn,
+    Progress,
+    SpinnerColumn,
+    TextColumn,
+    TimeElapsedColumn,
+    TimeRemainingColumn,
+)
 from transformers import T5EncoderModel, T5Tokenizer
 
-logging.basicConfig(
-    format="%(asctime)s - %(levelname)s - %(message)s", level=logging.INFO
-)
+console = Console()
 
 
 def get_device():
@@ -24,11 +31,11 @@ def get_device():
 
 
 def get_T5_model(model_dir, transformer_link, device):
-    logging.info(f"Loading: {transformer_link}")
     model = T5EncoderModel.from_pretrained(transformer_link, cache_dir=model_dir)
 
-    if device.type == "cpu":
-        logging.info("Casting model to full precision for CPU execution...")
+    if device.type == "cuda":
+        model.half()
+    elif device.type == "cpu":
         model.to(torch.float32)
 
     model = model.to(device)
@@ -36,6 +43,23 @@ def get_T5_model(model_dir, transformer_link, device):
 
     vocab = T5Tokenizer.from_pretrained(transformer_link, do_lower_case=False)
     return model, vocab
+
+
+def _load_model_quietly(model_dir, model_name, device):
+    """Load ProtT5 model with all stdout/stderr noise suppressed at the OS fd level."""
+    devnull = os.open(os.devnull, os.O_WRONLY)
+    saved_stdout = os.dup(1)
+    saved_stderr = os.dup(2)
+    try:
+        os.dup2(devnull, 1)
+        os.dup2(devnull, 2)
+        return get_T5_model(model_dir, model_name, device)
+    finally:
+        os.dup2(saved_stdout, 1)
+        os.dup2(saved_stderr, 2)
+        os.close(saved_stdout)
+        os.close(saved_stderr)
+        os.close(devnull)
 
 
 def read_fasta(fasta_path: str | Path) -> dict[str, str]:
@@ -52,7 +76,7 @@ def read_fasta(fasta_path: str | Path) -> dict[str, str]:
     return sequences
 
 
-def _process_batch(batch, hf_file, model, tokenizer, device):
+def _process_batch(batch, hf_file, model, tokenizer, device, duplicates, use_amp):
     pdb_ids, seqs, seq_lens = zip(*batch)
 
     token_encoding = tokenizer(
@@ -65,23 +89,17 @@ def _process_batch(batch, hf_file, model, tokenizer, device):
     input_ids = token_encoding["input_ids"].to(device)
     attention_mask = token_encoding["attention_mask"].to(device)
 
-    try:
-        with torch.no_grad():
-            embedding_repr = model(input_ids, attention_mask=attention_mask)
-    except RuntimeError as e:
-        logging.error(
-            f"RuntimeError during embedding. Try lowering batch size. Error: {e}"
-        )
-        return
+    with torch.no_grad(), torch.amp.autocast(device.type, enabled=use_amp):
+        embedding_repr = model(input_ids, attention_mask=attention_mask)
 
     for batch_idx, identifier in enumerate(pdb_ids):
         s_len = seq_lens[batch_idx]
         emb = embedding_repr.last_hidden_state[batch_idx, :s_len]
         emb = emb.mean(dim=0)
-        emb_np = emb.cpu().numpy()
+        emb_np = emb.float().cpu().numpy()
 
         if identifier in hf_file:
-            logging.warning(f"Duplicate identifier found: {identifier}. Skipping.")
+            duplicates.append(identifier)
         else:
             hf_file.create_dataset(identifier, data=emb_np)
 
@@ -94,43 +112,105 @@ def generate_embeddings(
     model_name: str = "Rostlab/prot_t5_xl_half_uniref50-enc",
     max_residues: int = 4000,
     max_batch: int = 100,
+    force: bool = False,
 ) -> None:
     """Generate per-protein ProtT5 embeddings from a FASTA file and write to HDF5."""
+    # -- Step 1: Device --
     device = get_device()
-    logging.info(f"Using device: {device}")
+    use_amp = device.type == "cuda"
+    console.print(f"\n[bold]1.[/] Device: [cyan]{device}[/]")
 
+    # -- Step 2: Read FASTA --
+    console.print(f"\n[bold]2.[/] Reading [cyan]{input_fasta}[/]")
     seq_dict = read_fasta(input_fasta)
     sorted_seqs = sorted(seq_dict.items(), key=lambda kv: len(kv[1]), reverse=True)
+    max_len = len(sorted_seqs[0][1]) if sorted_seqs else 0
+    console.print(f"   {len(seq_dict)} sequences (longest: {max_len} residues)")
 
-    model, tokenizer = get_T5_model(model_dir, model_name, device)
+    # -- Step 2b: Skip already-embedded sequences --
+    output_path = Path(output_h5)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    h5_mode = "w" if force else "a"
 
-    logging.info(f"Total sequences: {len(seq_dict)}")
+    existing_keys: set[str] = set()
+    if not force and output_path.exists():
+        with h5py.File(output_path, "r") as hf_read:
+            existing_keys = set(hf_read.keys())
 
-    with h5py.File(output_h5, "w") as hf:
-        batch = []
+    if existing_keys:
+        sorted_seqs = [(k, v) for k, v in sorted_seqs if k not in existing_keys]
+        console.print(
+            f"   [dim]{len(existing_keys)} already embedded, "
+            f"{len(sorted_seqs)} remaining[/]"
+        )
+
+    if not sorted_seqs:
+        console.print("\n[bold green]All sequences already embedded. Nothing to do.[/]")
+        return
+
+    # -- Step 3: Load model --
+    console.print(f"\n[bold]3.[/] Loading model [cyan]{model_name}[/]")
+    with console.status("Loading model & tokenizer..."):
+        model, tokenizer = _load_model_quietly(model_dir, model_name, device)
+
+    # -- Step 4: Embed --
+    console.print(f"\n[bold]4.[/] Generating embeddings → [cyan]{output_h5}[/]")
+    duplicates: list[str] = []
+    embedded = 0
+    start_time = time.time()
+
+    with h5py.File(output_h5, h5_mode) as hf:
+        batch: list[tuple[str, str, int]] = []
         batch_res_count = 0
 
-        start_time = time.time()
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            BarColumn(),
+            MofNCompleteColumn(),
+            TimeElapsedColumn(),
+            TimeRemainingColumn(),
+            console=console,
+            transient=True,
+        ) as progress:
+            task = progress.add_task("Embedding", total=len(sorted_seqs))
 
-        for seq_idx, (pdb_id, seq) in enumerate(
-            tqdm(sorted_seqs, desc="Processing"), 1
-        ):
-            seq = seq.replace("U", "X").replace("Z", "X").replace("O", "X")
-            seq_len = len(seq)
-            seq_spaced = " ".join(list(seq))
+            for pdb_id, seq in sorted_seqs:
+                seq = seq.replace("U", "X").replace("Z", "X").replace("O", "X")
+                seq_len = len(seq)
+                seq_spaced = " ".join(list(seq))
 
-            if batch:
-                if (len(batch) >= max_batch) or (
-                    batch_res_count + seq_len > max_residues
+                if batch and (
+                    len(batch) >= max_batch or batch_res_count + seq_len > max_residues
                 ):
-                    _process_batch(batch, hf, model, tokenizer, device)
+                    _process_batch(
+                        batch, hf, model, tokenizer, device, duplicates, use_amp
+                    )
+                    hf.flush()
+                    embedded += len(batch)
+                    progress.update(task, completed=embedded)
                     batch = []
                     batch_res_count = 0
 
-            batch.append((pdb_id, seq_spaced, seq_len))
-            batch_res_count += seq_len
+                batch.append((pdb_id, seq_spaced, seq_len))
+                batch_res_count += seq_len
 
-            if seq_idx == len(seq_dict):
-                _process_batch(batch, hf, model, tokenizer, device)
+            # Final batch
+            if batch:
+                _process_batch(batch, hf, model, tokenizer, device, duplicates, use_amp)
+                hf.flush()
+                embedded += len(batch)
+                progress.update(task, completed=embedded)
 
-    logging.info(f"Finished in {time.time() - start_time:.2f} seconds")
+    elapsed = time.time() - start_time
+
+    # -- Summary --
+    if duplicates:
+        console.print(
+            f"   [yellow]Skipped {len(duplicates)} duplicate identifier(s)[/]"
+        )
+
+    console.print(
+        f"\n[bold green]Done.[/] {embedded - len(duplicates)} embeddings "
+        f"in {elapsed:.1f}s"
+    )

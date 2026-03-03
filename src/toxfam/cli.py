@@ -70,7 +70,7 @@ def preprocess(
     ] = True,
     signalp6_extra: Annotated[
         str, typer.Option(help="Extra args for SignalP6")
-    ] = "--organism euk",
+    ] = "--organism eukarya",
     min_seq_id: Annotated[
         float, typer.Option(help="MMseqs2 clustering identity threshold")
     ] = 0.9,
@@ -93,16 +93,25 @@ def embed(
     input: Annotated[
         Path,
         typer.Option("-i", "--input", help="Input FASTA file", exists=True),
-    ],
-    output: Annotated[Path, typer.Option("-o", "--output", help="Output H5 file")],
+    ] = Path("data/intermediate/representatives/all.fasta"),
+    output: Annotated[
+        Path, typer.Option("-o", "--output", help="Output H5 file")
+    ] = Path("data/processed/embeddings.h5"),
     model_dir: Annotated[
-        Optional[Path], typer.Option(help="Cache directory for model")
+        Optional[Path],
+        typer.Option(
+            help="Cache directory for model",
+            show_default="~/.cache/huggingface/hub/",
+        ),
     ] = None,
     model_name: Annotated[
         str, typer.Option(help="HuggingFace model name")
     ] = "Rostlab/prot_t5_xl_half_uniref50-enc",
     max_residues: Annotated[int, typer.Option(help="Max residues per batch")] = 4000,
     max_batch: Annotated[int, typer.Option(help="Max sequences per batch")] = 100,
+    force: Annotated[
+        bool, typer.Option("--force", help="Overwrite existing H5 instead of resuming")
+    ] = False,
 ) -> None:
     """Generate per-protein ProtT5 embeddings from a FASTA file."""
     from toxfam.data.embedding import generate_embeddings
@@ -114,6 +123,7 @@ def embed(
         model_name=model_name,
         max_residues=max_residues,
         max_batch=max_batch,
+        force=force,
     )
 
 
