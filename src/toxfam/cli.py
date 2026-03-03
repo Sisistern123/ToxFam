@@ -25,8 +25,6 @@ RELEASE_TAG = "data-v1"
 DATA_ASSETS = {
     "training_data.csv": "training_data.csv",
     "training_data.h5": "embeddings/training_data.h5",
-    "training_tax.csv": "taxonomy/training_tax.csv",
-    "binary_taxonomy_vectors.h5": "taxonomy/binary_taxonomy_vectors.h5",
 }
 
 
