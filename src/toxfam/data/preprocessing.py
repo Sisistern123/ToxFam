@@ -11,7 +11,7 @@ from typing import Dict, List, Set, Tuple
 
 import numpy as np
 import pandas as pd
-from Bio import SeqIO
+from toxfam.data._fasta import parse_fasta
 from iterstrat.ml_stratifiers import MultilabelStratifiedShuffleSplit
 from pymmseqs.commands import easy_cluster
 from rich.console import Console
@@ -40,7 +40,7 @@ def write_fasta(df: pd.DataFrame, filename: os.PathLike | str) -> None:
 
 
 def fasta_to_dataframe(fasta_file: os.PathLike | str) -> pd.DataFrame:
-    records = SeqIO.parse(str(fasta_file), "fasta")
+    records = parse_fasta(fasta_file)
     return pd.DataFrame(
         [
             {"identifier": rec.id.split("|")[-1], "Sequence": str(rec.seq)}
@@ -276,7 +276,7 @@ def cluster_per_family_and_collect(
             continue
         seqs = [
             {"identifier": rec.id, "Sequence": str(rec.seq)}
-            for rec in SeqIO.parse(str(rep_fasta), "fasta")
+            for rec in parse_fasta(rep_fasta)
         ]
         rep_seqs_all.extend(seqs)
         if family_dir != "nontox":

@@ -5,8 +5,6 @@ description = "Animal toxin protein family classification using MLP on ProtT5 em
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
-    "biopython>=1.85",
-    "git-lfs>=1.6",
     "iterative-stratification>=0.1.9",
     "jupyter>=1.1.1",
     "protobuf>=6.33.5",
@@ -16,6 +14,7 @@ dependencies = [
     "rich>=14.3.2",
     "seaborn>=0.13.2",
     "sentencepiece>=0.2.1",
+    "taxopy>=0.14.0",
     "tiktoken>=0.12.0",
     "torch>=2.7.1",
     "transformers>=5.1.0",

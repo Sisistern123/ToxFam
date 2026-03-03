@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pandas as pd
-from Bio import SeqIO
+from toxfam.data._fasta import parse_fasta
 
 
 def write_fasta(df: pd.DataFrame, filename: str | Path) -> None:
@@ -41,7 +41,7 @@ def create_filtered_fasta(
         df = df.rename(columns={"Entry": "identifier"})
 
     # 2. Load processed sequences from SignalP6
-    records = SeqIO.parse(str(sp6_dir / "processed_entries.fasta"), "fasta")
+    records = parse_fasta(sp6_dir / "processed_entries.fasta")
     df_proc = pd.DataFrame(
         [
             {"identifier": rec.id.split("|")[-1], "Sequence_cut": str(rec.seq)}

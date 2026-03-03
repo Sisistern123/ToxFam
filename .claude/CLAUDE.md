@@ -10,7 +10,7 @@ ToxFam is a research project for classifying animal toxin protein sequences into
 
 - Python >=3.11, managed with [uv](https://github.com/astral-sh/uv)
 - Install: `uv sync`
-- Key deps: PyTorch, transformers (ProtT5), biopython, scikit-learn, h5py, pymmseqs, protspace, iterative-stratification, pydantic, typer
+- Key deps: PyTorch, transformers (ProtT5), scikit-learn, h5py, pymmseqs, protspace, iterative-stratification, taxopy, pydantic, typer
 - SignalP6 required for preprocessing (setup: `docs/signalp6_setup.md`)
 - Large processed data files (HDF5, CSV) are distributed via GitHub Releases; download with `uv run toxfam download-data`
 
