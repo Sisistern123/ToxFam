@@ -93,7 +93,13 @@ def run_combined_strategy(
 
 
 def evaluate_label_on_dataset(
-    model, dataset_df, label_col, label_encoder, loss_fn, tag, out_dir,
+    model,
+    dataset_df,
+    label_col,
+    label_encoder,
+    loss_fn,
+    tag,
+    out_dir,
     config: TrainConfig,
 ):
     """Evaluate the model on a dataframe, using the correct DataSelector per strategy."""
@@ -132,10 +138,15 @@ def evaluate_label_on_dataset(
     )
 
     out_path = Path(out_dir)
-    conf_df.to_csv(out_path / "predictions" / f"{tag.lower()}_predictions.csv", index=False)
+    conf_df.to_csv(
+        out_path / "predictions" / f"{tag.lower()}_predictions.csv", index=False
+    )
 
     plot_confusion_matrix(
-        y_true, y_pred, ds.le, out_path / "plots" / f"{tag.lower()}_confusion_matrix.png"
+        y_true,
+        y_pred,
+        ds.le,
+        out_path / "plots" / f"{tag.lower()}_confusion_matrix.png",
     )
 
     report = classification_report(

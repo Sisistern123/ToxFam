@@ -96,4 +96,3 @@ class ModularMLP(nn.Module):
         x = self.projector(x)
         x = self.backbone(x)
         return x
-

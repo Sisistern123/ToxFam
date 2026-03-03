@@ -74,13 +74,9 @@ def run_hbi_search(
     res = search_res.to_pandas()
     if res.empty:
         print("No hits found.")
-        return pd.DataFrame(
-            columns=["identifier", "hbi_prediction", "hbi_confidence"]
-        )
+        return pd.DataFrame(columns=["identifier", "hbi_prediction", "hbi_confidence"])
 
-    best_hits = res.loc[res.groupby("query")["evalue"].idxmin()].reset_index(
-        drop=True
-    )
+    best_hits = res.loc[res.groupby("query")["evalue"].idxmin()].reset_index(drop=True)
 
     train_labels = train_df[["identifier", "Protein families"]].rename(
         columns={"identifier": "target", "Protein families": "hbi_prediction"}
@@ -163,9 +159,7 @@ def calculate_metrics_bundle(
     }
 
 
-def load_nn_precomputed(
-    nn_preds_path: Path, nn_metrics_path: Path
-) -> Dict[str, Any]:
+def load_nn_precomputed(nn_preds_path: Path, nn_metrics_path: Path) -> Dict[str, Any]:
     if not (nn_metrics_path.exists() and nn_preds_path.exists()):
         print("Warning: NN pre-calculated files missing!")
         return {"has_nn": False}
@@ -213,10 +207,7 @@ def run_eval_test_set(model_dir: Path | None = None) -> None:
 
     if model_dir is None:
         model_dir = (
-            get_project_root()
-            / "model"
-            / "model_output"
-            / "calibrated_combined"
+            get_project_root() / "model" / "model_output" / "calibrated_combined"
         )
 
     nn_preds_path = model_dir / "predictions" / "test_calibrated_predictions.csv"
@@ -274,9 +265,7 @@ def run_eval_test_set(model_dir: Path | None = None) -> None:
                 f"Found {len(labels_not_in_ground_truth_model)} model labels "
                 f"not in ground truth. Mapping to 'other'..."
             )
-            repl_map_model = {
-                lbl: "other" for lbl in labels_not_in_ground_truth_model
-            }
+            repl_map_model = {lbl: "other" for lbl in labels_not_in_ground_truth_model}
             combined["model_prediction"] = combined["model_prediction"].replace(
                 repl_map_model
             )
@@ -378,9 +367,7 @@ def run_eval_test_set(model_dir: Path | None = None) -> None:
             plot_confusion_matrix(
                 all_labels=nn_y_true,
                 all_preds=nn_y_pred,
-                label_encoder=type(
-                    "obj", (object,), {"classes_": shared_class_list}
-                )(),
+                label_encoder=type("obj", (object,), {"classes_": shared_class_list})(),
                 output_path=str(results_dir / "model_confusion_matrix.png"),
             )
         else:

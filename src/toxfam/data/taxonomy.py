@@ -471,7 +471,7 @@ def run_binary_taxonomy_pipeline(
             if (i + 1) % 10000 == 0:
                 print(f"Processed {i + 1}/{total_entries} entries...")
 
-        print(f"\nProcessing complete! (binary one-hot taxonomy)")
+        print("\nProcessing complete! (binary one-hot taxonomy)")
         print(f"Total entries (proteins): {total_entries}")
         print(f"Matched with taxonomy: {matched}")
         print(f"Unmatched (all-zero vector): {unmatched}")
@@ -479,5 +479,5 @@ def run_binary_taxonomy_pipeline(
         if unmatched > 0:
             print(f"\nFirst 10 unmatched IDs: {unmatched_ids[:10]}")
 
-    print(f"\nBinary taxonomy pipeline finished.")
+    print("\nBinary taxonomy pipeline finished.")
     print(f"Output file (only one-hot vectors): {output_h5_path}")

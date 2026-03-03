@@ -15,11 +15,17 @@ from Bio import SeqIO
 from iterstrat.ml_stratifiers import MultilabelStratifiedShuffleSplit
 from pymmseqs.commands import easy_cluster
 from rich.console import Console
-from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, MofNCompleteColumn
+from rich.progress import (
+    Progress,
+    SpinnerColumn,
+    TextColumn,
+    BarColumn,
+    MofNCompleteColumn,
+)
 from rich.table import Table
 from sklearn.preprocessing import MultiLabelBinarizer
 
-from toxfam._paths import get_project_root, data_dir, raw_dir, intermediate_dir, processed_dir
+from toxfam._paths import get_project_root, raw_dir, intermediate_dir, processed_dir
 
 console = Console()
 
@@ -118,10 +124,7 @@ def load_and_prepare_raw() -> Tuple[pd.DataFrame, pd.DataFrame]:
     nontox = pd.read_csv(raw / "nontox.tsv", sep="\t").copy()
     nontox.rename(columns={"Entry": "identifier"}, inplace=True)
     cutoff = (
-        nontox["Sequence"]
-        .str.len()
-        .nlargest(int(np.ceil(len(nontox) * 0.01)))
-        .min()
+        nontox["Sequence"].str.len().nlargest(int(np.ceil(len(nontox) * 0.01))).min()
     )
     nontox = nontox[nontox["Sequence"].str.len() <= cutoff].reset_index(drop=True)
     nontox["Protein families"] = "nontox"
@@ -227,12 +230,12 @@ def cluster_per_family_and_collect(
         transient=True,
         refresh_per_second=30,
     ) as progress:
-        task = progress.add_task(
-            "Clustering families", total=len(grouped)
-        )
+        task = progress.add_task("Clustering families", total=len(grouped))
         for family, group in grouped:
             safe = sanitize_filename(family)
-            progress.update(task, description=f"Clustering [cyan]{safe}[/]", refresh=True)
+            progress.update(
+                task, description=f"Clustering [cyan]{safe}[/]", refresh=True
+            )
             family_fa = families_dir / f"{safe}.fasta"
             write_fasta(group, family_fa)
 
@@ -322,9 +325,7 @@ def multilabel_stratified_splits(rep_df_all: pd.DataFrame):
     return train_df, val_df, test_df
 
 
-def build_train_all_members(
-    data: pd.DataFrame, train_df: pd.DataFrame
-) -> pd.DataFrame:
+def build_train_all_members(data: pd.DataFrame, train_df: pd.DataFrame) -> pd.DataFrame:
     mmseqs_dir = intermediate_dir() / "mmseqs"
     train_reps = set(train_df["identifier"])
     rep2members: Dict[str, Set[str]] = {}
@@ -413,9 +414,7 @@ def run_preprocessing_pipeline(
         f"\n[bold]3.[/] MMseqs2 clustering "
         f"({n_families_total} families, min_seq_id={min_seq_id})"
     )
-    rep_df_all, rep_df_tox = cluster_per_family_and_collect(
-        data, min_seq_id=min_seq_id
-    )
+    rep_df_all, rep_df_tox = cluster_per_family_and_collect(data, min_seq_id=min_seq_id)
     console.print(
         f"   {len(rep_df_all)} representative sequences "
         f"({len(rep_df_tox)} toxin, {len(rep_df_all) - len(rep_df_tox)} non-toxin)"

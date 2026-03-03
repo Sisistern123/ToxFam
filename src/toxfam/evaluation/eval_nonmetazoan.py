@@ -87,9 +87,7 @@ def run_hbi_evaluation(
     if df_search.empty:
         query_df["hbi_prediction"] = "no hit"
     else:
-        best_hits = df_search.loc[
-            df_search.groupby("query")["evalue"].idxmin()
-        ].copy()
+        best_hits = df_search.loc[df_search.groupby("query")["evalue"].idxmin()].copy()
         train_map = dict(zip(train_df["identifier"], train_df["Protein families"]))
         best_hits["hbi_prediction"] = best_hits["target"].map(train_map)
         query_df = query_df.merge(
@@ -227,9 +225,7 @@ def run_eval_nonmetazoan(
     with open(results_dir / "final_metrics.json", "w") as f:
         json.dump({"HBI": hbi_m, "Model": mod_m}, f, indent=4)
 
-    df_eval["binary_ground_truth"] = df_eval["Protein families"].apply(
-        to_binary_class
-    )
+    df_eval["binary_ground_truth"] = df_eval["Protein families"].apply(to_binary_class)
     df_eval["binary_hbi"] = df_eval["hbi_prediction"].apply(to_binary_class)
     df_eval["binary_model"] = df_eval["model_prediction"].apply(to_binary_class)
 

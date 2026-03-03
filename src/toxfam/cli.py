@@ -65,7 +65,8 @@ def download_data(
 @app.command()
 def preprocess(
     run_signalp6: Annotated[
-        bool, typer.Option("--run-signalp6/--no-signalp6", help="Run SignalP6 preprocessing")
+        bool,
+        typer.Option("--run-signalp6/--no-signalp6", help="Run SignalP6 preprocessing"),
     ] = True,
     signalp6_extra: Annotated[
         str, typer.Option(help="Extra args for SignalP6")
@@ -93,21 +94,15 @@ def embed(
         Path,
         typer.Option("-i", "--input", help="Input FASTA file", exists=True),
     ],
-    output: Annotated[
-        Path, typer.Option("-o", "--output", help="Output H5 file")
-    ],
+    output: Annotated[Path, typer.Option("-o", "--output", help="Output H5 file")],
     model_dir: Annotated[
         Optional[Path], typer.Option(help="Cache directory for model")
     ] = None,
     model_name: Annotated[
         str, typer.Option(help="HuggingFace model name")
     ] = "Rostlab/prot_t5_xl_half_uniref50-enc",
-    max_residues: Annotated[
-        int, typer.Option(help="Max residues per batch")
-    ] = 4000,
-    max_batch: Annotated[
-        int, typer.Option(help="Max sequences per batch")
-    ] = 100,
+    max_residues: Annotated[int, typer.Option(help="Max residues per batch")] = 4000,
+    max_batch: Annotated[int, typer.Option(help="Max sequences per batch")] = 100,
 ) -> None:
     """Generate per-protein ProtT5 embeddings from a FASTA file."""
     from toxfam.data.embedding import generate_embeddings
@@ -131,9 +126,7 @@ def taxonomy(
         Path,
         typer.Option(help="Input CSV with 'identifier' column", exists=True),
     ],
-    output_csv: Annotated[
-        Path, typer.Option(help="Output annotated CSV")
-    ],
+    output_csv: Annotated[Path, typer.Option(help="Output annotated CSV")],
 ) -> None:
     """Annotate proteins with NCBI taxonomy lineage."""
     from toxfam.data.taxonomy import annotate_csv_with_taxonomy

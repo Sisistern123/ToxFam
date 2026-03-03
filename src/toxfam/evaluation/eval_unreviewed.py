@@ -6,7 +6,6 @@ import json
 from pathlib import Path
 from typing import Dict
 
-import h5py
 import numpy as np
 import pandas as pd
 from pymmseqs.commands import createdb, search
@@ -111,49 +110,10 @@ def load_preprocessed_data(
     df = normalize_protein_families(df)
 
     print(f"Loaded {len(df)} sequences")
-    print(f"\nProtein family distribution (top 10):")
+    print("\nProtein family distribution (top 10):")
     print(df["Protein families"].value_counts().head(10))
 
     return df
-
-
-def load_embeddings(
-    identifiers: list, input_h5: Path
-) -> Dict[str, np.ndarray]:
-    print("\nLoading embeddings from H5 file...")
-
-    if not input_h5.exists():
-        raise FileNotFoundError(f"H5 file not found: {input_h5}")
-
-    embeddings = {}
-
-    with h5py.File(input_h5, "r") as f:
-        if len(f.keys()) == 0:
-            raise ValueError(f"H5 file is empty: {input_h5}")
-
-        for identifier in identifiers:
-            possible_keys = [
-                identifier,
-                identifier.split("|")[-1],
-                f"protein_{identifier}",
-            ]
-
-            found = False
-            for key in possible_keys:
-                if key in f:
-                    embeddings[identifier] = f[key][:]
-                    found = True
-                    break
-
-            if not found:
-                print(f"   Warning: Embedding not found for {identifier}")
-
-    print(f"Loaded {len(embeddings)} embeddings")
-
-    if len(embeddings) == 0:
-        raise ValueError("No embeddings loaded. Check identifier format in H5 file.")
-
-    return embeddings
 
 
 # ---------- HBI Evaluation ----------
@@ -264,9 +224,7 @@ def run_hbi_evaluation(
         predictions["hbi_confidence"] = 0.0
         predictions["evalue"] = np.nan
     else:
-        best_hits = df_search.loc[
-            df_search.groupby("query")["evalue"].idxmin()
-        ].copy()
+        best_hits = df_search.loc[df_search.groupby("query")["evalue"].idxmin()].copy()
 
         train_label_map = dict(
             zip(train_df["identifier"], train_df["Protein families"])
@@ -324,16 +282,15 @@ def run_eval_unreviewed(
     if train_fasta is None:
         train_fasta = root / "benchmark" / "HBI" / "train_all_members.fasta"
 
-    results_dir = root / "benchmark" / "new" / "evaluation" / "unreviewed_metazoan" / "results"
+    results_dir = (
+        root / "benchmark" / "new" / "evaluation" / "unreviewed_metazoan" / "results"
+    )
     results_dir.mkdir(parents=True, exist_ok=True)
 
     # Step 1: Load preprocessed data
     df = load_preprocessed_data(input_tsv)
 
-    # Step 2: Load embeddings
-    embeddings = load_embeddings(df["identifier"].tolist(), input_h5)
-
-    # Step 3: Load training data
+    # Step 2: Load training data
     print("\nLoading training data...")
     if not train_data.exists():
         raise FileNotFoundError(f"Training data not found: {train_data}")
@@ -387,7 +344,7 @@ def run_eval_unreviewed(
     print("RESULTS SUMMARY")
     print("=" * 60)
     hbi_m = hbi_results["metrics"]
-    print(f"\nHBI Performance:")
+    print("\nHBI Performance:")
     print(f"   Accuracy:  {hbi_m['acc']:.4f} (+/-{hbi_m['std_error']:.4f})")
     print(f"   MCC:       {hbi_m['mcc']:.4f}")
     print(f"   Micro-MCC: {hbi_m['micro_mcc']:.4f}")

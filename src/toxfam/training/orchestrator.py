@@ -71,9 +71,7 @@ def run_training(config: TrainConfig) -> None:
     h5_paths = [str(p) for p in config.h5_paths]
     tax_h5 = str(config.tax_h5_path) if config.tax_h5_path else None
 
-    train_ds = ToxDataset(
-        train_df, h5_paths, is_train=True, tax_h5_path=tax_h5
-    )
+    train_ds = ToxDataset(train_df, h5_paths, is_train=True, tax_h5_path=tax_h5)
 
     class_indices = {int(i): label for i, label in enumerate(train_ds.le.classes_)}
     class_json_path = out_root / "class_indices.json"
@@ -114,11 +112,23 @@ def run_training(config: TrainConfig) -> None:
     # 4. Evaluation: Uncalibrated
     print("\nRunning Final Evaluation (Uncalibrated)...")
     evaluate_label_on_dataset(
-        final_model, val_df, label_col, train_ds.le, loss_fn, "Validation", out_root,
+        final_model,
+        val_df,
+        label_col,
+        train_ds.le,
+        loss_fn,
+        "Validation",
+        out_root,
         config,
     )
     evaluate_label_on_dataset(
-        final_model, test_df, label_col, train_ds.le, loss_fn, "Test", out_root,
+        final_model,
+        test_df,
+        label_col,
+        train_ds.le,
+        loss_fn,
+        "Test",
+        out_root,
         config,
     )
 

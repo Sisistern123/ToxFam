@@ -31,3 +31,8 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/toxfam"]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.15.4",
+]

@@ -61,9 +61,7 @@ def create_filtered_fasta(
         "phase",
         "attributes",
     ]
-    df_gff = pd.read_csv(
-        sp6_dir / "output.gff3", sep="\t", comment="#", names=gff_cols
-    )
+    df_gff = pd.read_csv(sp6_dir / "output.gff3", sep="\t", comment="#", names=gff_cols)
     df_gff["identifier"] = (
         df_gff["identifier"].str.split("|").str[-1].str.split().str[0]
     )

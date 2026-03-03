@@ -41,9 +41,7 @@ def analyze_label_distribution_for_split(
     fig.subplots_adjust(bottom=0.4)
     ax.set_title(f"Distribution of {label_col} Across Splits (log scale)")
     ax.set_ylabel("Count (log scale)")
-    fig.savefig(
-        plots_dir / f"{label_col.replace(' ', '_')}_distribution_log.png"
-    )
+    fig.savefig(plots_dir / f"{label_col.replace(' ', '_')}_distribution_log.png")
     plt.close(fig)
 
     chi2, p, dof, expected = chi2_contingency(dist_df.T)
@@ -66,8 +64,7 @@ def plot_multiclass_roc_from_scores(
 
     cmap = plt.cm.get_cmap("rainbow", n_classes)
     colors = [
-        (0.8 * r, 0.8 * g, 0.8 * b)
-        for (r, g, b, a) in cmap(np.arange(n_classes))
+        (0.8 * r, 0.8 * g, 0.8 * b) for (r, g, b, a) in cmap(np.arange(n_classes))
     ]
 
     fig, ax = plt.subplots(figsize=(10, 8), dpi=180, constrained_layout=True)
