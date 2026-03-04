@@ -2,11 +2,15 @@
 
 from __future__ import annotations
 
+import hashlib
 import io
+import json
 import os
 import re
+import shutil
 import subprocess
 from contextlib import redirect_stdout
+from pathlib import Path
 from typing import Dict, List, Set, Tuple
 
 import numpy as np
@@ -34,9 +38,18 @@ console = Console()
 
 
 def write_fasta(df: pd.DataFrame, filename: os.PathLike | str) -> None:
-    with open(filename, "w") as f:
-        for _, row in df.iterrows():
-            f.write(f">{row['identifier']}\n{row['Sequence']}\n")
+    """Write a FASTA file from a DataFrame. Skips writing if content is unchanged."""
+    new_content = "".join(
+        f">{row['identifier']}\n{row['Sequence']}\n" for _, row in df.iterrows()
+    )
+    path = Path(filename)
+    if path.exists():
+        new_hash = hashlib.md5(new_content.encode()).hexdigest()
+        old_hash = hashlib.md5(path.read_bytes()).hexdigest()
+        if new_hash == old_hash:
+            return
+    with open(path, "w") as f:
+        f.write(new_content)
 
 
 def fasta_to_dataframe(fasta_file: os.PathLike | str) -> pd.DataFrame:
@@ -113,102 +126,182 @@ def load_and_prepare_raw() -> Tuple[pd.DataFrame, pd.DataFrame]:
     return tox, nontox
 
 
-def apply_signalp_filtered_sequences(
-    tox: pd.DataFrame, nontox: pd.DataFrame
-) -> Tuple[pd.DataFrame, pd.DataFrame]:
-    sp6_tox_dir = intermediate_dir() / "sp6" / "tox"
-    sp6_nontox_dir = intermediate_dir() / "sp6" / "nontox"
+# ---------- SignalP6 per-sequence caching ----------
 
-    def load_signalp_output(proc_path, gff_path):
-        df_proc = fasta_to_dataframe(proc_path)
-        gff_cols = [
-            "identifier",
-            "source",
-            "feature_type",
-            "start",
-            "end",
-            "score",
-            "strand",
-            "phase",
-            "attributes",
-        ]
-        df_gff = pd.read_csv(gff_path, sep="\t", comment="#", names=gff_cols)
-        df_gff["identifier"] = (
-            df_gff["identifier"].str.split("|").str[-1].str.split().str[0]
-        )
-        df = pd.merge(df_gff, df_proc, on="identifier")
-        return df[df["score"] > 0.8][["identifier", "Sequence"]].rename(
-            columns={"Sequence": "Sequence_new"}
-        )
 
-    tox_filt = load_signalp_output(
-        sp6_tox_dir / "processed_entries.fasta", sp6_tox_dir / "output.gff3"
+def _seq_hash(seq: str) -> str:
+    """MD5 hash of a protein sequence."""
+    return hashlib.md5(seq.encode()).hexdigest()
+
+
+def _sp6_cache_path() -> Path:
+    return intermediate_dir() / "sp6" / "sp6_cache.json"
+
+
+def _load_sp6_cache() -> Dict[str, str | None]:
+    """Load per-sequence SP6 cache. Returns {seq_hash: mature_seq or None}."""
+    path = _sp6_cache_path()
+    if not path.exists():
+        return {}
+    try:
+        with open(path) as f:
+            return json.load(f)
+    except (json.JSONDecodeError, OSError):
+        return {}
+
+
+def _save_sp6_cache(cache: Dict[str, str | None]) -> None:
+    path = _sp6_cache_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_suffix(".tmp")
+    with open(tmp, "w") as f:
+        json.dump(cache, f)
+    tmp.rename(path)
+
+
+def _parse_sp6_output(sp6_dir: Path) -> Dict[str, str]:
+    """Parse SP6 output → {identifier: mature_sequence} for high-confidence hits."""
+    proc_fasta = sp6_dir / "processed_entries.fasta"
+    gff_path = sp6_dir / "output.gff3"
+    if not proc_fasta.exists() or not gff_path.exists():
+        return {}
+
+    df_proc = fasta_to_dataframe(proc_fasta)
+    gff_cols = [
+        "identifier", "source", "feature_type", "start", "end",
+        "score", "strand", "phase", "attributes",
+    ]
+    df_gff = pd.read_csv(gff_path, sep="\t", comment="#", names=gff_cols)
+    df_gff["identifier"] = (
+        df_gff["identifier"].str.split("|").str[-1].str.split().str[0]
     )
-    nontox_filt = load_signalp_output(
-        sp6_nontox_dir / "processed_entries.fasta", sp6_nontox_dir / "output.gff3"
-    )
-
-    tox = tox.merge(tox_filt, on="identifier", how="left")
-    nontox = nontox.merge(nontox_filt, on="identifier", how="left")
-
-    tox["Sequence"] = tox["Sequence_new"].fillna(tox["Sequence"])
-    nontox["Sequence"] = nontox["Sequence_new"].fillna(nontox["Sequence"])
-    tox.drop(columns="Sequence_new", inplace=True, errors="ignore")
-    nontox.drop(columns="Sequence_new", inplace=True, errors="ignore")
-    return tox, nontox
+    merged = pd.merge(df_gff, df_proc, on="identifier")
+    hits = merged[merged["score"] > 0.8]
+    return dict(zip(hits["identifier"], hits["Sequence"]))
 
 
-# ---------- SignalP6 wrapper ----------
+def _bootstrap_sp6_cache(
+    tox: pd.DataFrame, nontox: pd.DataFrame,
+) -> Dict[str, str | None]:
+    """Build cache from existing monolithic SP6 output files."""
+    cache: Dict[str, str | None] = {}
+    sp6_base = intermediate_dir() / "sp6"
+
+    for label, df in [("tox", tox), ("nontox", nontox)]:
+        sp_hits = _parse_sp6_output(sp6_base / label)
+        for _, row in df.iterrows():
+            h = _seq_hash(row["Sequence"])
+            cache[h] = sp_hits.get(row["identifier"])
+    return cache
 
 
-def maybe_run_signalp6(extra_args: str = "--organism eukarya") -> None:
-    sp6_tox_dir = intermediate_dir() / "sp6" / "tox"
-    sp6_nontox_dir = intermediate_dir() / "sp6" / "nontox"
+def _run_signalp6_batch(
+    df: pd.DataFrame, extra_args: str,
+) -> Dict[str, str | None]:
+    """Run SP6 on a batch of sequences → {seq_hash: mature_seq or None}."""
+    if df.empty:
+        return {}
 
-    script_path = get_project_root() / "scripts" / "run_signalp6.sh"
     sp6_project = get_project_root() / "tools" / "signalp6"
+    model_dir = sp6_project / "bin" / "signalp-6-package" / "models"
 
-    if all(
-        [
-            (sp6_tox_dir / "output.gff3").exists(),
-            (sp6_nontox_dir / "output.gff3").exists(),
-            (sp6_tox_dir / "processed_entries.fasta").exists(),
-            (sp6_nontox_dir / "processed_entries.fasta").exists(),
-        ]
-    ):
-        console.print("   Using cached SignalP6 output")
-        return
+    mode = (
+        "slow-sequential"
+        if (model_dir / "sequential_models_signalp6").is_dir()
+        else "fast"
+    )
 
-    # Check that the SignalP6 tool is set up
-    if not (sp6_project / "bin" / "signalp-6-package").exists():
-        raise RuntimeError(
-            "SignalP6 not installed. "
-            "See docs/signalp6_setup.md for setup instructions."
-        )
+    batch_dir = intermediate_dir() / "sp6" / "_batch"
+    if batch_dir.exists():
+        shutil.rmtree(batch_dir)
+    batch_dir.mkdir(parents=True)
+
+    tmp_fasta = batch_dir / "input.fasta"
+    write_fasta(df, tmp_fasta)
+
+    env = {k: v for k, v in os.environ.items() if k != "VIRTUAL_ENV"}
+    cmd = [
+        "uv", "run", "--quiet", "--project", str(sp6_project),
+        "signalp6",
+        "--fastafile", str(tmp_fasta),
+        "--output_dir", str(batch_dir),
+        "--model_dir", str(model_dir),
+        *extra_args.split(),
+        "--mode", mode,
+        "--bsize", "10",
+        "--format", "none",
+    ]
 
     try:
-        proc = subprocess.Popen(
-            ["bash", str(script_path), "--extra-args", extra_args],
-            stdout=subprocess.PIPE,
-            text=True,
+        subprocess.run(cmd, check=True, env=env, capture_output=True)
+    except subprocess.CalledProcessError as e:
+        console.print(f"   [yellow]SP6 batch failed (exit {e.returncode})[/]")
+        shutil.rmtree(batch_dir, ignore_errors=True)
+        return {}
+
+    sp_hits = _parse_sp6_output(batch_dir)
+    result: Dict[str, str | None] = {}
+    for _, row in df.iterrows():
+        h = _seq_hash(row["Sequence"])
+        result[h] = sp_hits.get(row["identifier"])
+
+    shutil.rmtree(batch_dir, ignore_errors=True)
+    return result
+
+
+def run_signalp6_step(
+    tox: pd.DataFrame,
+    nontox: pd.DataFrame,
+    extra_args: str = "--organism euk",
+) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    """Apply SignalP6 signal peptide removal with per-sequence caching.
+
+    Each sequence is cached by its MD5 hash. Only sequences not in the cache
+    are sent to SignalP6. On first run, the cache is bootstrapped from any
+    existing monolithic SP6 output files.
+    """
+    sp6_project = get_project_root() / "tools" / "signalp6"
+    if not (sp6_project / "bin" / "signalp-6-package").exists():
+        raise RuntimeError(
+            "SignalP6 not installed. See docs/signalp6_setup.md for setup instructions."
         )
-        for line in proc.stdout:
-            line = line.rstrip()
-            if line.startswith("SP6_MODE="):
-                console.print(f"   Mode: [cyan]{line.split('=', 1)[1]}[/]")
-            elif line.startswith("SP6_START="):
-                console.print(f"   Predicting [cyan]{line.split('=', 1)[1]}[/] ...")
-            elif line.startswith("SP6_DONE="):
-                pass
-        proc.wait()
-        if proc.returncode != 0:
-            console.print(f"   [yellow]SignalP6 failed (exit code {proc.returncode})[/]")
-    except KeyboardInterrupt:
-        proc.terminate()
-        proc.wait()
-        raise
-    except Exception as e:
-        console.print(f"   [yellow]SignalP6 failed: {e}[/]")
+
+    cache = _load_sp6_cache()
+    if not cache:
+        bootstrapped = _bootstrap_sp6_cache(tox, nontox)
+        if bootstrapped:
+            cache = bootstrapped
+            _save_sp6_cache(cache)
+            console.print(
+                f"   Bootstrapped cache from existing SP6 output ({len(cache)} seqs)"
+            )
+
+    # Find uncached sequences
+    all_df = pd.concat([tox, nontox], ignore_index=True)
+    hashes = all_df["Sequence"].apply(_seq_hash)
+    uncached_mask = ~hashes.isin(cache)
+    n_uncached = int(uncached_mask.sum())
+
+    if n_uncached == 0:
+        console.print(f"   All {len(all_df)} sequences cached")
+    else:
+        console.print(f"   Running SP6 on {n_uncached} uncached sequences ...")
+        uncached_df = all_df[uncached_mask].drop_duplicates(subset="Sequence")
+        new_results = _run_signalp6_batch(uncached_df, extra_args)
+        cache.update(new_results)
+        _save_sp6_cache(cache)
+
+    # Apply cached results
+    def apply_cache(df: pd.DataFrame) -> pd.DataFrame:
+        df = df.copy()
+        new_seqs = []
+        for seq in df["Sequence"]:
+            mature = cache.get(_seq_hash(seq))
+            new_seqs.append(mature if mature is not None else seq)
+        df["Sequence"] = new_seqs
+        return df
+
+    return apply_cache(tox), apply_cache(nontox)
 
 
 # ---------- MMseqs2 & splitting ----------
@@ -392,9 +485,7 @@ def run_preprocessing_pipeline(
 
     # -- Step 2: SignalP6 --
     console.print("\n[bold]2.[/] SignalP6 signal peptide removal")
-    maybe_run_signalp6(signalp6_extra)
-    tox, nontox = apply_signalp_filtered_sequences(tox, nontox)
-    console.print("   Applied signal peptide removal")
+    tox, nontox = run_signalp6_step(tox, nontox, signalp6_extra)
 
     nontox["Protein families"] = "nontox"
     data = pd.concat([tox, nontox], ignore_index=True)
