@@ -32,15 +32,47 @@ DATA_ASSETS: list[tuple[str, str, str, str]] = [
 ]
 
 
+def _download_with_progress(url: str, dest: Path, label: str) -> None:
+    """Download a file with a rich progress bar."""
+    import urllib.request
+
+    from rich.progress import (
+        BarColumn,
+        DownloadColumn,
+        Progress,
+        TextColumn,
+        TransferSpeedColumn,
+    )
+
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    req = urllib.request.Request(url)
+    with urllib.request.urlopen(req) as resp:
+        total = int(resp.headers.get("Content-Length", 0))
+        with Progress(
+            TextColumn("  {task.description}"),
+            BarColumn(),
+            DownloadColumn(),
+            TransferSpeedColumn(),
+        ) as progress:
+            task = progress.add_task(label, total=total or None)
+            with open(dest, "wb") as f:
+                while chunk := resp.read(1024 * 64):
+                    f.write(chunk)
+                    progress.advance(task, len(chunk))
+
+
+
 @app.command("download-data")
 def download_data(
     tag: Annotated[
         str, typer.Option(help="GitHub release tag")
     ] = RELEASE_TAG,
+    force: Annotated[
+        bool, typer.Option("--force", "-f", help="Re-download even if files exist")
+    ] = False,
 ) -> None:
     """Download processed data (embeddings, training splits, SP6 cache) from GitHub Releases."""
     import tempfile
-    import urllib.request
     import zipfile
 
     from toxfam._paths import intermediate_dir, processed_dir
@@ -51,13 +83,11 @@ def download_data(
     for asset_name, dir_key, rel_path, skip_file in DATA_ASSETS:
         target_dir = dirs[dir_key]
         skip_path = target_dir / skip_file
+        url = f"{base_url}/{asset_name}"
 
-        if skip_path.exists():
+        if skip_path.exists() and not force:
             typer.echo(f"  skip {rel_path} (exists)")
             continue
-
-        url = f"{base_url}/{asset_name}"
-        typer.echo(f"  downloading {asset_name} ...")
 
         try:
             if asset_name.endswith(".zip"):
@@ -65,14 +95,13 @@ def download_data(
                 extract_dir.mkdir(parents=True, exist_ok=True)
                 with tempfile.NamedTemporaryFile(suffix=".zip", delete=False) as tmp:
                     tmp_path = Path(tmp.name)
-                urllib.request.urlretrieve(url, tmp_path)
+                _download_with_progress(url, tmp_path, asset_name)
                 with zipfile.ZipFile(tmp_path, "r") as zf:
                     zf.extractall(extract_dir)
                 tmp_path.unlink()
             else:
                 dest = target_dir / rel_path
-                dest.parent.mkdir(parents=True, exist_ok=True)
-                urllib.request.urlretrieve(url, dest)
+                _download_with_progress(url, dest, asset_name)
         except Exception as e:
             typer.echo(f"  FAILED: {e}", err=True)
             raise typer.Exit(code=1)

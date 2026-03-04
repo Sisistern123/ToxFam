@@ -212,12 +212,6 @@ def run_signalp6_step(
     are sent to SignalP6. On first run, the cache is bootstrapped from any
     existing monolithic SP6 output files.
     """
-    sp6_project = get_project_root() / "tools" / "signalp6"
-    if not (sp6_project / "bin" / "signalp-6-package").exists():
-        raise RuntimeError(
-            "SignalP6 not installed. See docs/signalp6_setup.md for setup instructions."
-        )
-
     cache = _load_sp6_cache()
     if not cache:
         bootstrapped = _bootstrap_sp6_cache(tox, nontox)
@@ -237,6 +231,11 @@ def run_signalp6_step(
     if n_uncached == 0:
         console.print(f"   All {len(all_df)} sequences cached")
     else:
+        sp6_project = get_project_root() / "tools" / "signalp6"
+        if not (sp6_project / "bin" / "signalp-6-package").exists():
+            raise RuntimeError(
+                "SignalP6 not installed. See docs/signalp6_setup.md for setup instructions."
+            )
         console.print(f"   Running SP6 on {n_uncached} uncached sequences ...")
         uncached_df = all_df[uncached_mask].drop_duplicates(subset="Sequence")
         new_results = _run_signalp6_batch(uncached_df, extra_args)
@@ -286,7 +285,15 @@ def cluster_per_family_and_collect(
             fam_mm_dir = mmseqs_dir / safe
             fam_mm_dir.mkdir(parents=True, exist_ok=True)
             family_fa = fam_mm_dir / "input.fasta"
+            rep_fasta = fam_mm_dir / "cluster_rep_seq.fasta"
+            old_hash = hashlib.md5(family_fa.read_bytes()).hexdigest() if family_fa.exists() else None
             write_fasta(group, family_fa)
+            new_hash = hashlib.md5(family_fa.read_bytes()).hexdigest()
+
+            if old_hash == new_hash and rep_fasta.exists():
+                progress.advance(task)
+                continue
+
             cluster_prefix = fam_mm_dir / "cluster"
             tmp_dir = fam_mm_dir / "tmp"
             tmp_dir.mkdir(parents=True, exist_ok=True)
