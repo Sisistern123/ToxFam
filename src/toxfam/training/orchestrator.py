@@ -7,9 +7,14 @@ from pathlib import Path
 import pandas as pd
 import torch
 from torch.utils.data import DataLoader
-import wandb
 
 from toxfam.config import TrainConfig
+from toxfam.device import get_device
+
+try:
+    import wandb
+except ModuleNotFoundError:  # pragma: no cover
+    wandb = None  # type: ignore[assignment]
 from toxfam.data.dataset import ToxDataset, analyze_data_splits
 from toxfam.model.calibration import ModelWithTemperature
 from toxfam.training.strategies import (
@@ -26,31 +31,21 @@ def run_training(config: TrainConfig) -> None:
     out_root = Path(config.output_dir)
     out_root.mkdir(parents=True, exist_ok=True)
 
-    # ---- Weights & Biases (wandb) setup ----
-    # Can be overridden from the shell; these are just sensible defaults.
-    os.environ.setdefault("WANDB_PROJECT", "toxfam")
-    os.environ.setdefault("WANDB_LOG_MODEL", "true")
+    device = get_device()
+    print(f"Using device: {device}", flush=True)
 
-    # Initial login (expects WANDB_API_KEY to be configured externally if needed).
-    wandb.login()
-
-    device = torch.device(
-        "mps"
-        if torch.backends.mps.is_available()
-        else "cuda"
-        if torch.cuda.is_available()
-        else "cpu"
-    )
-    print("Using device: ", device, flush=True)
-
-    # Initialize a run and log key hyperparameters.
-    wandb_config = {
-        "batch_size": config.batch_size,
-        "learning_rate": config.learning_rate,
-        "num_epochs": config.num_epochs,
-        "training_strategy": config.training_strategy,
-    }
-    wandb.init(project=os.environ["WANDB_PROJECT"], config=wandb_config)
+    # ---- Weights & Biases (wandb) setup (optional) ----
+    if wandb is not None:
+        os.environ.setdefault("WANDB_PROJECT", "toxfam")
+        os.environ.setdefault("WANDB_LOG_MODEL", "true")
+        wandb.login()
+        wandb_config = {
+            "batch_size": config.batch_size,
+            "learning_rate": config.learning_rate,
+            "num_epochs": config.num_epochs,
+            "training_strategy": config.training_strategy,
+        }
+        wandb.init(project=os.environ["WANDB_PROJECT"], config=wandb_config)
 
     # Create organized subdirectories
     plots_dir = out_root / "plots"
@@ -140,7 +135,7 @@ def run_training(config: TrainConfig) -> None:
     else:
         val_selector = DataSelector(val_loader, "emb_only")
 
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = get_device()
     final_model = final_model.to(device)
 
     scaled_model = ModelWithTemperature(final_model, device)
@@ -150,7 +145,7 @@ def run_training(config: TrainConfig) -> None:
     print(f"Saved calibrated model to {calibrated_path}")
 
     # Log calibrated model as a wandb artifact (model generation tracking).
-    if wandb.run is not None:
+    if wandb is not None and wandb.run is not None:
         calibrated_artifact = wandb.Artifact(
             name="toxfam-best-model-calibrated",
             type="model",
@@ -184,3 +179,6 @@ def run_training(config: TrainConfig) -> None:
 
     train_ds.close()
     val_ds.close()
+
+    if wandb is not None and wandb.run is not None:
+        wandb.finish()

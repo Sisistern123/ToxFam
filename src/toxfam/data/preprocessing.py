@@ -15,7 +15,8 @@ from typing import Dict, List, Set, Tuple
 
 import numpy as np
 import pandas as pd
-from toxfam.data._fasta import parse_fasta
+from toxfam.data._fasta import parse_fasta, write_fasta
+from toxfam.data.normalization import normalize_protein_families
 from iterstrat.ml_stratifiers import MultilabelStratifiedShuffleSplit
 from pymmseqs.commands import easy_cluster
 from rich.console import Console
@@ -35,21 +36,6 @@ console = Console()
 
 
 # ---------- Utilities ----------
-
-
-def write_fasta(df: pd.DataFrame, filename: os.PathLike | str) -> None:
-    """Write a FASTA file from a DataFrame. Skips writing if content is unchanged."""
-    new_content = "".join(
-        f">{row['identifier']}\n{row['Sequence']}\n" for _, row in df.iterrows()
-    )
-    path = Path(filename)
-    if path.exists():
-        new_hash = hashlib.md5(new_content.encode()).hexdigest()
-        old_hash = hashlib.md5(path.read_bytes()).hexdigest()
-        if new_hash == old_hash:
-            return
-    with open(path, "w") as f:
-        f.write(new_content)
 
 
 def fasta_to_dataframe(fasta_file: os.PathLike | str) -> pd.DataFrame:
@@ -79,41 +65,7 @@ def load_and_prepare_raw() -> Tuple[pd.DataFrame, pd.DataFrame]:
     )
     tox.rename(columns={"Entry": "identifier"}, inplace=True)
 
-    tox["Protein families"] = tox["Protein families"].str.split(";").str[0]
-    tox["Protein families"] = tox["Protein families"].str.split(",").str[0]
-
-    repl = {
-        "I1 superfamily": "Conotoxin I1 superfamily",
-        "O1 superfamily": "Conotoxin O1 superfamily",
-        "O2 superfamily": "Conotoxin O2 superfamily",
-        "E superfamily": "Conotoxin E superfamily",
-        "F superfamily": "Conotoxin F superfamily",
-    }
-    tox["Protein families"] = tox["Protein families"].replace(repl)
-
-    mapping = {
-        r"Conotoxin.*": "Conotoxin family",
-        r"Neurotoxin.*": "Neurotoxin family",
-        r"Scoloptoxin.*|Scolopendra.*": "Scoloptoxin family",
-        r"Caterpillar.*": "Caterpillar family",
-        r"Teretoxin.*": "Teretoxin family",
-        r"Limacoditoxin.*": "Limacoditoxin family",
-        r"Scutigerotoxin.*": "Scutigerotoxin family",
-        r"Cationic peptide.*": "Cationic peptide family",
-        r"Formicidae venom.*": "Formicidae venom family",
-        r"Bradykinin-potentiating peptide family|Natriuretic peptide family|Natriuretic": "Natriuretic, Bradykinin potentiating peptide family",
-        r".*phospholipase.*|.*Phospholipase.*": "Phospholipase family",
-    }
-
-    for pattern, replacement in mapping.items():
-        tox["Protein families"] = tox["Protein families"].str.replace(
-            pattern, replacement, regex=True
-        )
-
-    tox["Protein families"] = tox["Protein families"].where(
-        tox["Protein families"].map(tox["Protein families"].value_counts()) >= 10,
-        "other",
-    )
+    tox = normalize_protein_families(tox)
 
     nontox = pd.read_csv(raw / "nontox.tsv", sep="\t").copy()
     nontox.rename(columns={"Entry": "identifier"}, inplace=True)

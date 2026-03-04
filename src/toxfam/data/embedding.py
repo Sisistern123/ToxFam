@@ -18,16 +18,10 @@ from rich.progress import (
 )
 from transformers import T5EncoderModel, T5Tokenizer
 
+from toxfam.data._fasta import read_fasta_as_dict
+from toxfam.device import get_device
+
 console = Console()
-
-
-def get_device():
-    if torch.cuda.is_available():
-        return torch.device("cuda")
-    elif torch.backends.mps.is_available():
-        return torch.device("mps")
-    else:
-        return torch.device("cpu")
 
 
 def get_T5_model(model_dir, transformer_link, device):
@@ -60,20 +54,6 @@ def _load_model_quietly(model_dir, model_name, device):
         os.close(saved_stdout)
         os.close(saved_stderr)
         os.close(devnull)
-
-
-def read_fasta(fasta_path: str | Path) -> dict[str, str]:
-    sequences = dict()
-    current_id = None
-    with open(fasta_path, "r") as fasta_f:
-        for line in fasta_f:
-            if line.startswith(">"):
-                current_id = line.replace(">", "").strip()
-                current_id = current_id.replace("/", "_").replace(".", "_")
-                sequences[current_id] = ""
-            elif current_id is not None:
-                sequences[current_id] += "".join(line.split()).upper().replace("-", "")
-    return sequences
 
 
 def _process_batch(batch, hf_file, model, tokenizer, device, duplicates, use_amp):
@@ -122,7 +102,7 @@ def generate_embeddings(
 
     # -- Step 2: Read FASTA --
     console.print(f"\n[bold]2.[/] Reading [cyan]{input_fasta}[/]")
-    seq_dict = read_fasta(input_fasta)
+    seq_dict = read_fasta_as_dict(input_fasta)
     sorted_seqs = sorted(seq_dict.items(), key=lambda kv: len(kv[1]), reverse=True)
     max_len = len(sorted_seqs[0][1]) if sorted_seqs else 0
     console.print(f"   {len(seq_dict)} sequences (longest: {max_len} residues)")

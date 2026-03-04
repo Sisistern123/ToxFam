@@ -4,67 +4,14 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Dict
 
-import numpy as np
 import pandas as pd
 from pymmseqs.commands import createdb, search
-from sklearn.metrics import accuracy_score, classification_report, matthews_corrcoef
-from sklearn.preprocessing import label_binarize
 
 from toxfam._paths import get_project_root
-
-
-# ---------- Protein Family Normalization ----------
-
-
-def normalize_protein_families(
-    df: pd.DataFrame, column: str = "Protein families"
-) -> pd.DataFrame:
-    df = df.copy()
-
-    df[column] = df[column].str.split(";").str[0]
-    df[column] = df[column].str.split(",").str[0]
-
-    conotoxin_repl = {
-        "I1 superfamily": "Conotoxin I1 superfamily",
-        "O1 superfamily": "Conotoxin O1 superfamily",
-        "O2 superfamily": "Conotoxin O2 superfamily",
-        "E superfamily": "Conotoxin E superfamily",
-        "F superfamily": "Conotoxin F superfamily",
-    }
-    df[column] = df[column].replace(conotoxin_repl)
-
-    mapping = {
-        r"Conotoxin.*": "Conotoxin family",
-        r"Neurotoxin.*": "Neurotoxin family",
-        r"Scoloptoxin.*|Scolopendra.*": "Scoloptoxin family",
-        r"Caterpillar.*": "Caterpillar family",
-        r"Teretoxin.*": "Teretoxin family",
-        r"Limacoditoxin.*": "Limacoditoxin family",
-        r"Scutigerotoxin.*": "Scutigerotoxin family",
-        r"Cationic peptide.*": "Cationic peptide family",
-        r"Formicidae venom.*": "Formicidae venom family",
-        r"Bradykinin-potentiating peptide family|Natriuretic peptide family|Natriuretic": "Natriuretic, Bradykinin potentiating peptide family",
-        r".*phospholipase.*|.*Phospholipase.*": "Phospholipase family",
-    }
-
-    for pattern, replacement in mapping.items():
-        df[column] = df[column].str.replace(pattern, replacement, regex=True)
-
-    known_families = set(mapping.values())
-    family_counts = df[column].value_counts()
-
-    def should_keep_family(family):
-        if family in known_families:
-            return True
-        if family_counts.get(family, 0) >= 10:
-            return True
-        return False
-
-    df[column] = df[column].apply(lambda x: x if should_keep_family(x) else "other")
-
-    return df
+from toxfam.data._fasta import write_fasta
+from toxfam.data.normalization import normalize_protein_families
+from toxfam.evaluation.metrics import calculate_multiclass_metrics
 
 
 # ---------- Data Loading ----------
@@ -119,64 +66,12 @@ def load_preprocessed_data(
 # ---------- HBI Evaluation ----------
 
 
-def _write_fasta(df: pd.DataFrame, filename: Path) -> None:
-    with open(filename, "w") as f:
-        for _, row in df.iterrows():
-            f.write(f">{row['identifier']}\n{row['Sequence']}\n")
-
-
-def calculate_metrics(df: pd.DataFrame, truth_col: str, pred_col: str) -> Dict:
-    class_list = sorted(list(df[truth_col].unique()))
-    cls2idx = {cls_name: i for i, cls_name in enumerate(class_list)}
-
-    y_true = df[truth_col].map(cls2idx).to_numpy()
-    y_pred = df[pred_col].map(cls2idx).to_numpy()
-
-    n_samples = len(y_true)
-    n_classes = len(class_list)
-
-    acc = accuracy_score(y_true, y_pred)
-    mcc = matthews_corrcoef(y_true, y_pred)
-
-    y_true_bin = label_binarize(y_true, classes=range(n_classes))
-    y_pred_bin = label_binarize(y_pred, classes=range(n_classes))
-
-    if n_classes == 2 and y_true_bin.shape[1] == 1:
-        y_true_bin = np.hstack((1 - y_true_bin, y_true_bin))
-        y_pred_bin = np.hstack((1 - y_pred_bin, y_pred_bin))
-
-    micro_mcc = matthews_corrcoef(y_true_bin.ravel(), y_pred_bin.ravel())
-
-    std_error = np.sqrt((acc * (1 - acc)) / n_samples)
-
-    report = classification_report(
-        y_true,
-        y_pred,
-        labels=range(n_classes),
-        target_names=class_list,
-        output_dict=True,
-        zero_division=0,
-    )
-
-    return {
-        "acc": acc,
-        "mcc": mcc,
-        "micro_mcc": micro_mcc,
-        "std_error": std_error,
-        "n_samples": n_samples,
-        "report": report,
-        "class_list": class_list,
-        "y_true_encoded": y_true,
-        "y_pred_encoded": y_pred,
-    }
-
-
 def run_hbi_evaluation(
     query_df: pd.DataFrame,
     train_df: pd.DataFrame,
     train_fasta: Path,
     results_dir: Path,
-) -> Dict:
+) -> dict:
     print("\nRunning HBI Evaluation...")
 
     q_labels = set(query_df["Protein families"].unique())
@@ -197,7 +92,7 @@ def run_hbi_evaluation(
     tmp_dir.mkdir(parents=True, exist_ok=True)
 
     query_fasta = tmp_dir / "query.fasta"
-    _write_fasta(query_df, query_fasta)
+    write_fasta(query_df, query_fasta)
 
     print("   Creating databases...")
     query_db = createdb(str(query_fasta), str(tmp_dir / "queryDB"))
@@ -216,6 +111,8 @@ def run_hbi_evaluation(
     )
 
     df_search = search_res.to_pandas()
+
+    import numpy as np
 
     if df_search.empty:
         print("No search hits found.")
@@ -257,7 +154,7 @@ def run_hbi_evaluation(
             repl_map_hbi
         )
 
-    metrics = calculate_metrics(
+    metrics = calculate_multiclass_metrics(
         predictions, truth_col="Protein families", pred_col="hbi_prediction"
     )
 

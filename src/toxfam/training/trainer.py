@@ -10,7 +10,13 @@ import torch.nn.functional as F
 import torch.optim as optim
 from sklearn.metrics import accuracy_score, matthews_corrcoef
 from sklearn.preprocessing import label_binarize
-import wandb
+
+from toxfam.device import get_device
+
+try:
+    import wandb
+except ModuleNotFoundError:  # pragma: no cover
+    wandb = None  # type: ignore[assignment]
 
 if TYPE_CHECKING:
     from toxfam.config import TrainConfig
@@ -90,15 +96,8 @@ def get_class_weights(train_dataset):
 
 
 def train_model(model, train_loader, val_loader, weights_tensor, config: TrainConfig):
-    if torch.cuda.is_available():
-        device = torch.device("cuda")
-        print("Using Device: CUDA", flush=True)
-    elif torch.backends.mps.is_available():
-        device = torch.device("mps")
-        print("Using Device: MPS (Apple Silicon)", flush=True)
-    else:
-        device = torch.device("cpu")
-        print("Using Device: CPU", flush=True)
+    device = get_device()
+    print(f"Using Device: {device}", flush=True)
 
     model.to(device)
 
@@ -148,7 +147,7 @@ def train_model(model, train_loader, val_loader, weights_tensor, config: TrainCo
         )
 
         # Log epoch metrics to wandb if a run is active.
-        if wandb.run is not None:
+        if wandb is not None and wandb.run is not None:
             wandb.log(
                 {
                     "epoch": epoch + 1,
@@ -171,7 +170,7 @@ def train_model(model, train_loader, val_loader, weights_tensor, config: TrainCo
             torch.save(model.state_dict(), best_model_path)
 
             # Log best model checkpoint as a wandb artifact for model tracking.
-            if wandb.run is not None:
+            if wandb is not None and wandb.run is not None:
                 artifact = wandb.Artifact(
                     name="toxfam-best-model",
                     type="model",
@@ -187,12 +186,14 @@ def train_model(model, train_loader, val_loader, weights_tensor, config: TrainCo
             epochs_no_improve += 1
 
         if epochs_no_improve >= config.early_stopping_patience:
-            print("Early stopping triggered. Loss did not improve)", flush=True)
+            print("Early stopping triggered. Loss did not improve.", flush=True)
             break
 
     best_model_path = os.path.join(str(config.output_dir), "best_model.pt")
     if os.path.exists(best_model_path):
-        model.load_state_dict(torch.load(best_model_path, map_location=device))
+        model.load_state_dict(
+            torch.load(best_model_path, map_location=device, weights_only=True)
+        )
 
     history = {"train_losses": train_losses, "val_losses": val_losses}
     return model, history

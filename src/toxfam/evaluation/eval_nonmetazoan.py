@@ -7,57 +7,16 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Dict
 
 import h5py
-import numpy as np
 import pandas as pd
 import torch
 from pymmseqs.commands import createdb, search
-from sklearn.metrics import accuracy_score, classification_report, matthews_corrcoef
 
 from toxfam._paths import get_project_root
-
-NONTOXIN_LABELS = {"nontox"}
-
-
-def _write_fasta(df: pd.DataFrame, filename: str | Path) -> None:
-    with open(filename, "w") as f:
-        for _, row in df.iterrows():
-            f.write(f">{row['Entry']}\n{row['Sequence']}\n")
-
-
-def to_binary_class(label: str) -> str:
-    if str(label).lower() in NONTOXIN_LABELS:
-        return "nontoxin"
-    return "toxin"
-
-
-def calculate_metrics(df: pd.DataFrame, truth_col: str, pred_col: str) -> Dict:
-    y_true = df[truth_col].apply(to_binary_class).to_numpy()
-    y_pred = df[pred_col].apply(to_binary_class).to_numpy()
-
-    acc = accuracy_score(y_true, y_pred)
-    mcc = matthews_corrcoef(y_true, y_pred)
-
-    n_samples = len(y_true)
-    std_error = np.sqrt((acc * (1 - acc)) / n_samples)
-
-    report = classification_report(
-        y_true,
-        y_pred,
-        target_names=["nontoxin", "toxin"],
-        output_dict=True,
-        zero_division=0,
-    )
-
-    return {
-        "acc": acc,
-        "mcc": mcc,
-        "std_error": std_error,
-        "n_samples": n_samples,
-        "report": report,
-    }
+from toxfam.data._fasta import write_fasta
+from toxfam.device import get_device
+from toxfam.evaluation.metrics import calculate_binary_metrics, to_binary_class
 
 
 def run_hbi_evaluation(
@@ -67,7 +26,7 @@ def run_hbi_evaluation(
     train_fasta: Path,
     results_dir: Path,
 ) -> pd.DataFrame:
-    _write_fasta(query_df, query_fasta)
+    write_fasta(query_df, query_fasta, id_col="Entry")
     tmp_dir = results_dir / "tmp"
     tmp_dir.mkdir(parents=True, exist_ok=True)
 
@@ -116,7 +75,9 @@ def load_calibrated_model(
         first_key = list(f.keys())[0]
         embedding_dim = f[first_key][:].shape[0]
 
-    state_dict = torch.load(model_path, map_location=torch.device(device))
+    state_dict = torch.load(
+        model_path, map_location=torch.device(device), weights_only=True
+    )
 
     # Detect model architecture from state dict keys
     is_multi_input = any(k.startswith("model.tax_net.") for k in state_dict)
@@ -185,13 +146,9 @@ def run_model_inference(
     model_path: Path,
     class_map_path: Path,
 ) -> pd.DataFrame:
-    device = (
-        "mps"
-        if torch.backends.mps.is_available()
-        else ("cuda" if torch.cuda.is_available() else "cpu")
-    )
+    device = get_device()
     model, is_multi_input = load_calibrated_model(
-        model_path, class_map_path, h5_path, device=device
+        model_path, class_map_path, h5_path, device=str(device)
     )
 
     with open(class_map_path, "r") as f:
@@ -264,8 +221,8 @@ def run_eval_nonmetazoan(
     # 6. Binary Metrics & Save
     print("Calculating Binary Metrics (Toxin vs Nontoxin)...")
 
-    hbi_m = calculate_metrics(df_eval, "Protein families", "hbi_prediction")
-    mod_m = calculate_metrics(df_eval, "Protein families", "model_prediction")
+    hbi_m = calculate_binary_metrics(df_eval, "Protein families", "hbi_prediction")
+    mod_m = calculate_binary_metrics(df_eval, "Protein families", "model_prediction")
 
     with open(results_dir / "final_metrics.json", "w") as f:
         json.dump({"HBI": hbi_m, "Model": mod_m}, f, indent=4)

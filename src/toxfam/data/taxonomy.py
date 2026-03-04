@@ -19,10 +19,13 @@ import h5py
 import numpy as np
 import pandas as pd
 import taxopy
-from tqdm import tqdm
+from rich.console import Console
+from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, MofNCompleteColumn
 
 logging.basicConfig(format="%(levelname)s: %(message)s")
 logger = logging.getLogger(__name__)
+
+console = Console()
 
 # ---------- Constants ----------
 
@@ -110,18 +113,23 @@ class TaxonomyRetriever:
 
     def fetch_features(self) -> dict[int, dict[str, Any]]:
         result = {}
+        taxonomies_info = self._get_taxonomy_info(self.taxon_ids)
 
-        with tqdm(
-            total=len(self.taxon_ids), desc="Fetching taxonomy features", unit="taxon"
-        ) as pbar:
-            taxonomies_info = self._get_taxonomy_info(self.taxon_ids)
-
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            BarColumn(),
+            MofNCompleteColumn(),
+            console=console,
+            transient=True,
+        ) as progress:
+            task = progress.add_task("Fetching taxonomy features", total=len(self.taxon_ids))
             for taxon_id in self.taxon_ids:
                 if taxon_id in taxonomies_info:
                     result[taxon_id] = {"features": taxonomies_info[taxon_id]}
                 else:
                     result[taxon_id] = {"features": dict.fromkeys(self.features, "")}
-                pbar.update(1)
+                progress.advance(task)
 
         return result
 
@@ -280,6 +288,7 @@ def _build_binary_vectors(
 
     Expects *df* to contain taxonomy lineage columns (domain, kingdom, …).
     """
+    df = df.copy()
     tax_cols = [
         "domain",
         "kingdom",
@@ -309,8 +318,8 @@ def _build_binary_vectors(
         tax_array = row[TAXA].to_numpy(dtype=np.float32)
         tax_dict[identifier] = tax_array
 
-    print(f"Built binary taxonomy dict for {len(tax_dict)} identifiers")
-    print(f"Binary taxonomy vector length: {len(TAXA)}")
+    console.print(f"Built binary taxonomy dict for {len(tax_dict)} identifiers")
+    console.print(f"Binary taxonomy vector length: {len(TAXA)}")
     return tax_dict
 
 
@@ -341,7 +350,7 @@ def run_binary_taxonomy_pipeline(
     valid = df["_taxon_id"].notna()
     unique_taxids = df.loc[valid, "_taxon_id"].astype(int).unique().tolist()
 
-    print(f"Resolving lineage for {len(unique_taxids)} unique taxon IDs ...")
+    console.print(f"Resolving lineage for {len(unique_taxids)} unique taxon IDs ...")
     retriever = TaxonomyRetriever(unique_taxids)
     tax_data = retriever.fetch_features()
 
@@ -384,15 +393,15 @@ def run_binary_taxonomy_pipeline(
             f_out.create_dataset(protein_id, data=vec)
 
             if (i + 1) % 10000 == 0:
-                print(f"Processed {i + 1}/{total_entries} entries...")
+                console.print(f"Processed {i + 1}/{total_entries} entries...")
 
-        print("\nProcessing complete! (binary one-hot taxonomy)")
-        print(f"Total entries (proteins): {total_entries}")
-        print(f"Matched with taxonomy: {matched}")
-        print(f"Unmatched (all-zero vector): {unmatched}")
+        console.print("\nProcessing complete! (binary one-hot taxonomy)")
+        console.print(f"Total entries (proteins): {total_entries}")
+        console.print(f"Matched with taxonomy: {matched}")
+        console.print(f"Unmatched (all-zero vector): {unmatched}")
 
         if unmatched > 0:
-            print(f"\nFirst 10 unmatched IDs: {unmatched_ids[:10]}")
+            console.print(f"\nFirst 10 unmatched IDs: {unmatched_ids[:10]}")
 
-    print("\nBinary taxonomy pipeline finished.")
-    print(f"Output file (only one-hot vectors): {output_h5_path}")
+    console.print("\nBinary taxonomy pipeline finished.")
+    console.print(f"Output file (only one-hot vectors): {output_h5_path}")

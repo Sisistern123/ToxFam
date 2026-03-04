@@ -10,6 +10,7 @@ from sklearn.metrics import classification_report
 from torch.utils.data import DataLoader
 
 from toxfam.data.dataset import ToxDataset
+from toxfam.device import get_device
 from toxfam.model.architectures import ModularMLP, MultiInputMLP
 from toxfam.training.trainer import train_model, evaluate_model
 from toxfam.visualization.analysis import plot_multiclass_roc_from_scores
@@ -120,7 +121,7 @@ def evaluate_label_on_dataset(
     else:
         selector = DataSelector(loader, "emb_only")
 
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = get_device()
     model = model.to(device)
 
     metrics, y_true, y_pred, y_scores = evaluate_model(

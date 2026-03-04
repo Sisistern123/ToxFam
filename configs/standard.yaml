@@ -10,10 +10,6 @@ output_dir: "model/model_output/standard_run"
 training_strategy: "standard"
 
 # Hyperparameters
-# Focal Loss vs CE Loss
-use_focal_loss: false
-focal_loss_gamma: 2.0
-
 batch_size: 64
 hidden_dims: [256, 256]
 dropout: 0.5

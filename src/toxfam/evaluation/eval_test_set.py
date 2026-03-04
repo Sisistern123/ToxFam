@@ -4,15 +4,14 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 import numpy as np
 import pandas as pd
 from pymmseqs.commands import createdb, search
-from sklearn.metrics import accuracy_score, classification_report, matthews_corrcoef
-from sklearn.preprocessing import label_binarize
 
 from toxfam._paths import get_project_root
+from toxfam.evaluation.metrics import calculate_multiclass_metrics
 from toxfam.visualization.plots import plot_confusion_matrix
 
 
@@ -87,76 +86,6 @@ def run_hbi_search(
     hbi_results["hbi_confidence"] = hbi_results["fident"]
 
     return hbi_results[["identifier", "hbi_prediction", "hbi_confidence"]]
-
-
-def calculate_metrics_bundle(
-    df: pd.DataFrame,
-    pred_col: str,
-    truth_col: str = "ground_truth",
-    shared_class_list: Optional[list] = None,
-) -> Dict[str, Any]:
-    if shared_class_list is not None:
-        class_list = shared_class_list
-        print(f"   Using shared class list with {len(class_list)} classes")
-    else:
-        class_list = sorted(
-            list(set(df[truth_col].unique()) | set(df[pred_col].unique()))
-        )
-        print(f"   Created class list with {len(class_list)} classes")
-
-    cls2idx = {cls_name: i for i, cls_name in enumerate(class_list)}
-
-    y_true = df[truth_col].map(cls2idx).to_numpy()
-    y_pred = df[pred_col].map(cls2idx).to_numpy()
-
-    unmapped_true = np.isnan(y_true).sum()
-    unmapped_pred = np.isnan(y_pred).sum()
-    if unmapped_true > 0 or unmapped_pred > 0:
-        print(
-            f"   WARNING: {unmapped_true} unmapped true labels, "
-            f"{unmapped_pred} unmapped predictions"
-        )
-
-    n_samples = len(y_true)
-    n_classes = len(class_list)
-
-    acc = accuracy_score(y_true, y_pred)
-    mcc = matthews_corrcoef(y_true, y_pred)
-
-    y_true_bin = label_binarize(y_true, classes=range(n_classes))
-    y_pred_bin = label_binarize(y_pred, classes=range(n_classes))
-
-    if n_classes == 2 and y_true_bin.shape[1] == 1:
-        y_true_bin = np.hstack((1 - y_true_bin, y_true_bin))
-        y_pred_bin = np.hstack((1 - y_pred_bin, y_pred_bin))
-
-    micro_mcc = matthews_corrcoef(y_true_bin.ravel(), y_pred_bin.ravel())
-
-    std_error = (
-        np.sqrt((acc * (1 - acc)) / n_samples) if n_samples > 0 else float("nan")
-    )
-
-    report = classification_report(
-        y_true,
-        y_pred,
-        labels=range(n_classes),
-        target_names=class_list,
-        output_dict=True,
-        zero_division=0,
-    )
-
-    return {
-        "acc": acc,
-        "mcc": mcc,
-        "micro_mcc": micro_mcc,
-        "std_error": std_error,
-        "n_samples": n_samples,
-        "report": report,
-        "class_list": class_list,
-        "cls2idx": cls2idx,
-        "y_true_encoded": y_true,
-        "y_pred_encoded": y_pred,
-    }
 
 
 def load_nn_precomputed(nn_preds_path: Path, nn_metrics_path: Path) -> Dict[str, Any]:
@@ -281,8 +210,8 @@ def run_eval_test_set(model_dir: Path | None = None) -> None:
 
     # 6) HBI metrics
     print("\nCalculating HBI Metrics...")
-    hbi_m = calculate_metrics_bundle(
-        combined, "hbi_prediction", shared_class_list=shared_class_list
+    hbi_m = calculate_multiclass_metrics(
+        combined, "ground_truth", "hbi_prediction", shared_class_list=shared_class_list
     )
     summary_metrics.append(
         {

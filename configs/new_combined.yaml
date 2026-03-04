@@ -1,4 +1,4 @@
-# standard.yaml
+# new_combined.yaml
 input_csv: "data/processed/training_data.csv"
 h5_paths_glob: "data/processed/embeddings.h5"
 # tax_h5_path is NOT needed for standard, but keeping it empty or defined prevents
@@ -10,10 +10,6 @@ output_dir: "model/model_output/calibrated_combined"
 training_strategy: "combined"
 
 # Hyperparameters
-# Focal Loss vs CE Loss
-use_focal_loss: false # CE
-focal_loss_gamma: 2.0
-
 batch_size: 64
 hidden_dims: [256, 256]
 dropout: 0.5
