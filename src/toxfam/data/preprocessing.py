@@ -333,7 +333,15 @@ def cluster_per_family_and_collect(
             fam_mm_dir = mmseqs_dir / safe
             fam_mm_dir.mkdir(parents=True, exist_ok=True)
             family_fa = fam_mm_dir / "input.fasta"
+            rep_fasta = fam_mm_dir / "cluster_rep_seq.fasta"
+            old_hash = hashlib.md5(family_fa.read_bytes()).hexdigest() if family_fa.exists() else None
             write_fasta(group, family_fa)
+            new_hash = hashlib.md5(family_fa.read_bytes()).hexdigest()
+
+            if old_hash == new_hash and rep_fasta.exists():
+                progress.advance(task)
+                continue
+
             cluster_prefix = fam_mm_dir / "cluster"
             tmp_dir = fam_mm_dir / "tmp"
             tmp_dir.mkdir(parents=True, exist_ok=True)
