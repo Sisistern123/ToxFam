@@ -10,7 +10,7 @@ uv run toxfam preprocess [--min-seq-id 0.9]
 
 ```
 data/raw/0800.tsv  ─┐
-                     ├─→ Load & clean labels ─→ SignalP6 ─→ MMseqs2 cluster ─→ Stratified split
+                    ├─→ Load & clean labels ─→ SignalP6 ─→ MMseqs2 cluster ─→ Stratified split
 data/raw/nontox.tsv ┘                                       (per family)       ├─→ train reps
                                                              @ 90% identity    ├─→ val reps
                                                                                ├─→ test reps
