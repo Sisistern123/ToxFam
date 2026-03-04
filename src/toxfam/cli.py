@@ -15,43 +15,64 @@ app = typer.Typer(
 )
 
 
-# ---------- Step 0: toxfam download-data ----------
+# ---------- toxfam download-data ----------
 
 
 GITHUB_REPO = "Sisistern123/ToxFam"
 RELEASE_TAG = "data-v1"
 
-# Files to download and their relative paths under data/processed/
-DATA_ASSETS = {
-    "training_data.csv": "training_data.csv",
-    "training_data.h5": "embeddings.h5",
-}
+_PROCESSED = "processed"
+_INTERMEDIATE = "intermediate"
+
+DATA_ASSETS: list[tuple[str, str, str, str]] = [
+    # (release asset name, target dir, relative path inside target, file to check for skip)
+    ("training_data.csv", _PROCESSED, "training_data.csv", "training_data.csv"),
+    ("training_data.h5", _PROCESSED, "embeddings.h5", "embeddings.h5"),
+    ("sp6_cache.zip", _INTERMEDIATE, "sp6", "sp6/sp6_cache.json"),
+]
 
 
 @app.command("download-data")
 def download_data(
     tag: Annotated[
-        str, typer.Option(help="GitHub release tag to download from")
+        str, typer.Option(help="GitHub release tag")
     ] = RELEASE_TAG,
 ) -> None:
-    """Download processed data files from GitHub Releases."""
+    """Download processed data (embeddings, training splits, SP6 cache) from GitHub Releases."""
+    import tempfile
     import urllib.request
+    import zipfile
 
-    from toxfam._paths import processed_dir
+    from toxfam._paths import intermediate_dir, processed_dir
 
-    proc = processed_dir()
+    dirs = {_PROCESSED: processed_dir(), _INTERMEDIATE: intermediate_dir()}
     base_url = f"https://github.com/{GITHUB_REPO}/releases/download/{tag}"
 
-    for asset_name, rel_path in DATA_ASSETS.items():
-        dest = proc / rel_path
-        if dest.exists():
+    for asset_name, dir_key, rel_path, skip_file in DATA_ASSETS:
+        target_dir = dirs[dir_key]
+        skip_path = target_dir / skip_file
+
+        if skip_path.exists():
             typer.echo(f"  skip {rel_path} (exists)")
             continue
-        dest.parent.mkdir(parents=True, exist_ok=True)
+
         url = f"{base_url}/{asset_name}"
-        typer.echo(f"  downloading {rel_path} ...")
+        typer.echo(f"  downloading {asset_name} ...")
+
         try:
-            urllib.request.urlretrieve(url, dest)
+            if asset_name.endswith(".zip"):
+                extract_dir = target_dir / rel_path
+                extract_dir.mkdir(parents=True, exist_ok=True)
+                with tempfile.NamedTemporaryFile(suffix=".zip", delete=False) as tmp:
+                    tmp_path = Path(tmp.name)
+                urllib.request.urlretrieve(url, tmp_path)
+                with zipfile.ZipFile(tmp_path, "r") as zf:
+                    zf.extractall(extract_dir)
+                tmp_path.unlink()
+            else:
+                dest = target_dir / rel_path
+                dest.parent.mkdir(parents=True, exist_ok=True)
+                urllib.request.urlretrieve(url, dest)
         except Exception as e:
             typer.echo(f"  FAILED: {e}", err=True)
             raise typer.Exit(code=1)

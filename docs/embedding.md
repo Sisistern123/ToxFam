@@ -16,6 +16,7 @@ uv run toxfam embed [-i <input.fasta>] [-o <output.h5>] [--force]
    - Runs the ProtT5 encoder
    - Mean-pools over residue positions to get one 1024-dim vector per protein
    - Writes each embedding to the H5 file and flushes to disk
+5. **Prune stale embeddings** — After embedding, removes any H5 keys that are not present in the input FASTA. This keeps the H5 file in sync when sequences are removed upstream (e.g. after re-clustering).
 
 ## CLI options
 

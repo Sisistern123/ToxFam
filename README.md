@@ -34,13 +34,13 @@ uv sync
 
 ### Download Processed Data
 
-Large processed files (ProtT5 embeddings, training splits) are hosted as GitHub Release assets and not included in the repository. Download them with:
+Large processed files (ProtT5 embeddings, training splits) and the SignalP6 cache are hosted as GitHub Release assets and not included in the repository. Download them with:
 
 ```bash
 uv run toxfam download-data
 ```
 
-This places files into `data/processed/`. See [Data Directory](#data-directory) for the full layout.
+This places files into `data/processed/` and `data/intermediate/sp6/`. See [Data Directory](#data-directory) for the full layout.
 
 ## Workflow
 
@@ -118,7 +118,7 @@ data/
 │   ├── mmseqs/
 │   │   ├── {family}/
 │   │   └── representatives/
-│   ├── sp6/
+│   ├── sp6/                #   SignalP6 cache (downloaded via `toxfam download-data`)
 │   └── taxonomy/
 └── processed/              # Final outputs (gitignored, downloaded via `toxfam download-data`)
     ├── training_data.csv   #   train/val/test split metadata
@@ -130,10 +130,7 @@ data/
 To update the processed data files distributed via GitHub Releases:
 
 ```bash
-gh release delete data-v1 --yes --cleanup-tag  # remove old release
-gh release create data-v1 \
-  data/processed/training_data.csv \
-  data/processed/embeddings.h5 \
-  --title "Processed Data v1" \
-  --notes "Download with \`uv run toxfam download-data\`."
+uv run scripts/upload_data.py
 ```
+
+This deletes the old `data-v1` release and re-creates it with `training_data.csv`, `embeddings.h5`, and `sp6_cache.zip`. Requires the [`gh` CLI](https://cli.github.com) to be installed and authenticated.

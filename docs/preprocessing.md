@@ -42,10 +42,12 @@ data/raw/nontox.tsv ┘                                       (per family)      
 
 **What happens:**
 
-1. If SignalP6 output already exists in `data/intermediate/sp6/{tox,nontox}/`, the cached results are used.
-2. Otherwise, runs SignalP6 via `scripts/run_signalp6.sh` using the isolated `tools/signalp6` uv project.
+1. Loads a per-sequence cache (`data/intermediate/sp6/sp6_cache.json`) that maps each sequence's MD5 hash to its mature sequence (or `null` if no signal peptide was detected). On first run, the cache is bootstrapped from any existing monolithic SP6 output files in `data/intermediate/sp6/{tox,nontox}/`.
+2. Only sequences not in the cache are sent to SignalP6 (run via the isolated `tools/signalp6` uv project). The cache is updated after each batch.
 3. For proteins where SignalP6 detects a signal peptide with score > 0.8, the sequence is replaced with the mature (signal-peptide-removed) version.
 4. Proteins without a detected signal peptide keep their original sequence.
+
+The SP6 cache can be downloaded alongside other processed data via `uv run toxfam download-data`, which avoids needing to install SignalP6 for most workflows.
 
 **Output:** Updated `tox`/`nontox` DataFrames + FASTA files written to `data/intermediate/fasta/` (`tox_noSP.fasta`, `nontox_noSP.fasta`). The two DataFrames are then concatenated into a single combined DataFrame.
 

@@ -22,6 +22,9 @@ All commands are run via the `toxfam` CLI using `uv run`:
 ```bash
 uv run toxfam download-data
 ```
+Downloads ProtT5 embeddings and training splits to `data/processed/`, and the SignalP6 cache to `data/intermediate/sp6/`.
+
+To upload/update the release, use the developer script: `uv run scripts/upload_data.py`
 
 ### Data Preprocessing Pipeline
 ```bash
@@ -114,7 +117,7 @@ data/
 │   ├── mmseqs/                 # All MMseqs2-related files
 │   │   ├── {family}/           # Per-family: input.fasta + cluster output
 │   │   └── representatives/    # Post-clustering rep seqs (CSV + FASTA)
-│   ├── sp6/                    # SignalP6 output (tox/, nontox/)
+│   ├── sp6/                    # SignalP6 output + per-sequence cache (downloaded via `toxfam download-data`)
 │   └── taxonomy/               # Binary taxonomy vectors
 │       └── binary_taxonomy_vectors.h5
 ├── processed/                  # Expensive outputs (gitignored, via GitHub Releases)
@@ -125,7 +128,7 @@ data/
 ### Data Flow
 
 1. **Raw data** (`data/raw/`) — UniProt TSVs of toxin/non-toxin proteins
-2. **Preprocessing** (`toxfam.data.preprocessing`) — normalizes family labels, runs SignalP6 signal peptide removal, clusters per-family with MMseqs2 at 90% identity, creates multilabel-stratified train/val/test splits; intermediates go to `data/intermediate/`, final split CSV to `data/processed/`
+2. **Preprocessing** (`toxfam.data.preprocessing`) — normalizes family labels, runs SignalP6 signal peptide removal (per-sequence MD5-based caching in `sp6_cache.json`), clusters per-family with MMseqs2 at 90% identity, creates multilabel-stratified train/val/test splits; intermediates go to `data/intermediate/`, final split CSV to `data/processed/`
 3. **Feature generation**:
    - `toxfam.data.embedding` — ProtT5 per-protein embeddings → `data/processed/embeddings.h5`
    - `toxfam.data.taxonomy` — reads `Organism (ID)` from training CSV → taxopy lineage → binary (one-hot) vectors over 56 predefined taxa → `data/intermediate/taxonomy/`
