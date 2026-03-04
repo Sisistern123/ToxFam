@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
-"""Upload processed data to a GitHub Release.
+"""Upload raw and processed data to a GitHub Release.
 
 Developer-only script — re-creates the data-v1 release with:
+  - data/raw/0800.tsv             (frozen raw toxin data)
+  - data/raw/nontox.tsv           (frozen raw non-toxin data)
   - data/processed/training_data.csv
-  - data/processed/embeddings.h5  (uploaded as training_data.h5)
+  - data/processed/embeddings.h5
   - data/intermediate/sp6/        (zipped as sp6_cache.zip)
 
 Usage:
@@ -23,6 +25,7 @@ import zipfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
+RAW = ROOT / "data" / "raw"
 PROCESSED = ROOT / "data" / "processed"
 SP6_DIR = ROOT / "data" / "intermediate" / "sp6"
 
@@ -38,6 +41,8 @@ def main() -> None:
 
     # Verify source files
     sources = {
+        "0800.tsv": RAW / "0800.tsv",
+        "nontox.tsv": RAW / "nontox.tsv",
         "training_data.csv": PROCESSED / "training_data.csv",
         "embeddings.h5": PROCESSED / "embeddings.h5",
         "sp6 cache": SP6_DIR / "sp6_cache.json",
@@ -69,10 +74,12 @@ def main() -> None:
         subprocess.run(
             [
                 "gh", "release", "create", tag,
+                str(RAW / "0800.tsv"),
+                str(RAW / "nontox.tsv"),
                 str(PROCESSED / "training_data.csv"),
                 str(PROCESSED / "embeddings.h5"),
                 str(sp6_zip),
-                "--title", "Processed Data v1",
+                "--title", "Data v1",
                 "--notes", "Download with `uv run toxfam download-data`.",
             ],
             check=True,
