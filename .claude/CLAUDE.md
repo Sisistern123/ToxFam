@@ -11,7 +11,7 @@ ToxFam is a research project for classifying animal toxin protein sequences into
 - Python >=3.11, managed with [uv](https://github.com/astral-sh/uv)
 - Install: `uv sync`
 - Key deps: PyTorch, transformers (ProtT5), scikit-learn, h5py, pymmseqs, protspace, iterative-stratification, taxopy, pydantic, typer
-- SignalP6 required for preprocessing (setup: `docs/signalp6_setup.md`)
+- SignalP6 only needed if re-running signal peptide removal (setup: `docs/signalp6_setup.md`); the cache is included in `toxfam download-data`
 - Large processed data files (HDF5, CSV) are distributed via GitHub Releases; download with `uv run toxfam download-data`
 
 ## Common Commands
@@ -22,7 +22,7 @@ All commands are run via the `toxfam` CLI using `uv run`:
 ```bash
 uv run toxfam download-data
 ```
-Downloads ProtT5 embeddings and training splits to `data/processed/`, and the SignalP6 cache to `data/intermediate/sp6/`.
+Downloads raw data to `data/raw/`, ProtT5 embeddings and training splits to `data/processed/`, and the SignalP6 cache to `data/intermediate/sp6/`. Use `--force` to re-download existing files.
 
 To upload/update the release, use the developer script: `uv run scripts/upload_data.py`
 
@@ -109,7 +109,7 @@ Training config is a Pydantic `TrainConfig` model (`src/toxfam/config.py`) loade
 
 ```
 data/
-├── raw/                        # Manually obtained inputs (committed to git)
+├── raw/                        # Frozen UniProt TSV inputs (downloaded via `toxfam download-data`)
 │   ├── 0800.tsv
 │   └── nontox.tsv
 ├── intermediate/               # All pipeline-generated intermediates (gitignored)

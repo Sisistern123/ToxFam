@@ -19,9 +19,9 @@ data/raw/nontox.tsv ┘                                       (per family)      
 
 ## Step 1 — Load raw data
 
-**Input:** Two TSV files from UniProt in `data/raw/`:
+**Input:** Two TSV files in `data/raw/` (downloaded via `toxfam download-data`). These are frozen UniProt exports (date cutoff 2026-03-03); see [README — Raw data](../README.md#raw-data) for the exact queries.
 
-- `0800.tsv` — toxin proteins (UniProt taxon 0800)
+- `0800.tsv` — toxin proteins (UniProt keyword KW-0800)
 - `nontox.tsv` — non-toxin proteins
 
 **What happens:**
@@ -38,7 +38,7 @@ data/raw/nontox.tsv ┘                                       (per family)      
 
 ## Step 2 — SignalP6 signal peptide removal
 
-**Requires:** SignalP6 set up in `tools/signalp6/` (see [SignalP6 Setup](signalp6_setup.md)). The pipeline will fail if SignalP6 is not installed.
+**Requires:** SignalP6 set up in `tools/signalp6/` (see [SignalP6 Setup](signalp6_setup.md)) only if there are uncached sequences. If the SP6 cache was downloaded via `toxfam download-data`, SignalP6 is not needed.
 
 **What happens:**
 
