@@ -27,7 +27,7 @@ _INTERMEDIATE = "intermediate"
 DATA_ASSETS: list[tuple[str, str, str, str]] = [
     # (release asset name, target dir, relative path inside target, file to check for skip)
     ("training_data.csv", _PROCESSED, "training_data.csv", "training_data.csv"),
-    ("training_data.h5", _PROCESSED, "embeddings.h5", "embeddings.h5"),
+    ("embeddings.h5", _PROCESSED, "embeddings.h5", "embeddings.h5"),
     ("sp6_cache.zip", _INTERMEDIATE, "sp6", "sp6/sp6_cache.json"),
 ]
 
