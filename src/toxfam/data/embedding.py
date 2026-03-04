@@ -214,3 +214,14 @@ def generate_embeddings(
         f"\n[bold green]Done.[/] {embedded - len(duplicates)} embeddings "
         f"in {elapsed:.1f}s"
     )
+
+    # -- Step 5: Prune stale embeddings not in input FASTA --
+    fasta_ids = set(seq_dict.keys())
+    with h5py.File(output_h5, "a") as hf:
+        extra = set(hf.keys()) - fasta_ids
+        if extra:
+            for key in extra:
+                del hf[key]
+            console.print(
+                f"\n[bold]5.[/] Pruned [red]{len(extra)}[/] stale embeddings"
+            )
