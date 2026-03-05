@@ -1,7 +1,7 @@
 # binary_augmented_counterparts.yaml — Full augmented binary model with counterparts
 # Uses: ProtT5 embeddings + HBI features + length + venom indicator
-# Data: Original training data + 169 non-toxic structural counterparts
-input_csv: "data/processed/training_data_with_counterparts.csv"
+# Data: Training data with counterparts integrated into all splits
+input_csv: "data/processed/training_data.csv"
 h5_paths:
   - "data/processed/embeddings.h5"
   - "data/processed/counterpart_embeddings.h5"

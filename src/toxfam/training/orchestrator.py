@@ -383,6 +383,21 @@ def run_training(config: TrainConfig) -> None:
             )
             bin_val_ds.close()
 
+        # Merge family + binary predictions into a combined CSV
+        family_csv = predictions_dir / "test_calibrated_predictions.csv"
+        binary_csv = predictions_dir / "test_calibrated_binaryhead_predictions.csv"
+        if family_csv.exists() and binary_csv.exists():
+            family_preds = pd.read_csv(family_csv)
+            binary_preds = pd.read_csv(binary_csv)
+            combined = family_preds.merge(
+                binary_preds[["identifier", "predicted_label", "confidence"]],
+                on="identifier",
+                suffixes=("_family", "_binary"),
+            )
+            combined_path = predictions_dir / "test_combined_predictions.csv"
+            combined.to_csv(combined_path, index=False)
+            print(f"Saved combined family+binary predictions to {combined_path}")
+
     train_ds.close()
     val_ds.close()
 

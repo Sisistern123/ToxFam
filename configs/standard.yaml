@@ -1,6 +1,8 @@
 # standard.yaml
 input_csv: "data/processed/training_data.csv"
-h5_paths_glob: "data/processed/embeddings.h5"
+h5_paths:
+  - "data/processed/embeddings.h5"
+  - "data/processed/counterpart_embeddings.h5"
 # tax_h5_path is NOT needed for standard, but keeping it empty or defined prevents
 # errors if your dataset class expects the key to exist (even if None).
 tax_h5_path: null

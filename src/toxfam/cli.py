@@ -123,6 +123,9 @@ def preprocess(
     min_seq_id: Annotated[
         float, typer.Option(help="MMseqs2 clustering identity threshold")
     ] = 0.9,
+    include_counterparts: Annotated[
+        bool, typer.Option(help="Inject non-toxic counterparts into nontox pool before clustering")
+    ] = False,
 ) -> None:
     """Run the data preprocessing pipeline."""
     from toxfam.data.preprocessing import run_preprocessing_pipeline
@@ -130,6 +133,7 @@ def preprocess(
     run_preprocessing_pipeline(
         signalp6_extra=signalp6_extra,
         min_seq_id=min_seq_id,
+        include_counterparts=include_counterparts,
     )
 
 

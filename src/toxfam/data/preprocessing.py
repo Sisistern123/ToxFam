@@ -793,6 +793,7 @@ def run_preprocessing_pipeline(
     *,
     signalp6_extra: str = "--organism euk",
     min_seq_id: float = 0.9,
+    include_counterparts: bool = False,
 ) -> None:
     """Run the full preprocessing pipeline."""
     interm = intermediate_dir()
@@ -832,6 +833,27 @@ def run_preprocessing_pipeline(
 
     write_fasta(tox, fasta_dir / "tox_noSP.fasta")
     write_fasta(nontox, fasta_dir / "nontox_noSP.fasta")
+
+    # -- Step 2b: Inject counterparts (optional) --
+    if include_counterparts:
+        counterpart_csv = raw / "nontox_counterparts" / "counterparts.csv"
+        if counterpart_csv.exists():
+            console.print("\n[bold]2b.[/] Injecting non-toxic counterparts")
+            cp_df = pd.read_csv(counterpart_csv)
+            cp_df = cp_df[["identifier", "Sequence", "Protein families", "organism_id"]].copy()
+            cp_df.rename(columns={"organism_id": "Organism (ID)"}, inplace=True)
+            existing_ids = set(data["identifier"])
+            new_cp = cp_df[~cp_df["identifier"].isin(existing_ids)]
+            console.print(
+                f"   {len(cp_df)} counterparts total, {len(cp_df) - len(new_cp)} already present, "
+                f"adding {len(new_cp)} new sequences to nontox pool"
+            )
+            data = pd.concat([data, new_cp], ignore_index=True)
+        else:
+            console.print(
+                "\n[yellow]   Counterpart CSV not found at "
+                f"{counterpart_csv}, skipping[/]"
+            )
 
     # -- Step 3: MMseqs2 clustering --
     n_families_total = data["Protein families"].nunique()
