@@ -422,12 +422,13 @@ def run_preprocessing_pipeline(
     bench_dir = get_project_root() / "benchmark"
     bench_hbi_dir = bench_dir / "HBI"
 
-    # -- Step 0: Download raw data if missing --
+    # -- Step 0: Check raw data --
     raw = raw_dir()
     if not (raw / "0800.tsv").exists() or not (raw / "nontox.tsv").exists():
-        console.print("\n[bold]0.[/] Downloading raw data from UniProt")
-        script = get_project_root() / "scripts" / "download_raw_data.sh"
-        subprocess.run(["bash", str(script)], check=True)
+        console.print(
+            "[red]Raw data missing.[/] Run [bold]toxfam download-data[/] first."
+        )
+        raise SystemExit(1)
 
     # -- Step 1: Load raw data --
     console.print("\n[bold]1.[/] Loading raw data")

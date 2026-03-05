@@ -21,11 +21,14 @@ app = typer.Typer(
 GITHUB_REPO = "Sisistern123/ToxFam"
 RELEASE_TAG = "data-v1"
 
+_RAW = "raw"
 _PROCESSED = "processed"
 _INTERMEDIATE = "intermediate"
 
 DATA_ASSETS: list[tuple[str, str, str, str]] = [
     # (release asset name, target dir, relative path inside target, file to check for skip)
+    ("0800.tsv", _RAW, "0800.tsv", "0800.tsv"),
+    ("nontox.tsv", _RAW, "nontox.tsv", "nontox.tsv"),
     ("training_data.csv", _PROCESSED, "training_data.csv", "training_data.csv"),
     ("embeddings.h5", _PROCESSED, "embeddings.h5", "embeddings.h5"),
     ("sp6_cache.zip", _INTERMEDIATE, "sp6", "sp6/sp6_cache.json"),
@@ -71,13 +74,13 @@ def download_data(
         bool, typer.Option("--force", "-f", help="Re-download even if files exist")
     ] = False,
 ) -> None:
-    """Download processed data (embeddings, training splits, SP6 cache) from GitHub Releases."""
+    """Download raw and processed data from GitHub Releases."""
     import tempfile
     import zipfile
 
-    from toxfam._paths import intermediate_dir, processed_dir
+    from toxfam._paths import intermediate_dir, processed_dir, raw_dir
 
-    dirs = {_PROCESSED: processed_dir(), _INTERMEDIATE: intermediate_dir()}
+    dirs = {_RAW: raw_dir(), _PROCESSED: processed_dir(), _INTERMEDIATE: intermediate_dir()}
     base_url = f"https://github.com/{GITHUB_REPO}/releases/download/{tag}"
 
     for asset_name, dir_key, rel_path, skip_file in DATA_ASSETS:
