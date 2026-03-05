@@ -5,8 +5,11 @@ description = "Animal toxin protein family classification using MLP on ProtT5 em
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
+    "aaanalysis>=1.0.2",
+    "biocentral-api>=1.1.1",
     "iterative-stratification>=0.1.9",
     "jupyter>=1.1.1",
+    "logomaker>=0.8",
     "protspace==3.3.1",
     "pydantic>=2.0",
     "pymmseqs>=1.0.4",
@@ -15,6 +18,8 @@ dependencies = [
     "sentencepiece>=0.2.1",
     "taxopy>=0.14.0",
     "torch>=2.7.1",
+    "toxinpred2>=1.1",
+    "toxinpred3>=1.4",
     "transformers>=5.1.0",
     "typer>=0.15.0",
 ]
@@ -31,6 +36,14 @@ packages = ["src/toxfam"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+[tool.uv.sources]
+aaanalysis = { path = "/Users/jcoludar/CascadeProjects/SpeciesEmbedding/tools/aaanalysis", editable = true }
+
+[tool.uv]
+override-dependencies = [
+    "matplotlib>=3.5.3",
+]
 
 [dependency-groups]
 dev = [

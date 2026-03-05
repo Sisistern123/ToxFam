@@ -24,6 +24,17 @@ def test_app_has_expected_commands():
         "eval-test",
         "eval-nonmetazoan",
         "eval-unreviewed",
+        "eval-binary",
+        "eval-ensemble",
+        "profile-data",
+        "explore-data",
+        "parse-xml",
+        "hierarchical-preprocess",
+        "cpp",
+        "hbi-baseline",
+        "fetch-counterparts",
+        "benchmark-external",
+        "compute-hbi",
     ]
     for cmd in expected:
         assert cmd in result.output, f"Command '{cmd}' not found in CLI help"

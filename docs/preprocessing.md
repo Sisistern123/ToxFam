@@ -10,7 +10,7 @@ uv run toxfam preprocess [--min-seq-id 0.9]
 
 ```
 data/raw/0800.tsv  ─┐
-                    ├─→ Load & clean labels ─→ SignalP6 ─→ MMseqs2 cluster ─→ Stratified split
+                    ├─→ Load & clean labels ─→ SignalP6 ─→ MMseqs2 cluster ─→ Identity-aware split
 data/raw/nontox.tsv ┘                                       (per family)       ├─→ train reps
                                                              @ 90% identity    ├─→ val reps
                                                                                ├─→ test reps
@@ -72,14 +72,39 @@ The SP6 cache can be downloaded alongside other processed data via `uv run toxfa
 
 Both are saved as CSV + FASTA to `data/intermediate/mmseqs/representatives/`.
 
-## Step 4 — Multilabel-stratified train/val/test splits
+## Step 4 — Identity-aware train/val/test splits
 
-**What happens:**
+**Problem:** Random stratified splitting allows proteins with >30% sequence identity to appear in both train and test, inflating metrics through data leakage.
 
-1. Binarizes family labels using `MultiLabelBinarizer`.
-2. First split: 70% train / 30% val+test using `MultilabelStratifiedShuffleSplit` (seed=42).
-3. Second split: from the 30%, splits 50/50 into 15% val / 15% test.
-4. Builds a **train-all-members** set: expands train representative sequences back to all cluster members using MMseqs2 cluster membership files. This is used for the HBI (homology-based inference) baseline benchmark.
+**Solution:** The `identity_aware_splits()` function uses an adaptive cluster-then-split approach:
+
+### 4a. Global clustering at 30% identity
+
+All representative sequences are written to a single FASTA and clustered with `mmseqs easy-cluster --min-seq-id 0.3`. This produces meta-clusters of proteins sharing >30% identity.
+
+### 4b. Cluster-level stratified splitting
+
+Entire meta-clusters are assigned to train/val/test (70/15/15) using `MultilabelStratifiedShuffleSplit` at the cluster level. Each cluster's label is the union of its members' family labels. This ensures no sequence in val/test has >30% identity to any training sequence.
+
+### 4c. Adaptive relaxation for under-represented families
+
+After initial assignment, families stuck entirely in one split (all members in one tight 30% cluster) are handled:
+
+1. Re-cluster just that family's members at 40%, then 50%, 60%, 70%
+2. Stop at the first threshold that produces ≥2 sub-clusters
+3. Assign sub-clusters to different splits
+4. Families that remain a single cluster even at 70% go entirely to train
+
+### 4d. Output
+
+A summary is printed showing how many families required each threshold:
+```
+Split threshold summary:
+  30%: 34 families
+  40%: 1 families
+  50%: 2 families
+  70%: 1 families
+```
 
 **Output files:**
 

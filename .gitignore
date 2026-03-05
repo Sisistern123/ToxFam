@@ -16,6 +16,7 @@ __pycache__/
 
 # Virtual environments
 .venv/
+.toxinpred3_env/
 
 # Jupyter
 .ipynb_checkpoints/

@@ -75,3 +75,41 @@ def test_no_h5_raises():
             output_dir=Path("out"),
             training_strategy="standard",
         )
+
+
+def test_effective_embedding_dim_no_cpp(tmp_path):
+    h5 = tmp_path / "emb.h5"
+    h5.touch()
+    cfg = TrainConfig(
+        input_csv=Path("dummy.csv"),
+        h5_path=str(h5),
+        output_dir=Path("out"),
+        training_strategy="standard",
+    )
+    assert cfg.effective_embedding_dim == 1024
+
+
+def test_effective_embedding_dim_with_cpp(tmp_path):
+    h5 = tmp_path / "emb.h5"
+    h5.touch()
+    cfg = TrainConfig(
+        input_csv=Path("dummy.csv"),
+        h5_path=str(h5),
+        output_dir=Path("out"),
+        training_strategy="binary",
+        cpp_h5_path=tmp_path / "cpp.h5",
+        cpp_dim=100,
+    )
+    assert cfg.effective_embedding_dim == 1124
+
+
+def test_n_folds_default(tmp_path):
+    h5 = tmp_path / "emb.h5"
+    h5.touch()
+    cfg = TrainConfig(
+        input_csv=Path("dummy.csv"),
+        h5_path=str(h5),
+        output_dir=Path("out"),
+        training_strategy="standard",
+    )
+    assert cfg.n_folds == 1

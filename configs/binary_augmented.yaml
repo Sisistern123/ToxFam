@@ -1,0 +1,29 @@
+# binary_augmented.yaml — Binary + HBI features + length + venom indicator
+input_csv: "data/processed/training_data.csv"
+h5_paths_glob: "data/processed/embeddings.h5"
+tax_h5_path: null
+output_dir: "model/model_output/binary_augmented_run"
+
+# Strategy
+training_strategy: "binary"
+
+# Hyperparameters
+batch_size: 64
+hidden_dims: [256, 256]
+dropout: 0.3
+num_epochs: 200
+learning_rate: 0.0001
+early_stopping_patience: 10
+
+# Dimensions
+embedding_dim: 1024
+
+# HBI features (4-dim: fident, is_toxic, top5_frac_toxic, neg_log_evalue)
+hbi_h5_path: "data/intermediate/hbi/hbi_features.h5"
+hbi_dim: 4
+
+# Additional scalar features
+include_length: true
+include_venom_indicator: true
+
+# effective_embedding_dim = 1024 + 4 + 1 + 1 = 1030

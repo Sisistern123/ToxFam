@@ -1,0 +1,38 @@
+# binary_augmented_counterparts_cpp.yaml — Augmented binary model + CPP features
+# Uses: ProtT5 embeddings + CPP features + HBI features + length + venom indicator
+# Data: Original training data + non-toxic structural counterparts
+# Experiment: A/B test of CPP on top of best model (control: binary_augmented_counterparts.yaml)
+input_csv: "data/processed/training_data_with_counterparts.csv"
+h5_paths:
+  - "data/processed/embeddings.h5"
+  - "data/processed/counterpart_embeddings.h5"
+tax_h5_path: null
+output_dir: "model/model_output/binary_augmented_counterparts_cpp_run"
+
+# Strategy
+training_strategy: "binary"
+
+# Hyperparameters
+batch_size: 64
+hidden_dims: [256, 256]
+dropout: 0.3
+num_epochs: 200
+learning_rate: 0.0001
+early_stopping_patience: 10
+
+# Dimensions
+embedding_dim: 1024
+
+# CPP features (100-dim comparative physicochemical profiling)
+cpp_h5_path: "data/intermediate/cpp/cpp_features_with_counterparts.h5"
+cpp_dim: 100
+
+# HBI features (4-dim: fident, is_toxic, top5_frac_toxic, neg_log_evalue)
+hbi_h5_path: "data/intermediate/hbi/hbi_features_with_counterparts.h5"
+hbi_dim: 4
+
+# Additional scalar features
+include_length: true
+include_venom_indicator: true
+
+# effective_embedding_dim = 1024 + 100 + 4 + 1 + 1 = 1130

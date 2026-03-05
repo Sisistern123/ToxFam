@@ -95,6 +95,20 @@ def get_class_weights(train_dataset):
     return weights_dict, weights_tensor, encoded_to_label
 
 
+def _build_loss_fn(
+    config: TrainConfig, weights_tensor: torch.Tensor,
+) -> torch.nn.Module:
+    """Build the loss function based on config."""
+    if config.loss_function == "focal":
+        from toxfam.model.losses import FocalLoss
+
+        print(f"Loss Function: Focal (gamma={config.focal_gamma})", flush=True)
+        return FocalLoss(weight=weights_tensor, gamma=config.focal_gamma)
+    else:
+        print("Loss Function: Cross Entropy", flush=True)
+        return torch.nn.CrossEntropyLoss(weight=weights_tensor)
+
+
 def train_model(model, train_loader, val_loader, weights_tensor, config: TrainConfig):
     device = get_device()
     print(f"Using Device: {device}", flush=True)
@@ -107,8 +121,7 @@ def train_model(model, train_loader, val_loader, weights_tensor, config: TrainCo
 
     optimizer = optim.Adam(model.parameters(), lr=config.learning_rate)
 
-    print("Loss Function: Cross Entropy", flush=True)
-    loss_fn = torch.nn.CrossEntropyLoss(weight=weights_tensor)
+    loss_fn = _build_loss_fn(config, weights_tensor)
 
     epochs_no_improve = 0
     train_losses, val_losses = [], []

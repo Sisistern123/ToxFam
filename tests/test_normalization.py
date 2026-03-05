@@ -32,8 +32,9 @@ def test_min_count_threshold():
     families = ["famA"] * 15 + ["famB"] * 3
     df = pd.DataFrame({"Protein families": families})
     result = normalize_protein_families(df, min_count=10)
-    assert "famA" in result["Protein families"].values
-    assert "famB" not in result["Protein families"].values
+    # First letter is capitalized: "famA" → "FamA"
+    assert "FamA" in result["Protein families"].values
+    assert "FamB" not in result["Protein families"].values
     assert "other" in result["Protein families"].values
 
 
@@ -65,3 +66,34 @@ def test_phospholipase_consolidation():
     )
     result = normalize_protein_families(df, min_count=1)
     assert all(v == "Phospholipase family" for v in result["Protein families"])
+
+
+def test_xml_lowercase_normalized_to_match_tsv():
+    """XML extracts lowercase names; TSV has title-case. Both should normalize the same."""
+    df = pd.DataFrame(
+        {
+            "Protein families": [
+                # XML-style (lowercase)
+                "three-finger toxin family",
+                "conotoxin A superfamily",
+                # TSV-style (capitalized)
+                "Three-finger toxin family",
+                "Conotoxin A superfamily",
+            ]
+        }
+    )
+    result = normalize_protein_families(df, min_count=1)
+    vals = result["Protein families"].tolist()
+    # Both conotoxin variants → "Conotoxin family"
+    assert vals[1] == "Conotoxin family"
+    assert vals[3] == "Conotoxin family"
+    # Both three-finger variants → same capitalized form
+    assert vals[0] == vals[2] == "Three-finger toxin family"
+
+
+def test_case_insensitive_conotoxin_prefix():
+    """Lowercase conotoxin prefix corrections from XML data."""
+    df = pd.DataFrame({"Protein families": ["i1 superfamily", "o1 superfamily"]})
+    result = normalize_protein_families(df, min_count=1)
+    # Should still become "Conotoxin family" via prefix fix → regex consolidation
+    assert all(v == "Conotoxin family" for v in result["Protein families"])

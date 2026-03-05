@@ -54,8 +54,13 @@ def analyze_label_distribution_for_split(
 def plot_multiclass_roc_from_scores(
     y_true, y_scores, classes, output_path, legend_cols=3
 ):
-    y_bin = label_binarize(y_true, classes=list(range(len(classes))))
-    n_classes = y_bin.shape[1]
+    n_classes = len(classes)
+    y_bin = label_binarize(y_true, classes=list(range(n_classes)))
+
+    # label_binarize returns shape (N,1) for 2 classes — expand to (N,2)
+    if n_classes == 2 and y_bin.shape[1] == 1:
+        y_bin = np.hstack((1 - y_bin, y_bin))
+
     fpr, tpr, roc_auc = {}, {}, {}
 
     for i in range(n_classes):
@@ -85,5 +90,43 @@ def plot_multiclass_roc_from_scores(
         fontsize="small",
         frameon=False,
     )
+    fig.savefig(output_path, bbox_inches="tight")
+    plt.close(fig)
+
+
+def plot_binary_roc_curve(
+    fpr, tpr, roc_auc: float, output_path, *, title: str = "Binary ROC Curve"
+):
+    """Plot a binary ROC curve."""
+    fig, ax = plt.subplots(figsize=(7, 6), dpi=150)
+    ax.plot(fpr, tpr, color="darkorange", lw=2, label=f"ROC (AUC = {roc_auc:.3f})")
+    ax.plot([0, 1], [0, 1], linestyle="--", lw=1, color="gray")
+    ax.set_xlim([0.0, 1.0])
+    ax.set_ylim([0.0, 1.05])
+    ax.set_xlabel("False Positive Rate")
+    ax.set_ylabel("True Positive Rate")
+    ax.set_title(title)
+    ax.legend(loc="lower right")
+    fig.savefig(output_path, bbox_inches="tight")
+    plt.close(fig)
+
+
+def plot_precision_recall_curve(
+    precision,
+    recall,
+    pr_auc: float,
+    output_path,
+    *,
+    title: str = "Precision-Recall Curve",
+):
+    """Plot a precision-recall curve."""
+    fig, ax = plt.subplots(figsize=(7, 6), dpi=150)
+    ax.plot(recall, precision, color="navy", lw=2, label=f"PR (AUC = {pr_auc:.3f})")
+    ax.set_xlim([0.0, 1.0])
+    ax.set_ylim([0.0, 1.05])
+    ax.set_xlabel("Recall")
+    ax.set_ylabel("Precision")
+    ax.set_title(title)
+    ax.legend(loc="lower left")
     fig.savefig(output_path, bbox_inches="tight")
     plt.close(fig)

@@ -55,6 +55,32 @@ def sanitize_filename(name: str) -> str:
 # ---------- Preprocessing ----------
 
 
+def _remove_nontox_contamination(nontox: pd.DataFrame) -> pd.DataFrame:
+    """Remove venom/toxin protein contamination from the nontox dataset.
+
+    The nontox.tsv contains ~375 entries with "venom" or "toxin" in their
+    UniProt family name — these are actual venom proteins that were incorrectly
+    included. Removing them prevents the model from learning that venom
+    proteins are non-toxic.
+    """
+    fam_col = "Protein families"
+    if fam_col not in nontox.columns:
+        return nontox
+
+    original_n = len(nontox)
+    venom_mask = nontox[fam_col].str.contains(
+        r"venom|toxin|sarafotoxin", case=False, na=False
+    )
+    n_removed = venom_mask.sum()
+    nontox = nontox[~venom_mask].reset_index(drop=True)
+    if n_removed > 0:
+        console.print(
+            f"   Removed {n_removed} contaminated entries from nontox "
+            f"(venom/toxin family names), {original_n} → {len(nontox)}"
+        )
+    return nontox
+
+
 def load_and_prepare_raw() -> Tuple[pd.DataFrame, pd.DataFrame]:
     raw = raw_dir()
 
@@ -69,6 +95,7 @@ def load_and_prepare_raw() -> Tuple[pd.DataFrame, pd.DataFrame]:
 
     nontox = pd.read_csv(raw / "nontox.tsv", sep="\t").copy()
     nontox.rename(columns={"Entry": "identifier"}, inplace=True)
+    nontox = _remove_nontox_contamination(nontox)
     cutoff = (
         nontox["Sequence"].str.len().nlargest(int(np.ceil(len(nontox) * 0.01))).min()
     )
@@ -352,6 +379,359 @@ def cluster_per_family_and_collect(
     return rep_df_all, rep_df_tox
 
 
+def _rebalance_splits(
+    df: pd.DataFrame,
+    cluster_df: pd.DataFrame,
+    train_cids: set,
+    val_cids: set,
+    test_cids: set,
+    *,
+    min_train_frac: float = 0.50,
+) -> Tuple[set, set, set]:
+    """Move clusters between splits to ensure minimum family representation in train.
+
+    For each family where train fraction < min_train_frac:
+    1. Identify clusters in val/test that contain that family
+    2. Move the smallest such cluster to train
+    3. Repeat until train_frac >= min_train_frac or no more moveable clusters
+
+    Constraint: never leave val or test empty.
+    """
+    train_cids = set(train_cids)
+    val_cids = set(val_cids)
+    test_cids = set(test_cids)
+
+    # Build cluster membership lookup: cid -> set of families
+    cid_to_families: Dict[int, set] = {}
+    cid_to_size: Dict[int, int] = {}
+    for _, row in cluster_df.iterrows():
+        cid = row["_cluster_id"]
+        cid_to_families[cid] = row["families"]
+        cid_to_size[cid] = row["size"]
+
+    all_families = set(df["Protein families"].unique())
+    moved = 0
+
+    for fam in sorted(all_families):
+        fam_mask = df["Protein families"] == fam
+        total_fam = fam_mask.sum()
+        if total_fam < 10:
+            continue
+
+        for _ in range(20):  # safety limit
+            train_fam = (fam_mask & df["_cluster_id"].isin(train_cids)).sum()
+            if total_fam == 0 or train_fam / total_fam >= min_train_frac:
+                break
+
+            # Find smallest moveable cluster in val or test containing this family
+            candidates = []
+            for source, source_cids in [("val", val_cids), ("test", test_cids)]:
+                if len(source_cids) <= 1:
+                    continue  # never empty a split
+                for cid in source_cids:
+                    if fam in cid_to_families.get(cid, set()):
+                        candidates.append((cid_to_size.get(cid, 0), cid, source))
+
+            if not candidates:
+                break
+
+            candidates.sort()
+            _, move_cid, source = candidates[0]
+
+            train_cids.add(move_cid)
+            if source == "val":
+                val_cids.discard(move_cid)
+            else:
+                test_cids.discard(move_cid)
+
+            # Update _cluster_id -> split in df for subsequent checks
+            df.loc[df["_cluster_id"] == move_cid, "_split"] = "train"
+            moved += 1
+
+    if moved > 0:
+        console.print(f"   Rebalancing: moved {moved} cluster(s) to train")
+
+    return train_cids, val_cids, test_cids
+
+
+def _log_split_quality(df: pd.DataFrame) -> None:
+    """Log split quality metrics for families."""
+    all_families = sorted(df["Protein families"].unique())
+    low_train = []
+    missing_splits = []
+
+    for fam in all_families:
+        fam_df = df[df["Protein families"] == fam]
+        split_counts = fam_df["_split"].value_counts()
+        total = len(fam_df)
+        train_count = split_counts.get("train", 0)
+        val_count = split_counts.get("val", 0)
+        test_count = split_counts.get("test", 0)
+
+        if train_count < 5 and total >= 10:
+            low_train.append((fam, train_count, total))
+        if val_count == 0 or test_count == 0:
+            missing_splits.append((fam, val_count, test_count, total))
+
+    if low_train:
+        console.print(f"   [yellow]Families with <5 train samples ({len(low_train)}):[/]")
+        for fam, tc, tot in low_train[:10]:
+            console.print(f"     {fam}: {tc}/{tot} in train")
+    if missing_splits:
+        console.print(
+            f"   [yellow]Families missing val or test ({len(missing_splits)}):[/]"
+        )
+        for fam, vc, tc, tot in missing_splits[:10]:
+            console.print(f"     {fam}: val={vc}, test={tc}, total={tot}")
+    if not low_train and not missing_splits:
+        console.print("   [green]Split quality: all families well-represented[/]")
+
+
+def identity_aware_splits(
+    rep_df_all: pd.DataFrame,
+    *,
+    base_seq_id: float = 0.3,
+    relaxed_thresholds: list[float] | None = None,
+    train_ratio: float = 0.70,
+) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    """Split representatives with adaptive identity thresholds.
+
+    1. Cluster all reps at base_seq_id (default 30%).
+    2. Assign whole clusters to splits via multilabel stratified splitting.
+    3. For families in only one split: relax threshold until splittable.
+    """
+    import tempfile
+
+    if relaxed_thresholds is None:
+        relaxed_thresholds = [0.4, 0.5, 0.6, 0.7]
+
+    df = rep_df_all.copy()
+    fasta_dir = intermediate_dir() / "identity_splits"
+    fasta_dir.mkdir(parents=True, exist_ok=True)
+
+    # Step 1: Write all reps to a single FASTA and cluster at base_seq_id
+    all_fasta = fasta_dir / "all_reps.fasta"
+    write_fasta(df, all_fasta)
+
+    console.print(f"   Clustering all reps at {base_seq_id*100:.0f}% identity ...")
+    cluster_prefix = fasta_dir / "global_cluster"
+    tmp_dir = fasta_dir / "tmp"
+    tmp_dir.mkdir(parents=True, exist_ok=True)
+
+    try:
+        with redirect_stdout(io.StringIO()):
+            easy_cluster(
+                fasta_files=str(all_fasta),
+                cluster_prefix=str(cluster_prefix),
+                tmp_dir=str(tmp_dir),
+                min_seq_id=base_seq_id,
+            )
+    except Exception as e:
+        console.print(f"[red]Global clustering failed: {e}[/]")
+        console.print("[yellow]Falling back to random stratified splits[/]")
+        return multilabel_stratified_splits(rep_df_all)
+
+    # Parse cluster assignments: {representative: [members]}
+    cluster_tsv = fasta_dir / "global_cluster_cluster.tsv"
+    rep_to_cluster: Dict[str, int] = {}
+    cluster_id = 0
+    cluster_map: Dict[str, int] = {}  # representative -> cluster_id
+    with open(cluster_tsv) as f:
+        for line in f:
+            rep, member = line.strip().split("\t")
+            if rep not in cluster_map:
+                cluster_map[rep] = cluster_id
+                cluster_id += 1
+            rep_to_cluster[member] = cluster_map[rep]
+
+    df["_cluster_id"] = df["identifier"].map(rep_to_cluster)
+    # Proteins that didn't appear in TSV get their own cluster
+    max_cid = df["_cluster_id"].max() if df["_cluster_id"].notna().any() else -1
+    missing_mask = df["_cluster_id"].isna()
+    if missing_mask.any():
+        df.loc[missing_mask, "_cluster_id"] = range(
+            int(max_cid) + 1, int(max_cid) + 1 + int(missing_mask.sum())
+        )
+    df["_cluster_id"] = df["_cluster_id"].astype(int)
+
+    # Step 2: Build a cluster-level DataFrame for stratified splitting
+    cluster_groups = df.groupby("_cluster_id")
+    cluster_df = pd.DataFrame(
+        {
+            "_cluster_id": list(cluster_groups.groups.keys()),
+            "families": [
+                set(g["Protein families"].unique())
+                for _, g in cluster_groups
+            ],
+            "size": [len(g) for _, g in cluster_groups],
+        }
+    )
+    cluster_df["fam_list"] = cluster_df["families"].apply(
+        lambda s: list(s)
+    )
+
+    mlb = MultiLabelBinarizer()
+    Y_clusters = mlb.fit_transform(cluster_df["fam_list"])
+
+    # Guard: if too few clusters, fall back to random stratified splits
+    if len(cluster_df) < 4:
+        console.print(
+            f"   [yellow]Only {len(cluster_df)} clusters — falling back to "
+            f"random stratified splits[/]"
+        )
+        return multilabel_stratified_splits(rep_df_all)
+
+    # Stratified split at cluster level
+    val_test_ratio = 1.0 - train_ratio
+    msss1 = MultilabelStratifiedShuffleSplit(
+        n_splits=1, test_size=val_test_ratio, random_state=42
+    )
+    train_cidx, valtest_cidx = next(msss1.split(cluster_df, Y_clusters))
+    Y_valtest = Y_clusters[valtest_cidx]
+
+    msss2 = MultilabelStratifiedShuffleSplit(
+        n_splits=1, test_size=0.50, random_state=42
+    )
+    val_cidx, test_cidx = next(msss2.split(
+        cluster_df.iloc[valtest_cidx], Y_valtest
+    ))
+
+    train_cluster_ids = set(cluster_df.iloc[train_cidx]["_cluster_id"])
+    val_cluster_ids = set(
+        cluster_df.iloc[valtest_cidx].iloc[val_cidx]["_cluster_id"]
+    )
+
+    # Assign split labels
+    def _assign_split(cid: int) -> str:
+        if cid in train_cluster_ids:
+            return "train"
+        if cid in val_cluster_ids:
+            return "val"
+        return "test"
+
+    df["_split"] = df["_cluster_id"].apply(_assign_split)
+
+    # Step 2b: Rebalance splits to ensure minimum family representation in train
+    test_cluster_ids = set(cluster_df["_cluster_id"]) - train_cluster_ids - val_cluster_ids
+    train_cluster_ids, val_cluster_ids, test_cluster_ids = _rebalance_splits(
+        df, cluster_df, train_cluster_ids, val_cluster_ids, test_cluster_ids,
+    )
+
+    # Re-assign split labels after rebalancing
+    def _assign_split_rebalanced(cid: int) -> str:
+        if cid in train_cluster_ids:
+            return "train"
+        if cid in val_cluster_ids:
+            return "val"
+        return "test"
+
+    df["_split"] = df["_cluster_id"].apply(_assign_split_rebalanced)
+
+    # Step 3: Adaptive relaxation for under-represented families
+    threshold_log: Dict[str, float] = {}
+    all_families = set(df["Protein families"].unique())
+
+    for fam in all_families:
+        fam_splits = set(df.loc[df["Protein families"] == fam, "_split"])
+        if len(fam_splits) >= 2:
+            threshold_log[fam] = base_seq_id
+            continue
+
+        # This family is stuck in one split — try relaxing
+        fam_members = df[df["Protein families"] == fam]
+        if len(fam_members) < 2:
+            threshold_log[fam] = base_seq_id
+            continue
+
+        resolved = False
+        for threshold in relaxed_thresholds:
+            with tempfile.TemporaryDirectory(prefix="toxfam_relax_") as tmpd:
+                tmpd = Path(tmpd)
+                fam_fasta = tmpd / "fam.fasta"
+                write_fasta(fam_members, fam_fasta)
+
+                relax_prefix = tmpd / "relax_cluster"
+                relax_tmp = tmpd / "tmp"
+                relax_tmp.mkdir()
+
+                try:
+                    with redirect_stdout(io.StringIO()):
+                        easy_cluster(
+                            fasta_files=str(fam_fasta),
+                            cluster_prefix=str(relax_prefix),
+                            tmp_dir=str(relax_tmp),
+                            min_seq_id=threshold,
+                        )
+                except Exception:
+                    continue
+
+                relax_tsv = tmpd / "relax_cluster_cluster.tsv"
+                if not relax_tsv.exists():
+                    continue
+
+                sub_clusters: Dict[str, List[str]] = {}
+                with open(relax_tsv) as f:
+                    for line in f:
+                        rep, member = line.strip().split("\t")
+                        sub_clusters.setdefault(rep, []).append(member)
+
+                if len(sub_clusters) >= 2:
+                    # Assign sub-clusters to different splits
+                    sub_reps = list(sub_clusters.keys())
+                    current_split = next(iter(fam_splits))  # don't mutate
+                    other_splits = [s for s in ("train", "val", "test") if s != current_split]
+
+                    # Move some sub-clusters to other splits
+                    for i, srep in enumerate(sub_reps[1:], 1):
+                        target_split = other_splits[(i - 1) % len(other_splits)]
+                        member_ids = set(sub_clusters[srep])
+                        df.loc[
+                            (df["Protein families"] == fam) &
+                            (df["identifier"].isin(member_ids)),
+                            "_split",
+                        ] = target_split
+
+                    threshold_log[fam] = threshold
+                    resolved = True
+                    break
+
+        if not resolved:
+            threshold_log[fam] = base_seq_id
+
+    # Summary
+    from collections import Counter
+    thresh_counts = Counter(threshold_log.values())
+    console.print("   Split threshold summary:")
+    for t in sorted(thresh_counts.keys()):
+        console.print(f"     {t*100:.0f}%: {thresh_counts[t]} families")
+
+    flagged = {f: t for f, t in threshold_log.items() if t > base_seq_id}
+    if flagged:
+        console.print(f"   {len(flagged)} families required relaxed thresholds")
+
+    # Log split quality
+    _log_split_quality(df)
+
+    # Build output DataFrames
+    train_df = df[df["_split"] == "train"].drop(
+        columns=["_cluster_id", "_split"]
+    ).reset_index(drop=True)
+    val_df = df[df["_split"] == "val"].drop(
+        columns=["_cluster_id", "_split"]
+    ).reset_index(drop=True)
+    test_df = df[df["_split"] == "test"].drop(
+        columns=["_cluster_id", "_split"]
+    ).reset_index(drop=True)
+
+    # Store fam_list column like multilabel_stratified_splits does (for compat)
+    for subset in (train_df, val_df, test_df):
+        if "fam_list" in subset.columns:
+            subset["Protein families"] = subset["fam_list"].apply(",".join)
+            subset.drop(columns="fam_list", inplace=True)
+
+    return train_df, val_df, test_df
+
+
 def multilabel_stratified_splits(rep_df_all: pd.DataFrame):
     df = rep_df_all.copy()
     df["fam_list"] = df["Protein families"].apply(
@@ -475,9 +855,9 @@ def run_preprocessing_pipeline(
     write_fasta(rep_df_tox, rep_dir / "tox.fasta")
     write_fasta(rep_df_all, rep_dir / "all.fasta")
 
-    # -- Step 4: Stratified splits --
-    console.print("\n[bold]4.[/] Stratified train/val/test splits")
-    train_df, val_df, test_df = multilabel_stratified_splits(rep_df_all)
+    # -- Step 4: Identity-aware stratified splits --
+    console.print("\n[bold]4.[/] Identity-aware stratified train/val/test splits")
+    train_df, val_df, test_df = identity_aware_splits(rep_df_all, base_seq_id=0.3)
     train_df["Split"], val_df["Split"], test_df["Split"] = "train", "val", "test"
     training_data = pd.concat([train_df, val_df, test_df], ignore_index=True)
     proc.mkdir(parents=True, exist_ok=True)

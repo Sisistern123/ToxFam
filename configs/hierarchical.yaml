@@ -1,0 +1,31 @@
+# hierarchical.yaml — Two-stage training using hierarchical data (multiple H5 files + CPP)
+# NOTE: This config requires hierarchical_training_data.csv from the hierarchical preprocessing pipeline.
+# For standard training data, use hierarchical_existing.yaml instead.
+input_csv: "data/processed/hierarchical_training_data.csv"
+h5_paths:
+  - "data/processed/embeddings.h5"
+  - "data/processed/hierarchical_nontox_embeddings.h5"
+tax_h5_path: null
+cpp_h5_path: "data/intermediate/cpp/cpp_features.h5"
+cpp_dim: 100
+output_dir: "model/model_output/hierarchical_run"
+
+# Strategy
+training_strategy: "hierarchical"
+
+# Hyperparameters
+batch_size: 64
+hidden_dims: [256, 256]
+dropout: 0.3
+num_epochs: 200
+learning_rate: 0.0001
+early_stopping_patience: 15
+
+# Dimensions (ProtT5 base; CPP adds cpp_dim via effective_embedding_dim)
+embedding_dim: 1024
+
+# Hierarchical-specific settings
+stage2_freeze_backbone: true
+stage2_learning_rate: 0.00001
+stage2_hidden_dim: 64
+family_min_count: 10

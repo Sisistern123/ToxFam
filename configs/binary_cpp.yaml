@@ -1,0 +1,21 @@
+# binary_cpp.yaml — Binary toxic/non-toxic with CPP physicochemical features
+input_csv: "data/processed/training_data.csv"
+h5_paths_glob: "data/processed/embeddings.h5"
+tax_h5_path: null
+cpp_h5_path: "data/intermediate/cpp/cpp_features.h5"
+cpp_dim: 100
+output_dir: "model/model_output/binary_cpp_run"
+
+# Strategy
+training_strategy: "binary"
+
+# Hyperparameters
+batch_size: 64
+hidden_dims: [256, 256]
+dropout: 0.5
+num_epochs: 200
+learning_rate: 0.0001
+early_stopping_patience: 10
+
+# Dimensions
+embedding_dim: 1024
