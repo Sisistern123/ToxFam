@@ -19,6 +19,7 @@ dependencies = [
     "torch>=2.7.1",
     "transformers>=5.1.0",
     "typer>=0.15.0",
+    "wandb>=0.25.0",
 ]
 
 [project.scripts]

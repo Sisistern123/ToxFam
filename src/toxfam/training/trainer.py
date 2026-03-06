@@ -1,13 +1,15 @@
 from __future__ import annotations
 
-import os
+import random
 from collections import Counter
 from typing import TYPE_CHECKING
 
 import numpy as np
 import torch
+import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
+from rich.console import Console
 from sklearn.metrics import accuracy_score, matthews_corrcoef
 from sklearn.preprocessing import label_binarize
 import wandb
@@ -15,6 +17,66 @@ import wandb
 if TYPE_CHECKING:
     from toxfam.config import TrainConfig
 
+console = Console()
+
+
+# ---------------------------------------------------------------------------
+# Utilities
+# ---------------------------------------------------------------------------
+
+def get_device() -> torch.device:
+    """Unified device selection: MPS > CUDA > CPU."""
+    if torch.backends.mps.is_available():
+        return torch.device("mps")
+    if torch.cuda.is_available():
+        return torch.device("cuda")
+    return torch.device("cpu")
+
+
+def set_seed(seed: int | None) -> None:
+    """Set random seeds for reproducibility across all frameworks."""
+    if seed is None:
+        return
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+
+
+# ---------------------------------------------------------------------------
+# Loss
+# ---------------------------------------------------------------------------
+
+class FocalLoss(nn.Module):
+    """Focal loss (Lin et al., 2017) with optional class weights."""
+
+    def __init__(
+        self,
+        gamma: float = 2.0,
+        weight: torch.Tensor | None = None,
+        label_smoothing: float = 0.0,
+    ):
+        super().__init__()
+        self.gamma = gamma
+        self.register_buffer("weight", weight)
+        self.label_smoothing = label_smoothing
+
+    def forward(self, inputs: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
+        ce_loss = F.cross_entropy(
+            inputs,
+            targets,
+            weight=self.weight,
+            reduction="none",
+            label_smoothing=self.label_smoothing,
+        )
+        pt = torch.exp(-ce_loss)
+        focal_loss = ((1 - pt) ** self.gamma) * ce_loss
+        return focal_loss.mean()
+
+
+# ---------------------------------------------------------------------------
+# Forward helper
+# ---------------------------------------------------------------------------
 
 def _forward_model(model, features, device):
     """Handle single-input (Tensor) or multi-input ((emb, tax)) forwarding."""
@@ -24,6 +86,10 @@ def _forward_model(model, features, device):
     else:
         return model(features.to(device))
 
+
+# ---------------------------------------------------------------------------
+# Evaluation
+# ---------------------------------------------------------------------------
 
 def evaluate_model(model, data_loader, loss_fn, device, dataset_type="Validation"):
     model.eval()
@@ -49,20 +115,36 @@ def evaluate_model(model, data_loader, loss_fn, device, dataset_type="Validation
     all_scores = np.concatenate(all_scores, axis=0)
     avg_loss = total_loss / len(data_loader)
 
-    metrics = {
-        f"{dataset_type}_Accuracy": accuracy_score(all_labels, all_preds),
-        f"{dataset_type}_MCC": matthews_corrcoef(all_labels, all_preds),
-        f"{dataset_type}_Avg_Loss": avg_loss,
-    }
+    # Standard multi-class MCC
+    mcc = matthews_corrcoef(all_labels, all_preds)
+    accuracy = accuracy_score(all_labels, all_preds)
 
+    # Macro MCC: average of per-class one-vs-rest MCCs
     y_true_bin = label_binarize(all_labels, classes=list(range(n_classes)))
     y_pred_bin = label_binarize(all_preds, classes=list(range(n_classes)))
-    metrics[f"{dataset_type}_Micro_MCC"] = matthews_corrcoef(
-        y_true_bin.ravel(), y_pred_bin.ravel()
-    )
+    per_class_mcc = []
+    for c in range(n_classes):
+        mcc_c = matthews_corrcoef(y_true_bin[:, c], y_pred_bin[:, c])
+        per_class_mcc.append(mcc_c)
+    macro_mcc = float(np.mean(per_class_mcc))
+
+    # Micro MCC: MCC on flattened one-hot arrays
+    micro_mcc = float(matthews_corrcoef(y_true_bin.ravel(), y_pred_bin.ravel()))
+
+    metrics = {
+        f"{dataset_type}_accuracy": accuracy,
+        f"{dataset_type}_mcc": mcc,
+        f"{dataset_type}_macro_mcc": macro_mcc,
+        f"{dataset_type}_micro_mcc": micro_mcc,
+        f"{dataset_type}_loss": avg_loss,
+    }
 
     return metrics, all_labels, all_preds, all_scores
 
+
+# ---------------------------------------------------------------------------
+# Class weights
+# ---------------------------------------------------------------------------
 
 def get_class_weights(train_dataset):
     encoded_col = train_dataset.label_col + "_encoded"
@@ -89,30 +171,91 @@ def get_class_weights(train_dataset):
     return weights_dict, weights_tensor, encoded_to_label
 
 
+# ---------------------------------------------------------------------------
+# LR Scheduler helpers
+# ---------------------------------------------------------------------------
+
+class _LinearWarmupCosineScheduler(optim.lr_scheduler.LRScheduler):
+    """Linear warmup for `warmup_epochs`, then cosine annealing to 0."""
+
+    def __init__(self, optimizer, warmup_epochs: int, total_epochs: int, last_epoch=-1):
+        self.warmup_epochs = warmup_epochs
+        self.total_epochs = total_epochs
+        super().__init__(optimizer, last_epoch)
+
+    def get_lr(self):
+        if self.last_epoch < self.warmup_epochs:
+            # Linear warmup
+            alpha = (self.last_epoch + 1) / max(1, self.warmup_epochs)
+            return [base_lr * alpha for base_lr in self.base_lrs]
+        else:
+            # Cosine annealing
+            import math
+
+            progress = (self.last_epoch - self.warmup_epochs) / max(
+                1, self.total_epochs - self.warmup_epochs
+            )
+            return [
+                base_lr * 0.5 * (1 + math.cos(math.pi * progress))
+                for base_lr in self.base_lrs
+            ]
+
+
+# ---------------------------------------------------------------------------
+# Training
+# ---------------------------------------------------------------------------
+
 def train_model(model, train_loader, val_loader, weights_tensor, config: TrainConfig):
-    if torch.cuda.is_available():
-        device = torch.device("cuda")
-        print("Using Device: CUDA", flush=True)
-    elif torch.backends.mps.is_available():
-        device = torch.device("mps")
-        print("Using Device: MPS (Apple Silicon)", flush=True)
-    else:
-        device = torch.device("cpu")
-        print("Using Device: CPU", flush=True)
+    device = get_device()
+    console.print(f"Using device: [bold]{device}[/bold]")
+
+    set_seed(config.seed)
 
     model.to(device)
-
-    best_score = float("inf")
-
     weights_tensor = weights_tensor.to(device)
 
-    optimizer = optim.Adam(model.parameters(), lr=config.learning_rate)
+    # Optimizer
+    if config.optimizer == "adamw":
+        optimizer = optim.AdamW(
+            model.parameters(), lr=config.learning_rate, weight_decay=config.weight_decay
+        )
+    else:
+        optimizer = optim.Adam(model.parameters(), lr=config.learning_rate)
 
-    print("Loss Function: Cross Entropy", flush=True)
-    loss_fn = torch.nn.CrossEntropyLoss(weight=weights_tensor)
+    # LR Scheduler
+    scheduler = None
+    if config.lr_scheduler == "cosine":
+        scheduler = _LinearWarmupCosineScheduler(
+            optimizer,
+            warmup_epochs=config.warmup_epochs,
+            total_epochs=config.num_epochs,
+        )
+
+    # Loss function
+    if config.use_focal_loss:
+        loss_fn = FocalLoss(
+            gamma=config.focal_loss_gamma,
+            weight=weights_tensor,
+            label_smoothing=config.label_smoothing,
+        )
+        console.print("Loss function: [bold]Focal Loss[/bold] "
+                       f"(gamma={config.focal_loss_gamma})")
+    else:
+        loss_fn = nn.CrossEntropyLoss(
+            weight=weights_tensor, label_smoothing=config.label_smoothing
+        )
+        console.print("Loss function: [bold]CrossEntropyLoss[/bold]")
+
+    # Early stopping setup
+    use_mcc = config.early_stopping_metric == "mcc"
+    best_score = float("-inf") if use_mcc else float("inf")
 
     epochs_no_improve = 0
     train_losses, val_losses = [], []
+
+    models_dir = config.output_dir / "models"
+    models_dir.mkdir(parents=True, exist_ok=True)
+    best_model_path = models_dir / "best_model.pt"
 
     for epoch in range(config.num_epochs):
         model.train()
@@ -126,28 +269,37 @@ def train_model(model, train_loader, val_loader, weights_tensor, config: TrainCo
             loss = loss_fn(outputs, labels)
 
             if torch.isnan(loss):
-                print("Stopping: Loss became NaN.", flush=True)
+                console.print("[bold red]Stopping: Loss became NaN.[/bold red]")
                 return model, {"train_losses": train_losses, "val_losses": val_losses}
 
             loss.backward()
+
+            if config.max_grad_norm is not None:
+                nn.utils.clip_grad_norm_(model.parameters(), config.max_grad_norm)
+
             optimizer.step()
             total_loss += loss.item()
 
         train_loss = total_loss / len(train_loader)
         train_losses.append(train_loss)
 
+        if scheduler is not None:
+            scheduler.step()
+
         val_metrics, _, _, _ = evaluate_model(model, val_loader, loss_fn, device)
-        val_loss = val_metrics["Validation_Avg_Loss"]
-        val_mcc = val_metrics["Validation_MCC"]
+        val_loss = val_metrics["Validation_loss"]
+        val_mcc = val_metrics["Validation_mcc"]
+        val_macro_mcc = val_metrics["Validation_macro_mcc"]
+        val_accuracy = val_metrics["Validation_accuracy"]
         val_losses.append(val_loss)
 
-        print(
+        current_lr = optimizer.param_groups[0]["lr"]
+
+        console.print(
             f"Epoch {epoch + 1}: Train Loss: {train_loss:.4f}, "
-            f"Val Loss: {val_loss:.4f}, Val MCC: {val_mcc:.4f}",
-            flush=True,
+            f"Val Loss: {val_loss:.4f}, Val MCC: {val_mcc:.4f}, LR: {current_lr:.2e}"
         )
 
-        # Log epoch metrics to wandb if a run is active.
         if wandb.run is not None:
             wandb.log(
                 {
@@ -155,22 +307,23 @@ def train_model(model, train_loader, val_loader, weights_tensor, config: TrainCo
                     "train_loss": train_loss,
                     "val_loss": val_loss,
                     "val_mcc": val_mcc,
+                    "val_macro_mcc": val_macro_mcc,
+                    "val_accuracy": val_accuracy,
+                    "learning_rate": current_lr,
                 }
             )
 
-        improvement = False
-        if val_loss < best_score:
-            best_score = val_loss
-            improvement = True
+        # Early stopping check
+        if use_mcc:
+            improved = val_mcc > best_score
+        else:
+            improved = val_loss < best_score
 
-        if improvement:
+        if improved:
+            best_score = val_mcc if use_mcc else val_loss
             epochs_no_improve = 0
-            output_dir = str(config.output_dir)
-            os.makedirs(output_dir, exist_ok=True)
-            best_model_path = os.path.join(output_dir, "best_model.pt")
             torch.save(model.state_dict(), best_model_path)
 
-            # Log best model checkpoint as a wandb artifact for model tracking.
             if wandb.run is not None:
                 artifact = wandb.Artifact(
                     name="toxfam-best-model",
@@ -181,17 +334,21 @@ def train_model(model, train_loader, val_loader, weights_tensor, config: TrainCo
                         "val_mcc": val_mcc,
                     },
                 )
-                artifact.add_file(best_model_path)
+                artifact.add_file(str(best_model_path))
                 wandb.log_artifact(artifact)
         else:
             epochs_no_improve += 1
 
         if epochs_no_improve >= config.early_stopping_patience:
-            print("Early stopping triggered. Loss did not improve)", flush=True)
+            metric_name = "MCC" if use_mcc else "loss"
+            console.print(
+                f"[bold yellow]Early stopping triggered. "
+                f"Val {metric_name} did not improve for "
+                f"{config.early_stopping_patience} epochs.[/bold yellow]"
+            )
             break
 
-    best_model_path = os.path.join(str(config.output_dir), "best_model.pt")
-    if os.path.exists(best_model_path):
+    if best_model_path.exists():
         model.load_state_dict(torch.load(best_model_path, map_location=device))
 
     history = {"train_losses": train_losses, "val_losses": val_losses}

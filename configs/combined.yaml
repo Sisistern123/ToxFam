@@ -1,23 +1,39 @@
-# combined.yaml
+# combined.yaml — Two-branch MLP (embeddings + taxonomy)
 input_csv: "data/processed/training_data.csv"
 h5_paths_glob: "data/processed/embeddings.h5"
-tax_h5_path: "data/intermediate/taxonomy/binary_taxonomy_vectors.h5" # REQUIRED
-output_dir: "model/model_output/0_CALIBRATED_combined_run"
+tax_h5_path: "data/intermediate/taxonomy/binary_taxonomy_vectors.h5"
+output_dir: "model/model_output/combined_run"
 
 # Strategy
 training_strategy: "combined"
 
-# Hyperparameters
-use_focal_loss: false # CE
-focal_loss_gamma: 2.0
+# Optimizer
+optimizer: "adamw"
+weight_decay: 0.01
+learning_rate: 0.0001
 
-batch_size: 64
+# LR Scheduler
+lr_scheduler: "cosine"
+warmup_epochs: 5
+
+# Loss
+use_focal_loss: false
+label_smoothing: 0.0
+
+# Architecture
 hidden_dims: [256, 256]
 dropout: 0.5
-num_epochs: 200
-learning_rate: 0.0001
-early_stopping_patience: 10
-
-# Dimensions
 embedding_dim: 1024
 tax_dim: 50
+
+# Training
+batch_size: 64
+num_epochs: 200
+early_stopping_patience: 10
+early_stopping_metric: "mcc"
+max_grad_norm: 1.0
+seed: 42
+
+# wandb
+wandb_project: "toxfam"
+wandb_entity: "toxfam"

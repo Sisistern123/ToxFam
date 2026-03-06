@@ -1,8 +1,11 @@
 import torch
 import torch.nn as nn
 import torch.optim as optim
+from rich.console import Console
 
 from toxfam.training.trainer import _forward_model
+
+console = Console()
 
 
 class ModelWithTemperature(nn.Module):
@@ -30,7 +33,7 @@ class ModelWithTemperature(nn.Module):
         logits_list = []
         labels_list = []
 
-        print("Collecting validation logits for calibration...")
+        console.print("Collecting validation logits for calibration...")
         with torch.no_grad():
             for features, label in valid_loader:
                 label = label.to(self.device)
@@ -43,7 +46,7 @@ class ModelWithTemperature(nn.Module):
 
         before_temperature_nll = nll_criterion(logits, labels).item()
         before_temperature_ece = ece_criterion(logits, labels).item()
-        print(
+        console.print(
             f"Before Calibration - NLL: {before_temperature_nll:.3f}, "
             f"ECE: {before_temperature_ece:.3f}"
         )
@@ -64,8 +67,8 @@ class ModelWithTemperature(nn.Module):
         after_temperature_ece = ece_criterion(
             self.temperature_scale(logits), labels
         ).item()
-        print(f"Optimal Temperature: {self.temperature.item():.3f}")
-        print(
+        console.print(f"Optimal Temperature: [bold]{self.temperature.item():.3f}[/bold]")
+        console.print(
             f"After Calibration  - NLL: {after_temperature_nll:.3f}, "
             f"ECE: {after_temperature_ece:.3f}"
         )

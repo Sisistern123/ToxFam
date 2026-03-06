@@ -32,6 +32,9 @@ data/processed/
 # Model outputs
 model/model_output/
 
+# Weights & Biases
+wandb/
+
 # SignalP6 tool (separate uv project with large model files)
 tools/signalp6/.venv/
 tools/signalp6/uv.lock

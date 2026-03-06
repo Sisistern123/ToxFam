@@ -22,6 +22,7 @@ class MultiInputMLP(nn.Module):
 
         self.tax_net = nn.Sequential(
             nn.Linear(tax_dim, tax_hidden_dim),
+            nn.BatchNorm1d(tax_hidden_dim),
             nn.ReLU(),
             nn.Dropout(dropout),
         )
@@ -30,6 +31,7 @@ class MultiInputMLP(nn.Module):
         joint_layers = []
         for h in hidden_dims:
             joint_layers.append(nn.Linear(joint_in, h))
+            joint_layers.append(nn.BatchNorm1d(h))
             joint_layers.append(nn.ReLU())
             joint_layers.append(nn.Dropout(dropout))
             joint_in = h
@@ -55,6 +57,7 @@ class ModularMLP(nn.Module):
 
         self.projector = nn.Sequential(
             nn.Linear(input_dim, first_hidden_dim),
+            nn.BatchNorm1d(first_hidden_dim),
             nn.ReLU(),
             nn.Dropout(dropout),
         )
@@ -63,6 +66,7 @@ class ModularMLP(nn.Module):
         prev_dim = first_hidden_dim
         for h in hidden_dims[1:]:
             layers.append(nn.Linear(prev_dim, h))
+            layers.append(nn.BatchNorm1d(h))
             layers.append(nn.ReLU())
             layers.append(nn.Dropout(dropout))
             prev_dim = h
