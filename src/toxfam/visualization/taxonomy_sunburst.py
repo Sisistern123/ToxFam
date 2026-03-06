@@ -1,8 +1,4 @@
-"""Generate taxonomy sunburst plots for toxin and non-toxin proteins.
-
-Usage:
-    uv run python scripts/plot_taxonomy_sunburst.py
-"""
+"""Generate taxonomy sunburst plots for toxin and non-toxin proteins."""
 
 from __future__ import annotations
 
@@ -148,8 +144,8 @@ def create_sunburst(
 def main() -> None:
     root = get_project_root()
     csv_path = root / "data" / "processed" / "training_data.csv"
-    figures_dir = root / "figures"
-    figures_dir.mkdir(exist_ok=True)
+    figures_dir = root / "figures" / "taxonomy"
+    figures_dir.mkdir(parents=True, exist_ok=True)
 
     console.print(f"Reading [cyan]{csv_path}[/] ...")
     df = pd.read_csv(csv_path)

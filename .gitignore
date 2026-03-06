@@ -32,6 +32,9 @@ data/processed/
 # Model outputs
 model/model_output/
 
+# Generated figures
+figures/
+
 # Weights & Biases
 wandb/
 

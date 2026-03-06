@@ -359,5 +359,27 @@ def eval_unreviewed(
     )
 
 
+# ---------- toxfam plot ----------
+
+plot_app = typer.Typer(
+    help="Generate plots and visualizations.",
+    no_args_is_help=True,
+)
+app.add_typer(plot_app, name="plot")
+
+
+@plot_app.command("taxonomy")
+def plot_taxonomy() -> None:
+    """Generate taxonomy sunburst plots for toxin and non-toxin proteins.
+
+    Reads the training CSV, resolves NCBI lineages via taxopy, and creates
+    interactive sunburst charts (HTML + PNG) showing the taxonomic distribution
+    of toxin and non-toxin proteins. Outputs to figures/taxonomy/.
+    """
+    from toxfam.visualization.taxonomy_sunburst import main as _main
+
+    _main()
+
+
 def main():
     app()
