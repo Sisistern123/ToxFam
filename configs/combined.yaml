@@ -1,7 +1,7 @@
 # combined.yaml — Two-branch MLP (embeddings + taxonomy)
 input_csv: "data/processed/training_data.csv"
 h5_paths_glob: "data/processed/embeddings.h5"
-tax_h5_path: "data/intermediate/taxonomy/binary_taxonomy_vectors.h5"
+tax_h5_path: "data/processed/taxonomy_vectors.h5"
 output_dir: "model/model_output/combined_run"
 
 # Strategy

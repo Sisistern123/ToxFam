@@ -21,7 +21,7 @@ The pipeline is fully offline — it reads taxon IDs directly from the CSV rathe
 | -------------- | ------------------------------------------------------- | ------------------------------------------------ |
 | `--input-csv`  | `data/processed/training_data.csv`                      | Training CSV with `Organism (ID)` column         |
 | `--input-h5`   | `data/processed/embeddings.h5`                          | Embeddings H5 (determines which proteins to emit)|
-| `--output-h5`  | `data/intermediate/taxonomy/binary_taxonomy_vectors.h5` | Output H5 for multi-hot taxonomy vectors         |
+| `--output-h5`  | `data/processed/taxonomy_vectors.h5` | Output H5 for multi-hot taxonomy vectors         |
 
 ## The 50 predefined taxa
 
@@ -65,7 +65,7 @@ The HDF5 file contains one dataset per protein (gzip-compressed), keyed by ident
 ```python
 import h5py
 
-with h5py.File("data/intermediate/taxonomy/binary_taxonomy_vectors.h5", "r") as f:
+with h5py.File("data/processed/taxonomy_vectors.h5", "r") as f:
     taxa_names = list(f.attrs["taxa"])    # the 50 taxon names, in order
     vec = f["P01234"][:]                  # shape: (50,), dtype: float32, values: 0.0 or 1.0
 ```
@@ -81,9 +81,9 @@ preprocessing ─→ data/processed/training_data.csv  (contains Organism (ID))
                               │
                    uv run toxfam taxonomy
                               │
-              data/intermediate/taxonomy/binary_taxonomy_vectors.h5
+              data/processed/taxonomy_vectors.h5
                               │
                    uv run toxfam train configs/combined.yaml
 ```
 
-The training step reads `binary_taxonomy_vectors.h5` via `ToxDataset` when the `combined` strategy is selected. A dimension mismatch between the H5 vectors and `tax_dim` in the config is caught at startup with a clear error. The `standard` strategy does not require taxonomy vectors.
+The training step reads `taxonomy_vectors.h5` via `ToxDataset` when the `combined` strategy is selected. A dimension mismatch between the H5 vectors and `tax_dim` in the config is caught at startup with a clear error. The `standard` strategy does not require taxonomy vectors.

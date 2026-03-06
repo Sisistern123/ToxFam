@@ -22,7 +22,7 @@ All commands are run via the `toxfam` CLI using `uv run`:
 ```bash
 uv run toxfam download-data
 ```
-Downloads raw data to `data/raw/`, ProtT5 embeddings and training splits to `data/processed/`, and the SignalP6 cache to `data/intermediate/sp6/`. Use `--force` to re-download existing files.
+Downloads raw data to `data/raw/`, training splits and ProtT5 embeddings to `data/processed/`, and the SignalP6 cache to `data/intermediate/sp6/`. Taxonomy vectors are not included — regenerate with `toxfam taxonomy`. Use `--force` to re-download existing files.
 
 To upload/update the release, use the developer script: `uv run scripts/upload_data.py`
 
@@ -112,17 +112,16 @@ data/
 ├── raw/                        # Frozen UniProt TSV inputs (downloaded via `toxfam download-data`)
 │   ├── 0800.tsv
 │   └── nontox.tsv
-├── intermediate/               # All pipeline-generated intermediates (gitignored)
+├── intermediate/               # Pipeline-generated intermediates (gitignored, reproducible)
 │   ├── fasta/                  # tox.fasta, nontox.fasta, *_noSP.fasta
 │   ├── mmseqs/                 # All MMseqs2-related files
 │   │   ├── {family}/           # Per-family: input.fasta + cluster output
 │   │   └── representatives/    # Post-clustering rep seqs (CSV + FASTA)
-│   ├── sp6/                    # SignalP6 output + per-sequence cache (downloaded via `toxfam download-data`)
-│   └── taxonomy/               # Multi-hot taxonomy vectors
-│       └── binary_taxonomy_vectors.h5
-├── processed/                  # Expensive outputs (gitignored, via GitHub Releases)
+│   └── sp6/                    # SignalP6 output + per-sequence cache (downloaded via `toxfam download-data`)
+├── processed/                  # All training inputs (gitignored, via GitHub Releases)
 │   ├── training_data.csv       # Train/val/test split CSV
-│   └── embeddings.h5           # ProtT5 embeddings
+│   ├── embeddings.h5           # ProtT5 embeddings
+│   └── taxonomy_vectors.h5     # Multi-hot taxonomy vectors (50-dim)
 ```
 
 ### Data Flow
@@ -131,8 +130,8 @@ data/
 2. **Preprocessing** (`toxfam.data.preprocessing`) — normalizes family labels, runs SignalP6 signal peptide removal (per-sequence MD5-based caching in `sp6_cache.json`), clusters per-family with MMseqs2 at 90% identity, creates multilabel-stratified train/val/test splits; intermediates go to `data/intermediate/`, final split CSV to `data/processed/`
 3. **Feature generation**:
    - `toxfam.data.embedding` — ProtT5 per-protein embeddings → `data/processed/embeddings.h5`
-   - `toxfam.data.taxonomy` — reads `Organism (ID)` from training CSV → taxopy lineage → multi-hot vectors over 50 predefined taxa → `data/intermediate/taxonomy/`
-4. **Training** (`toxfam.training.orchestrator`) — loads split CSV + embeddings from `data/processed/` and optionally taxonomy vectors from `data/intermediate/taxonomy/`; dispatches to strategy, trains with early stopping, applies temperature scaling calibration, evaluates on val/test sets
+   - `toxfam.data.taxonomy` — reads `Organism (ID)` from training CSV → taxopy lineage → multi-hot vectors over 50 predefined taxa → `data/processed/taxonomy_vectors.h5`
+4. **Training** (`toxfam.training.orchestrator`) — loads split CSV, embeddings, and optionally taxonomy vectors from `data/processed/`; dispatches to strategy, trains with early stopping, applies temperature scaling calibration, evaluates on val/test sets
 5. **Outputs** (configured via `output_dir` in YAML) — `best_model.pt`, `best_model_calibrated.pt`, confusion matrices, ROC curves, predictions CSV, metrics JSON
 
 ### Key Module Relationships

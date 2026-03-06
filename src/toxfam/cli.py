@@ -76,9 +76,11 @@ def download_data(
 ) -> None:
     """Download raw and processed data from GitHub Releases.
 
-    Fetches UniProt TSVs (data/raw/), ProtT5 embeddings and training splits
-    (data/processed/), and the SignalP6 per-sequence cache (data/intermediate/sp6/).
-    Existing files are skipped unless --force is set.
+    Fetches UniProt TSVs (data/raw/), training splits and ProtT5 embeddings
+    (data/processed/), and the SignalP6 per-sequence cache
+    (data/intermediate/sp6/). Taxonomy vectors are not included — regenerate
+    them with `toxfam taxonomy`. Existing files are skipped unless --force
+    is set.
     """
     import tempfile
     import zipfile
@@ -208,7 +210,7 @@ def taxonomy(
     ] = Path("data/processed/embeddings.h5"),
     output_h5: Annotated[
         Path, typer.Option(help="Output H5 for multi-hot taxonomy vectors")
-    ] = Path("data/intermediate/taxonomy/binary_taxonomy_vectors.h5"),
+    ] = Path("data/processed/taxonomy_vectors.h5"),
 ) -> None:
     """Generate multi-hot taxonomy vectors for the combined training strategy.
 

@@ -6,7 +6,7 @@
 # ── 1. DATA ──────────────────────────────────────────────────────────────────
 input_csv: "data/processed/training_data.csv"          # CSV with identifier, Protein families, Split columns
 h5_paths_glob: "data/processed/embeddings.h5"          # Glob pattern for ProtT5 embedding HDF5 files
-tax_h5_path: "data/intermediate/taxonomy/binary_taxonomy_vectors.h5"  # Multi-hot taxonomy vectors (required for "combined")
+tax_h5_path: "data/processed/taxonomy_vectors.h5"      # Multi-hot taxonomy vectors (required for "combined")
 output_dir: "model/model_output/example_run"           # All outputs saved here
 
 # ── 2. STRATEGY ──────────────────────────────────────────────────────────────
