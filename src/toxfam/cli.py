@@ -74,7 +74,12 @@ def download_data(
         bool, typer.Option("--force", "-f", help="Re-download even if files exist")
     ] = False,
 ) -> None:
-    """Download raw and processed data from GitHub Releases."""
+    """Download raw and processed data from GitHub Releases.
+
+    Fetches UniProt TSVs (data/raw/), ProtT5 embeddings and training splits
+    (data/processed/), and the SignalP6 per-sequence cache (data/intermediate/sp6/).
+    Existing files are skipped unless --force is set.
+    """
     import tempfile
     import zipfile
 
@@ -124,7 +129,14 @@ def preprocess(
         float, typer.Option(help="MMseqs2 clustering identity threshold")
     ] = 0.9,
 ) -> None:
-    """Run the data preprocessing pipeline."""
+    """Run the full data preprocessing pipeline.
+
+    Reads raw UniProt TSVs from data/raw/, normalizes family labels, removes
+    signal peptides via SignalP6 (with MD5-based per-sequence caching), clusters
+    sequences per family with MMseqs2, creates multilabel-stratified
+    train/val/test splits, and writes the final training CSV to
+    data/processed/training_data.csv.
+    """
     from toxfam.data.preprocessing import run_preprocessing_pipeline
 
     run_preprocessing_pipeline(
@@ -161,7 +173,13 @@ def embed(
         bool, typer.Option("--force", help="Overwrite existing H5 instead of resuming")
     ] = False,
 ) -> None:
-    """Generate per-protein ProtT5 embeddings from a FASTA file."""
+    """Generate per-protein ProtT5 embeddings from a FASTA file.
+
+    Loads the ProtT5-XL-U50 encoder, batches sequences by length, and writes
+    1024-dim mean-pool embeddings to an HDF5 file (one dataset per protein).
+    Already-embedded sequences are skipped unless --force is set. Automatically
+    selects the best available device (CUDA > MPS > CPU).
+    """
     from toxfam.data.embedding import generate_embeddings
 
     generate_embeddings(
@@ -223,7 +241,16 @@ def train(
         ),
     ],
 ) -> None:
-    """Train a model using the specified config file."""
+    """Train a toxin family classifier from a YAML config file.
+
+    Loads training splits and embeddings, builds DataLoaders with class
+    weighting, and trains either a standard MLP (embeddings only) or a
+    combined two-branch MLP (embeddings + taxonomy vectors) depending on the
+    training_strategy in the config. After training, applies temperature
+    scaling calibration on the validation set. Outputs the best model,
+    calibrated model, metrics JSON, predictions CSV, and plots to the
+    configured output directory.
+    """
     from toxfam.config import TrainConfig
     from toxfam.training.orchestrator import run_training
 
@@ -241,7 +268,14 @@ def eval_test(
         typer.Option(help="Directory containing model outputs"),
     ] = None,
 ) -> None:
-    """Evaluate on test set (HBI vs NN comparison)."""
+    """Compare neural network vs homology-based inference on the test set.
+
+    Runs an MMseqs2 sequence search (HBI) against training sequences and
+    loads pre-computed NN predictions from the model directory. Computes
+    accuracy, MCC, and per-class F1 for both methods, saves a side-by-side
+    comparison CSV, confusion matrices, and a detailed classification report
+    to benchmark/new/evaluation/test_set/results/.
+    """
     from toxfam.evaluation.eval_test_set import run_eval_test_set
 
     run_eval_test_set(model_dir=model_dir)
@@ -265,7 +299,13 @@ def eval_nonmetazoan(
         typer.Option(help="Path to class_indices.json", exists=True),
     ],
 ) -> None:
-    """Evaluate on non-metazoan reviewed proteins."""
+    """Binary toxin/non-toxin evaluation on non-metazoan reviewed proteins.
+
+    Loads reviewed non-metazoan sequences, runs both an MMseqs2 homology
+    search (HBI) and the trained model to predict toxin vs non-toxin, then
+    computes binary accuracy and MCC for each method. Results are saved to
+    benchmark/new/evaluation/non-metazoa/results/.
+    """
     from toxfam.evaluation.eval_nonmetazoan import run_eval_nonmetazoan
 
     run_eval_nonmetazoan(
@@ -301,7 +341,13 @@ def eval_unreviewed(
         typer.Option(help="Training FASTA file"),
     ] = None,
 ) -> None:
-    """Evaluate on unreviewed metazoan proteins."""
+    """Multi-class family evaluation on unreviewed metazoan proteins.
+
+    Normalizes family labels (same rules as preprocessing), runs an MMseqs2
+    homology search (HBI) against training sequences, and computes multi-class
+    accuracy, MCC, and per-class F1. Results are saved to
+    benchmark/new/evaluation/unreviewed_metazoan/results/.
+    """
     from toxfam.evaluation.eval_unreviewed import run_eval_unreviewed
 
     run_eval_unreviewed(
