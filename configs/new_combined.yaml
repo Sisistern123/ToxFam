@@ -23,4 +23,4 @@ early_stopping_patience: 10
 
 # Dimensions
 embedding_dim: 1024
-tax_dim: 56
+tax_dim: 50

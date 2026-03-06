@@ -76,7 +76,7 @@ src/toxfam/
 │   ├── dataset.py            # ToxDataset, analyze_data_splits
 │   ├── preprocessing.py      # Full preprocessing pipeline
 │   ├── embedding.py          # ProtT5 embedding generation
-│   ├── taxonomy.py           # Taxonomy retrieval + binary vector generation
+│   ├── taxonomy.py           # Taxonomy retrieval + multi-hot vector generation
 │   └── signalp.py            # SignalP6 signal peptide removal
 ├── model/                    # Neural network architectures
 │   ├── architectures.py      # ModularMLP, MultiInputMLP
@@ -99,7 +99,7 @@ src/toxfam/
 The system supports two training strategies, selected via `training_strategy` in the YAML config:
 
 1. **`standard`** — `ModularMLP` fed with ProtT5 embeddings only (1024-dim)
-2. **`combined`** — `MultiInputMLP` with two branches: one for embeddings, one for binary taxonomy vectors (56-dim), concatenated before a joint head
+2. **`combined`** — `MultiInputMLP` with two branches: one for embeddings, one for multi-hot taxonomy vectors (50-dim), concatenated before a joint head
 
 ### Config
 
@@ -118,7 +118,7 @@ data/
 │   │   ├── {family}/           # Per-family: input.fasta + cluster output
 │   │   └── representatives/    # Post-clustering rep seqs (CSV + FASTA)
 │   ├── sp6/                    # SignalP6 output + per-sequence cache (downloaded via `toxfam download-data`)
-│   └── taxonomy/               # Binary taxonomy vectors
+│   └── taxonomy/               # Multi-hot taxonomy vectors
 │       └── binary_taxonomy_vectors.h5
 ├── processed/                  # Expensive outputs (gitignored, via GitHub Releases)
 │   ├── training_data.csv       # Train/val/test split CSV
@@ -131,7 +131,7 @@ data/
 2. **Preprocessing** (`toxfam.data.preprocessing`) — normalizes family labels, runs SignalP6 signal peptide removal (per-sequence MD5-based caching in `sp6_cache.json`), clusters per-family with MMseqs2 at 90% identity, creates multilabel-stratified train/val/test splits; intermediates go to `data/intermediate/`, final split CSV to `data/processed/`
 3. **Feature generation**:
    - `toxfam.data.embedding` — ProtT5 per-protein embeddings → `data/processed/embeddings.h5`
-   - `toxfam.data.taxonomy` — reads `Organism (ID)` from training CSV → taxopy lineage → binary (one-hot) vectors over 56 predefined taxa → `data/intermediate/taxonomy/`
+   - `toxfam.data.taxonomy` — reads `Organism (ID)` from training CSV → taxopy lineage → multi-hot vectors over 50 predefined taxa → `data/intermediate/taxonomy/`
 4. **Training** (`toxfam.training.orchestrator`) — loads split CSV + embeddings from `data/processed/` and optionally taxonomy vectors from `data/intermediate/taxonomy/`; dispatches to strategy, trains with early stopping, applies temperature scaling calibration, evaluates on val/test sets
 5. **Outputs** (configured via `output_dir` in YAML) — `best_model.pt`, `best_model_calibrated.pt`, confusion matrices, ROC curves, predictions CSV, metrics JSON
 
@@ -156,5 +156,6 @@ data/
 - All imports use fully-qualified package paths: `from toxfam.model.architectures import ModularMLP`
 - All commands can be run from the project root via `uv run toxfam <command>`
 - Families with <10 members are collapsed into an `"other"` class during preprocessing
-- The taxonomy binary vectors encode membership in 56 predefined animal taxa (from Porifera to Soricidae), defined in `toxfam.data.taxonomy.TAXA`
+- The taxonomy multi-hot vectors encode membership in 50 predefined animal taxa (from Porifera to Soricidae), defined in `toxfam.data.taxonomy.TAXA`
 - Path resolution uses `toxfam._paths.get_project_root()` which finds the project root by walking up to find `pyproject.toml`
+- The project uses `rich` for all CLI output (progress bars via `rich.progress.Progress`, styled messages via `console.print()`) — not `tqdm` or raw `print()`

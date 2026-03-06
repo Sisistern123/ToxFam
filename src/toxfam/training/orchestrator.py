@@ -73,6 +73,19 @@ def run_training(config: TrainConfig) -> None:
 
     train_ds = ToxDataset(train_df, h5_paths, is_train=True, tax_h5_path=tax_h5)
 
+    # Validate taxonomy vector dimension matches config
+    if tax_h5 is not None and config.training_strategy == "combined":
+        import h5py as _h5py
+
+        with _h5py.File(tax_h5, "r") as _f:
+            _first = next(iter(_f))
+            actual_dim = _f[_first][:].shape[0]
+            if actual_dim != config.tax_dim:
+                raise ValueError(
+                    f"Taxonomy H5 has vectors of dim {actual_dim} but config.tax_dim={config.tax_dim}. "
+                    f"Regenerate with `toxfam taxonomy` or update tax_dim in your config."
+                )
+
     class_indices = {int(i): label for i, label in enumerate(train_ds.le.classes_)}
     class_json_path = out_root / "class_indices.json"
     with open(class_json_path, "w") as f:

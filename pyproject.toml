@@ -33,5 +33,7 @@ packages = ["src/toxfam"]
 
 [dependency-groups]
 dev = [
+    "kaleido>=1.2.0",
+    "plotly>=6.6.0",
     "ruff>=0.15.4",
 ]

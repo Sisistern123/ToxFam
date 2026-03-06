@@ -189,14 +189,20 @@ def taxonomy(
         typer.Option(help="Input H5 with protein embeddings", exists=True),
     ] = Path("data/processed/embeddings.h5"),
     output_h5: Annotated[
-        Path, typer.Option(help="Output H5 for binary taxonomy vectors")
+        Path, typer.Option(help="Output H5 for multi-hot taxonomy vectors")
     ] = Path("data/intermediate/taxonomy/binary_taxonomy_vectors.h5"),
 ) -> None:
-    """Generate binary taxonomy vectors from training CSV with taxon IDs."""
-    from toxfam.data.taxonomy import run_binary_taxonomy_pipeline
+    """Generate multi-hot taxonomy vectors for the combined training strategy.
+
+    Reads NCBI taxon IDs from the training CSV ('Organism (ID)' column),
+    resolves full lineage via taxopy, and encodes membership in 50
+    predefined animal taxa as multi-hot vectors stored in HDF5. Only
+    proteins present in the input embeddings H5 are included.
+    """
+    from toxfam.data.taxonomy import run_multi_hot_taxonomy_pipeline
 
     output_h5.parent.mkdir(parents=True, exist_ok=True)
-    run_binary_taxonomy_pipeline(
+    run_multi_hot_taxonomy_pipeline(
         input_csv=str(input_csv),
         input_h5_path=str(input_h5),
         output_h5_path=str(output_h5),

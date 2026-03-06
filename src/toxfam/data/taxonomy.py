@@ -1,8 +1,9 @@
-"""Taxonomy lineage resolution and binary vector generation.
+"""Taxonomy lineage resolution and multi-hot vector generation.
 
 Reads NCBI taxon IDs (already present in the training CSV as ``Organism (ID)``),
-resolves full lineage via taxopy, and encodes membership in 56 predefined animal
-taxa as binary (one-hot) vectors stored in HDF5.
+resolves full lineage via taxopy, and encodes membership in 50 predefined animal
+taxa as multi-hot vectors stored in HDF5.  Multiple taxa can be active per protein
+because the predefined taxa span different levels of the taxonomic hierarchy.
 """
 
 from __future__ import annotations
@@ -13,16 +14,22 @@ import shutil
 import tempfile
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any
 
 import h5py
 import numpy as np
 import pandas as pd
 import taxopy
-from tqdm import tqdm
+from rich.console import Console
+from rich.progress import (
+    BarColumn,
+    MofNCompleteColumn,
+    Progress,
+    SpinnerColumn,
+    TextColumn,
+)
 
-logging.basicConfig(format="%(levelname)s: %(message)s")
 logger = logging.getLogger(__name__)
+console = Console()
 
 # ---------- Constants ----------
 
@@ -39,292 +46,261 @@ TAXONOMY_FEATURES = [
 ]
 
 TAXA = [
+    # Sponges
     "Porifera",
-    "Calcarea",
-    "Demospongiae",
-    "Hexactinellida",
+    # Ctenophora
     "Ctenophora",
-    "Nuda",
     "Tentaculata",
+    # Cnidaria
     "Cnidaria",
-    "Metazoa",
-    "Spiralia (Gnathifera)",
+    "Anthozoa",
+    # Spiralia
+    "Spiralia",
     "Rotifera",
     "Annelida",
     "Glyceridae",
     "Bryozoa",
     "Gymnolaemata",
-    "Phylactolaemata",
-    "Stenolaemata",
+    # Mollusca
     "Mollusca",
     "Bivalvia",
     "Cephalopoda",
     "Octopoda",
+    "Gastropoda",
     "Neogastropoda",
-    "Conoidea",
+    "Conidae",
     "Polyplacophora",
-    "Scaphopoda",
+    # Echinodermata
     "Echinodermata",
     "Asteroidea",
-    "Crinoidea",
     "Echinoidea",
     "Holothuroidea",
-    "Ophiuroidea",
+    # Panarthropoda
     "Panarthropoda",
     "Onychophora",
     "Tardigrada",
     "Myriapoda",
     "Chilopoda",
-    "Diplopoda",
+    # Arachnida
     "Arachnida",
     "Araneae",
-    "Pseudoscorpiones",
+    "Theraphosidae",
     "Scorpiones",
+    "Buthidae",
+    # Insecta
     "Insecta",
     "Hymenoptera",
+    # Chordata — fish & cartilaginous
     "Chordata",
-    "Aves",
     "Chondrichthyes",
     "Dasyatidae",
     "Actinopterygii",
-    "Scorpaenoidei",
-    "Trachinidae",
-    "Reptilia",
+    # Amphibia
+    "Amphibia",
+    "Anura",
+    # Reptiles & birds (Sauropsida = NCBI clade for reptiles + birds)
+    "Sauropsida",
+    "Aves",
     "Squamata",
-    "Toxicofera",
+    "Serpentes",
+    "Viperidae",
+    "Crotalinae",
+    "Elapidae",
+    # Mammals
     "Mammalia",
-    "Solenodontidae",
     "Soricidae",
 ]
 
-# ---------- Taxonomy retrieval ----------
+# ---------- TaxDB management ----------
 
 
-class TaxonomyRetriever:
-    """Resolves NCBI taxonomy lineage for a list of taxon IDs using taxopy."""
+def _resolve_taxdb_dir() -> Path:
+    """Return the taxopy database directory, creating it if needed."""
+    env_override = os.environ.get("PROTSPACE_TAXDB_DIR")
+    db_dir = (
+        Path(env_override).expanduser()
+        if env_override
+        else Path.home() / ".cache" / "taxopy_db"
+    )
+    db_dir.mkdir(parents=True, exist_ok=True)
+    return db_dir
 
-    def __init__(self, taxon_ids: list[int], features: list | None = None):
-        self.taxon_ids = self._validate_taxon_ids(taxon_ids)
-        self.features = features or TAXONOMY_FEATURES
-        self.taxdb = self._initialize_taxdb()
 
-    def fetch_features(self) -> dict[int, dict[str, Any]]:
-        result = {}
+def _is_cache_stale(timestamp_file: Path) -> bool:
+    """Return True if the timestamp file is missing or older than 1 week."""
+    if not timestamp_file.exists():
+        return True
+    try:
+        download_time = datetime.fromisoformat(timestamp_file.read_text().strip())
+        return download_time < datetime.now() - timedelta(weeks=1)
+    except (ValueError, OSError) as e:
+        logger.warning(f"Could not read timestamp file: {e}. Will refresh cache.")
+        return True
 
-        with tqdm(
-            total=len(self.taxon_ids), desc="Fetching taxonomy features", unit="taxon"
-        ) as pbar:
-            taxonomies_info = self._get_taxonomy_info(self.taxon_ids)
 
-            for taxon_id in self.taxon_ids:
-                if taxon_id in taxonomies_info:
-                    result[taxon_id] = {"features": taxonomies_info[taxon_id]}
-                else:
-                    result[taxon_id] = {"features": dict.fromkeys(self.features, "")}
-                pbar.update(1)
+def _download_fresh_taxdb(db_dir: Path, timestamp_file: Path) -> taxopy.TaxDb:
+    """Download taxopy database for the first time."""
+    console.print(f"Downloading taxopy database to [cyan]{db_dir}[/] ...")
+    taxdb = taxopy.TaxDb(taxdb_dir=str(db_dir), keep_files=True)
+    timestamp_file.write_text(datetime.now().isoformat())
+    return taxdb
 
-        return result
 
-    def _validate_taxon_ids(self, taxon_ids: list[int]) -> list[int]:
-        for taxon_id in taxon_ids:
-            if not isinstance(taxon_id, int):
-                raise ValueError(f"Taxon ID {taxon_id} is not an integer")
-        return taxon_ids
+def _attempt_refresh(db_dir: Path, timestamp_file: Path) -> None:
+    """Refresh taxonomy DB files into a temp dir, then move on success."""
+    console.print("Taxonomy cache is stale. Refreshing ...")
+    temp_dir = None
+    try:
+        temp_dir = Path(tempfile.mkdtemp(prefix="taxopy_tmp_"))
+        taxopy.TaxDb(taxdb_dir=str(temp_dir), keep_files=True)
+        for name in ("nodes.dmp", "names.dmp", "merged.dmp"):
+            src = temp_dir / name
+            if src.exists():
+                shutil.move(str(src), str(db_dir / name))
+        timestamp_file.write_text(datetime.now().isoformat())
+    except Exception as e:
+        logger.warning(f"Failed to refresh taxonomy database: {e}. Using cached data.")
+    finally:
+        if temp_dir and temp_dir.exists():
+            shutil.rmtree(temp_dir, ignore_errors=True)
 
-    def _get_taxonomy_info(self, taxon_ids: list[int]) -> dict[int, dict[str, Any]]:
-        result = {}
+
+def _load_taxdb(db_dir: Path) -> taxopy.TaxDb:
+    """Load a TaxDb from existing dump files in *db_dir*."""
+    nodes_file = db_dir / "nodes.dmp"
+    names_file = db_dir / "names.dmp"
+    merged_file = db_dir / "merged.dmp"
+    return taxopy.TaxDb(
+        nodes_dmp=str(nodes_file),
+        names_dmp=str(names_file),
+        merged_dmp=str(merged_file) if merged_file.exists() else None,
+    )
+
+
+def _get_or_refresh_taxdb() -> taxopy.TaxDb:
+    """Return a TaxDb, downloading or refreshing as needed."""
+    db_dir = _resolve_taxdb_dir()
+    nodes_file = db_dir / "nodes.dmp"
+    names_file = db_dir / "names.dmp"
+    timestamp_file = db_dir / ".download_timestamp"
+
+    if not (nodes_file.exists() and names_file.exists()):
+        return _download_fresh_taxdb(db_dir, timestamp_file)
+
+    if _is_cache_stale(timestamp_file):
+        _attempt_refresh(db_dir, timestamp_file)
+
+    console.print(f"Loading taxopy database from [cyan]{db_dir}[/]")
+    return _load_taxdb(db_dir)
+
+
+# ---------- Taxonomy lineage resolution ----------
+
+
+def _resolve_lineages(
+    taxon_ids: list[int],
+) -> dict[int, tuple[dict[str, str], set[str]]]:
+    """Resolve NCBI taxon IDs to lineage dicts and full ancestor names.
+
+    Returns ``{taxon_id: (rank_dict, all_names)}`` where *rank_dict* maps
+    standard ranks to names (for the DataFrame columns) and *all_names* is
+    the set of **all** ancestor names across every rank (including clades,
+    superclasses, infraorders, etc.) for full-lineage matching.
+    """
+    taxdb = _get_or_refresh_taxdb()
+    result: dict[int, tuple[dict[str, str], set[str]]] = {}
+
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        BarColumn(),
+        MofNCompleteColumn(),
+    ) as progress:
+        task = progress.add_task("Resolving taxonomy lineages", total=len(taxon_ids))
 
         for taxon_id in taxon_ids:
             try:
-                taxon = taxopy.Taxon(taxon_id, self.taxdb)
-
-                rank_name_dict = taxon.rank_name_dictionary
-                root_name = rank_name_dict.get(
-                    "cellular root", ""
-                ) or rank_name_dict.get("acellular root", "")
-                domain_name = rank_name_dict.get("domain", "") or rank_name_dict.get(
-                    "realm", ""
-                )
-
-                full_taxonomy_info = {
-                    "root": root_name,
-                    "domain": domain_name,
-                    "kingdom": rank_name_dict.get("kingdom", ""),
-                    "phylum": rank_name_dict.get("phylum", ""),
-                    "class": rank_name_dict.get("class", ""),
-                    "order": rank_name_dict.get("order", ""),
-                    "family": rank_name_dict.get("family", ""),
-                    "genus": rank_name_dict.get("genus", ""),
-                    "species": rank_name_dict.get("species", ""),
+                taxon = taxopy.Taxon(taxon_id, taxdb)
+                rnd = taxon.rank_name_dictionary
+                rank_dict = {
+                    "root": rnd.get("cellular root", "") or rnd.get("acellular root", ""),
+                    "domain": rnd.get("domain", "") or rnd.get("realm", ""),
+                    "kingdom": rnd.get("kingdom", ""),
+                    "phylum": rnd.get("phylum", ""),
+                    "class": rnd.get("class", ""),
+                    "order": rnd.get("order", ""),
+                    "family": rnd.get("family", ""),
+                    "genus": rnd.get("genus", ""),
+                    "species": rnd.get("species", ""),
                 }
-
-                result[taxon_id] = full_taxonomy_info
-
+                # Collect ALL ancestor names (clades, superclasses, etc.)
+                all_names = {
+                    taxopy.Taxon(tid, taxdb).name
+                    for tid in taxon.taxid_lineage
+                }
+                result[taxon_id] = (rank_dict, all_names)
             except Exception as e:
                 logger.error(f"Failed to get taxonomy for {taxon_id}: {e}")
-                result[taxon_id] = {f: "" for f in TAXONOMY_FEATURES}
+                result[taxon_id] = (dict.fromkeys(TAXONOMY_FEATURES, ""), set())
 
-        return result
+            progress.advance(task)
 
-    def _initialize_taxdb(self):
-        env_override = os.environ.get("PROTSPACE_TAXDB_DIR")
-        db_dir = (
-            Path(env_override).expanduser()
-            if env_override
-            else Path.home() / ".cache" / "taxopy_db"
-        )
-        db_dir.mkdir(parents=True, exist_ok=True)
-        nodes_file = db_dir / "nodes.dmp"
-        names_file = db_dir / "names.dmp"
-        merged_file = db_dir / "merged.dmp"
-        timestamp_file = db_dir / ".download_timestamp"
-
-        first_time_setup = not (nodes_file.exists() and names_file.exists())
-
-        needs_refresh = False
-        if timestamp_file.exists():
-            try:
-                with open(timestamp_file) as f:
-                    download_time = datetime.fromisoformat(f.read().strip())
-                one_week_ago = datetime.now() - timedelta(weeks=1)
-
-                if download_time < one_week_ago:
-                    logger.info(
-                        "Your taxonomy dataset is more than one week old. "
-                        "Refreshing cache..."
-                    )
-                    needs_refresh = True
-            except (ValueError, OSError) as e:
-                logger.warning(
-                    f"Could not read timestamp file: {e}. Will refresh cache."
-                )
-                needs_refresh = True
-        else:
-            if first_time_setup:
-                needs_refresh = True
-            else:
-                try:
-                    with open(timestamp_file, "w") as f:
-                        f.write(datetime.now().isoformat())
-                except OSError as e:
-                    logger.warning(
-                        f"Failed to create timestamp file at first-time detection: {e}"
-                    )
-
-        existing_db_present = nodes_file.exists() and names_file.exists()
-
-        if existing_db_present:
-            if needs_refresh:
-                logger.info("Taxonomy cache is stale. Attempting safe refresh.")
-                temp_dir_path = None
-                try:
-                    temp_dir_path = Path(tempfile.mkdtemp(prefix="taxopy_tmp_"))
-                    taxopy.TaxDb(taxdb_dir=str(temp_dir_path), keep_files=True)
-
-                    for src_name, dst_path in [
-                        ("nodes.dmp", nodes_file),
-                        ("names.dmp", names_file),
-                        ("merged.dmp", merged_file),
-                    ]:
-                        src_path = temp_dir_path / src_name
-                        if src_path.exists():
-                            shutil.move(str(src_path), str(dst_path))
-
-                    with open(timestamp_file, "w") as f:
-                        f.write(datetime.now().isoformat())
-
-                except Exception as e:
-                    logger.warning(
-                        f"Failed to refresh taxonomy database: {e}. "
-                        f"Falling back to existing cached database."
-                    )
-                finally:
-                    if temp_dir_path and temp_dir_path.exists():
-                        shutil.rmtree(temp_dir_path, ignore_errors=True)
-
-            logger.info(f"Loading taxopy database from {db_dir}")
-            try:
-                taxdb = taxopy.TaxDb(
-                    nodes_dmp=str(nodes_file),
-                    names_dmp=str(names_file),
-                    merged_dmp=str(merged_file) if merged_file.exists() else None,
-                )
-            except Exception as e:
-                logger.error(
-                    f"Failed to load existing taxonomy database from cache: {e}"
-                )
-                raise
-        else:
-            logger.info(f"Downloading taxopy database to {db_dir}")
-            try:
-                taxdb = taxopy.TaxDb(taxdb_dir=str(db_dir), keep_files=True)
-                with open(timestamp_file, "w") as f:
-                    f.write(datetime.now().isoformat())
-            except Exception as e:
-                logger.error(
-                    f"Failed to initialize taxopy database (first-time setup): {e}"
-                )
-                raise
-
-        return taxdb
+    return result
 
 
-# ---------- Binary taxonomy vectors ----------
+# ---------- Multi-hot taxonomy vectors ----------
 
 
-def _build_binary_vectors(
+def _build_multi_hot_vectors(
     df: pd.DataFrame,
+    lineage_names: dict[int, set[str]],
     id_col: str = "identifier",
 ) -> dict[str, np.ndarray]:
     """Build dict: identifier -> np.array of 0/1 (len = len(TAXA)).
 
-    Expects *df* to contain taxonomy lineage columns (domain, kingdom, …).
+    Each position indicates whether the corresponding taxon from :data:`TAXA`
+    appears anywhere in the protein's full taxonomic lineage (including clades,
+    superclasses, infraorders, etc.).  Multiple positions can be 1 because
+    the predefined taxa span different hierarchy levels (multi-hot encoding).
+
+    *lineage_names* maps taxon IDs to the set of all ancestor names from
+    the full NCBI lineage (not just standard ranks).
     """
-    tax_cols = [
-        "domain",
-        "kingdom",
-        "phylum",
-        "class",
-        "order",
-        "family",
-        "genus",
-        "species",
-    ]
-
-    missing = [c for c in tax_cols if c not in df.columns]
-    if missing:
-        raise ValueError(f"Missing taxonomy columns: {missing}")
-
-    for c in tax_cols:
-        df[c] = df[c].astype(str).str.strip().str.lower()
-
-    taxa_norm = [t.strip().lower() for t in TAXA]
-
-    for original_name, norm_name in zip(TAXA, taxa_norm):
-        df[original_name] = (df[tax_cols] == norm_name).any(axis=1).astype(np.float32)
+    taxa_lower = [t.strip().lower() for t in TAXA]
+    n_taxa = len(TAXA)
 
     tax_dict: dict[str, np.ndarray] = {}
     for _, row in df.iterrows():
         identifier = row[id_col]
-        tax_array = row[TAXA].to_numpy(dtype=np.float32)
-        tax_dict[identifier] = tax_array
+        taxon_id = row["_taxon_id"]
+        if pd.notna(taxon_id):
+            names_lower = {n.lower() for n in lineage_names.get(int(taxon_id), set())}
+            vec = np.array(
+                [1.0 if t in names_lower else 0.0 for t in taxa_lower],
+                dtype=np.float32,
+            )
+        else:
+            vec = np.zeros(n_taxa, dtype=np.float32)
+        tax_dict[identifier] = vec
 
-    print(f"Built binary taxonomy dict for {len(tax_dict)} identifiers")
-    print(f"Binary taxonomy vector length: {len(TAXA)}")
+    console.print(
+        f"Built multi-hot taxonomy vectors for [green]{len(tax_dict)}[/] identifiers "
+        f"(vector length: {n_taxa})"
+    )
     return tax_dict
 
 
-def run_binary_taxonomy_pipeline(
+def run_multi_hot_taxonomy_pipeline(
     input_csv: str | Path,
     input_h5_path: str | Path,
     output_h5_path: str | Path,
     id_col: str = "identifier",
 ) -> None:
-    """Create binary taxonomy vectors from a CSV that contains ``Organism (ID)``.
+    """Create multi-hot taxonomy vectors from a CSV that contains ``Organism (ID)``.
 
     1. Reads the CSV (must have *id_col* and ``Organism (ID)`` columns).
-    2. Resolves taxonomy lineage for each unique taxon ID via :class:`TaxonomyRetriever`.
-    3. Encodes membership in the 56 predefined TAXA as binary vectors.
+    2. Resolves taxonomy lineage for each unique taxon ID via :func:`_resolve_lineages`.
+    3. Encodes membership in the 50 predefined TAXA as multi-hot vectors.
     4. Writes one vector per protein (keyed by *id_col*) into *output_h5_path*,
        but only for proteins that are also present in *input_h5_path*.
     """
@@ -341,16 +317,17 @@ def run_binary_taxonomy_pipeline(
     valid = df["_taxon_id"].notna()
     unique_taxids = df.loc[valid, "_taxon_id"].astype(int).unique().tolist()
 
-    print(f"Resolving lineage for {len(unique_taxids)} unique taxon IDs ...")
-    retriever = TaxonomyRetriever(unique_taxids)
-    tax_data = retriever.fetch_features()
+    console.print(
+        f"Resolving lineage for [cyan]{len(unique_taxids)}[/] unique taxon IDs ..."
+    )
+    tax_data = _resolve_lineages(unique_taxids)
 
-    # Map taxon_id -> lineage dict, then join onto df
-    lineage_rows = []
-    for taxid, info in tax_data.items():
-        row = {"_taxon_id": taxid}
-        row.update(info["features"])
-        lineage_rows.append(row)
+    # Split into rank dicts (for DataFrame columns) and full lineage names (for matching)
+    rank_dicts = {taxid: rd for taxid, (rd, _) in tax_data.items()}
+    lineage_names = {taxid: names for taxid, (_, names) in tax_data.items()}
+
+    # Map taxon_id -> rank dict, then join onto df
+    lineage_rows = [{"_taxon_id": taxid, **rd} for taxid, rd in rank_dicts.items()]
     lineage_df = pd.DataFrame(lineage_rows)
 
     df = df.merge(lineage_df, on="_taxon_id", how="left")
@@ -361,38 +338,51 @@ def run_binary_taxonomy_pipeline(
             df[col] = ""
         df[col] = df[col].fillna("")
 
-    tax_dict = _build_binary_vectors(df, id_col=id_col)
+    tax_dict = _build_multi_hot_vectors(df, lineage_names, id_col=id_col)
     vec_len = len(TAXA)
 
     with h5py.File(input_h5_path, "r") as f_in, h5py.File(
         output_h5_path, "w"
     ) as f_out:
-        total_entries = len(f_in.keys())
+        # Store TAXA names as metadata so the H5 is self-documenting
+        f_out.attrs["taxa"] = TAXA
+
+        protein_ids = list(f_in.keys())
         matched = 0
         unmatched = 0
         unmatched_ids: list[str] = []
 
-        for i, protein_id in enumerate(f_in.keys()):
-            if protein_id in tax_dict:
-                vec = tax_dict[protein_id].astype(np.float32)
-                matched += 1
-            else:
-                vec = np.zeros(vec_len, dtype=np.float32)
-                unmatched += 1
-                unmatched_ids.append(protein_id)
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            BarColumn(),
+            MofNCompleteColumn(),
+        ) as progress:
+            task = progress.add_task(
+                "Writing taxonomy vectors", total=len(protein_ids)
+            )
 
-            f_out.create_dataset(protein_id, data=vec)
+            for protein_id in protein_ids:
+                if protein_id in tax_dict:
+                    vec = tax_dict[protein_id].astype(np.float32)
+                    matched += 1
+                else:
+                    vec = np.zeros(vec_len, dtype=np.float32)
+                    unmatched += 1
+                    unmatched_ids.append(protein_id)
 
-            if (i + 1) % 10000 == 0:
-                print(f"Processed {i + 1}/{total_entries} entries...")
+                f_out.create_dataset(
+                    protein_id, data=vec,
+                    compression="gzip", compression_opts=1,
+                )
+                progress.advance(task)
 
-        print("\nProcessing complete! (binary one-hot taxonomy)")
-        print(f"Total entries (proteins): {total_entries}")
-        print(f"Matched with taxonomy: {matched}")
-        print(f"Unmatched (all-zero vector): {unmatched}")
+        console.print("\n[bold green]Multi-hot taxonomy pipeline complete![/]")
+        console.print(f"  Total proteins: {len(protein_ids)}")
+        console.print(f"  Matched with taxonomy: {matched}")
+        console.print(f"  Unmatched (zero vector): {unmatched}")
 
         if unmatched > 0:
-            print(f"\nFirst 10 unmatched IDs: {unmatched_ids[:10]}")
+            console.print(f"  First 10 unmatched IDs: {unmatched_ids[:10]}")
 
-    print("\nBinary taxonomy pipeline finished.")
-    print(f"Output file (only one-hot vectors): {output_h5_path}")
+    console.print(f"Output: [cyan]{output_h5_path}[/]")

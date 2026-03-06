@@ -18,7 +18,7 @@ class TrainConfig(BaseModel):
     training_strategy: Literal["standard", "combined"]
 
     embedding_dim: int = 1024
-    tax_dim: int = 56
+    tax_dim: int = 50
     hidden_dims: list[int] = Field(default_factory=lambda: [256, 256])
     dropout: float = 0.3
     batch_size: int = 64

@@ -22,7 +22,7 @@ hidden_dims: [256, 256]
 # 4. STRATEGY-SPECIFIC SETTINGS
 # Dimensions
 embedding_dim: 1024
-tax_dim: 56
+tax_dim: 50
 
 # Training Settings
 num_epochs: 200
