@@ -271,100 +271,77 @@ def train(
     run_training(cfg)
 
 
-# ---------- Step 5a: toxfam eval-test ----------
+# ---------- Step 5: toxfam eval {hbi,model,compare} ----------
+
+eval_app = typer.Typer(
+    help="Run evaluations and compare methods.",
+    no_args_is_help=True,
+)
+app.add_typer(eval_app, name="eval")
 
 
-@app.command("eval-test")
-def eval_test(
+@eval_app.command("hbi")
+def eval_hbi(
+    dataset: Annotated[
+        str,
+        typer.Argument(
+            help="Dataset to evaluate: test_set, val_set, non_metazoan, unreviewed"
+        ),
+    ],
+) -> None:
+    """Run HBI (homology-based inference) on a dataset.
+
+    Searches query sequences against the training database via MMseqs2 and
+    transfers the family label from the best hit. Results are saved to
+    benchmark/{dataset}/hbi/.
+    """
+    from toxfam.evaluation.runner import run_hbi_evaluation
+
+    run_hbi_evaluation(dataset)
+
+
+@eval_app.command("model")
+def eval_model(
+    dataset: Annotated[
+        str,
+        typer.Argument(
+            help="Dataset to evaluate: test_set, val_set, non_metazoan, unreviewed"
+        ),
+    ],
     model_dir: Annotated[
-        Optional[Path],
-        typer.Option(help="Directory containing model outputs"),
-    ] = None,
-) -> None:
-    """Compare neural network vs homology-based inference on the test set.
-
-    Runs an MMseqs2 sequence search (HBI) against training sequences and
-    loads pre-computed NN predictions from the model directory. Computes
-    accuracy, MCC, and per-class F1 for both methods, saves a side-by-side
-    comparison CSV, confusion matrices, and a detailed classification report
-    to benchmark/test_set/.
-    """
-    from toxfam.evaluation.eval_test_set import run_eval_test_set
-
-    run_eval_test_set(model_dir=model_dir)
-
-
-# ---------- Step 5b: toxfam eval-nonmetazoan ----------
-
-
-@app.command("eval-nonmetazoan")
-def eval_nonmetazoan(
-    h5_path: Annotated[
         Path,
-        typer.Option(help="H5 file with embeddings", exists=True),
-    ],
-    model_path: Annotated[
-        Path,
-        typer.Option(help="Path to calibrated model .pt file", exists=True),
-    ],
-    class_map: Annotated[
-        Path,
-        typer.Option(help="Path to class_indices.json", exists=True),
+        typer.Option(
+            help="Training output directory containing models/ and class_indices.json"
+        ),
     ],
 ) -> None:
-    """Binary toxin/non-toxin evaluation on non-metazoan reviewed proteins.
+    """Run a trained neural network model on a dataset.
 
-    Loads reviewed non-metazoan sequences, runs both an MMseqs2 homology
-    search (HBI) and the trained model to predict toxin vs non-toxin, then
-    computes binary accuracy and MCC for each method. Results are saved to
-    benchmark/non_metazoan/.
+    Loads the calibrated model from the training output directory, runs
+    inference on all sequences, and saves results to
+    benchmark/{dataset}/nn_{model_dir_name}/.
     """
-    from toxfam.evaluation.eval_nonmetazoan import run_eval_nonmetazoan
+    from toxfam.evaluation.runner import run_model_evaluation
 
-    run_eval_nonmetazoan(
-        h5_path=h5_path,
-        model_path=model_path,
-        class_map_path=class_map,
-    )
+    run_model_evaluation(dataset, model_dir)
 
 
-# ---------- Step 5c: toxfam eval-unreviewed ----------
-
-
-@app.command("eval-unreviewed")
-def eval_unreviewed(
-    input_tsv: Annotated[
-        Path,
-        typer.Option(help="Input TSV with protein data", exists=True),
+@eval_app.command("compare")
+def eval_compare(
+    dataset: Annotated[
+        str,
+        typer.Argument(help="Dataset to compare methods for"),
     ],
-    input_h5: Annotated[
-        Path,
-        typer.Option(help="Input H5 embeddings", exists=True),
-    ],
-    train_data: Annotated[
-        Optional[Path],
-        typer.Option(help="Training data CSV"),
-    ] = None,
-    train_fasta: Annotated[
-        Optional[Path],
-        typer.Option(help="Training FASTA file"),
-    ] = None,
 ) -> None:
-    """Multi-class family evaluation on unreviewed metazoan proteins.
+    """Compare all evaluated methods for a dataset.
 
-    Normalizes family labels (same rules as preprocessing), runs an MMseqs2
-    homology search (HBI) against training sequences, and computes multi-class
-    accuracy, MCC, and per-class F1. Results are saved to
-    benchmark/unreviewed/.
+    Scans benchmark/{dataset}/ for method results and prints a side-by-side
+    comparison table. Writes metric_comparison.csv and full_report.json to
+    benchmark/{dataset}/comparison/.
     """
-    from toxfam.evaluation.eval_unreviewed import run_eval_unreviewed
+    from toxfam.evaluation.runner import compare_methods
 
-    run_eval_unreviewed(
-        input_tsv=input_tsv,
-        input_h5=input_h5,
-        train_data=train_data,
-        train_fasta=train_fasta,
-    )
+    compare_methods(dataset)
 
 
 # ---------- toxfam plot ----------
