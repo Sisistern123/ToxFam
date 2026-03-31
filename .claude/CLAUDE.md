@@ -96,14 +96,30 @@ src/toxfam/
 
 ### Training Strategies (the central design axis)
 
-The system supports two training strategies, selected via `training_strategy` in the YAML config:
+The system supports five training strategies, selected via `training_strategy` in the YAML config:
 
-1. **`standard`** — `ModularMLP` fed with ProtT5 embeddings only (1024-dim)
-2. **`combined`** — `MultiInputMLP` with two branches: one for embeddings, one for multi-hot taxonomy vectors (50-dim), concatenated before a joint head
+1. **`standard`** — `ModularMLP` fed with ProtT5 embeddings only (1024-dim), 38-class family prediction
+2. **`binary`** — `ModularMLP` with 2 output classes, direct toxic/non-toxic prediction (recommended for binary task)
+3. **`combined`** — `MultiInputMLP` with two branches: one for embeddings, one for multi-hot taxonomy vectors, concatenated before a joint head
+4. **`hierarchical`** — Two-stage: Stage 1 trains `ModularMLP` on family classification, Stage 2 loads projector as frozen backbone into `HierarchicalMLP` with a binary head
+5. **`multitask`** — `MultiTaskMLP` with shared backbone, joint family + binary heads, `loss = α*L_family + β*L_binary`
+
+All strategies automatically compute **binary toxic/non-toxic metrics** (ROC-AUC, PR-AUC, F1, MCC) on the test set with both default and optimized thresholds.
 
 ### Config
 
-Training config is a Pydantic `TrainConfig` model (`src/toxfam/config.py`) loaded from YAML. It replaces the old global `CONFIG` dict. Every function that needs config receives it as a `config: TrainConfig` parameter.
+Training config is a Pydantic `TrainConfig` model (`src/toxfam/config.py`) loaded from YAML. Every function that needs config receives it as a `config: TrainConfig` parameter. Extra fields in YAML are silently ignored (`model_config = {"extra": "ignore"}`).
+
+Key config fields:
+- `use_focal_loss` / `focal_loss_gamma`: focal loss for class imbalance
+- `multitask_family_weight` / `multitask_binary_weight`: loss weights for multitask
+- `stage2_freeze_backbone` / `stage2_learning_rate` / `stage2_hidden_dim`: hierarchical Stage 2
+- `cpp_h5_path` / `cpp_dim` / `hbi_h5_path` / `hbi_dim`: auxiliary feature files
+- `include_length` / `include_venom_indicator`: scalar features
+- `n_folds`: k-fold cross-validation (1 = no CV)
+- `split_seq_id`: identity threshold for identity-aware splitting
+
+Important property: `config.effective_embedding_dim` returns `embedding_dim + cpp_dim + hbi_dim + ...` when auxiliary features are enabled. All model construction uses this property.
 
 ### Data Directory Layout
 
