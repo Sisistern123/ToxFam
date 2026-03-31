@@ -15,7 +15,9 @@ class TrainConfig(BaseModel):
     tax_h5_path: Path | None = None
     output_dir: Path
 
-    training_strategy: Literal["standard", "combined"]
+    training_strategy: Literal[
+        "standard", "combined", "binary", "hierarchical", "multitask"
+    ]
 
     # Architecture
     embedding_dim: int = 1024
@@ -45,12 +47,50 @@ class TrainConfig(BaseModel):
     focal_loss_gamma: float = 2.0
     label_smoothing: float = 0.0
 
+    # Hierarchical strategy
+    stage1_model_path: Path | None = None
+    stage2_freeze_backbone: bool = True
+    stage2_learning_rate: float = 1e-5
+    stage2_hidden_dim: int = 64
+
+    # Multitask strategy
+    multitask_family_weight: float = 1.0
+    multitask_binary_weight: float = 1.0
+
+    # Auxiliary features
+    cpp_h5_path: Path | None = None
+    cpp_dim: int = 100
+    hbi_h5_path: Path | None = None
+    hbi_dim: int = 4
+    include_length: bool = False
+    include_venom_indicator: bool = False
+
+    # Cross-validation
+    n_folds: int = 1
+
+    # Identity-aware splitting
+    split_seq_id: float = 0.3
+
     # wandb
     wandb_project: str = "toxfam"
     wandb_entity: str | None = None
     wandb_run_name: str | None = None
 
     model_config = {"extra": "ignore"}
+
+    @property
+    def effective_embedding_dim(self) -> int:
+        """Total input dimension including all auxiliary features."""
+        dim = self.embedding_dim
+        if self.cpp_h5_path is not None:
+            dim += self.cpp_dim
+        if self.hbi_h5_path is not None:
+            dim += self.hbi_dim
+        if self.include_length:
+            dim += 1
+        if self.include_venom_indicator:
+            dim += 1
+        return dim
 
     @field_validator("dropout")
     @classmethod
@@ -85,6 +125,13 @@ class TrainConfig(BaseModel):
     def _check_patience(cls, v: int) -> int:
         if v <= 0:
             raise ValueError(f"early_stopping_patience must be > 0, got {v}")
+        return v
+
+    @field_validator("n_folds")
+    @classmethod
+    def _check_n_folds(cls, v: int) -> int:
+        if v < 1:
+            raise ValueError(f"n_folds must be >= 1, got {v}")
         return v
 
     @model_validator(mode="after")

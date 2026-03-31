@@ -61,7 +61,7 @@ def run_standard_strategy(
 ):
     console.print("[bold]>>> Running Strategy: STANDARD (Embeddings Only)[/bold]")
     model = ModularMLP(
-        input_dim=config.embedding_dim,
+        input_dim=config.effective_embedding_dim,
         hidden_dims=config.hidden_dims,
         num_classes=num_classes,
         dropout=config.dropout,
@@ -82,7 +82,7 @@ def run_combined_strategy(
 ):
     console.print("[bold]>>> Running Strategy: COMBINED (Branched Architecture)[/bold]")
     model = MultiInputMLP(
-        embed_dim=config.embedding_dim,
+        embed_dim=config.effective_embedding_dim,
         tax_dim=config.tax_dim,
         hidden_dims=config.hidden_dims,
         num_classes=num_classes,
@@ -92,6 +92,32 @@ def run_combined_strategy(
         model,
         DataSelector(train_loader, "both"),
         DataSelector(val_loader, "both"),
+        w_tensor,
+        config,
+    )
+    plot_loss_curve(hist, Path(out_dir) / "plots" / "loss_curve.png")
+    return model
+
+
+def run_binary_strategy(
+    train_loader, val_loader, w_tensor, num_classes, out_dir, config: TrainConfig
+):
+    """Train a direct binary toxic/nontoxin classifier.
+
+    The dataset must already have binary labels ("toxin"/"nontoxin").
+    num_classes should be 2.
+    """
+    console.print("[bold]>>> Running Strategy: BINARY (Toxic vs Non-toxic)[/bold]")
+    model = ModularMLP(
+        input_dim=config.effective_embedding_dim,
+        hidden_dims=config.hidden_dims,
+        num_classes=num_classes,
+        dropout=config.dropout,
+    )
+    model, hist = train_model(
+        model,
+        DataSelector(train_loader, "emb_only"),
+        DataSelector(val_loader, "emb_only"),
         w_tensor,
         config,
     )

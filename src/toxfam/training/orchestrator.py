@@ -21,6 +21,7 @@ from toxfam.model.calibration import ModelWithTemperature
 from toxfam.training.strategies import (
     DataSelector,
     evaluate_label_on_dataset,
+    run_binary_strategy,
     run_combined_strategy,
     run_standard_strategy,
 )
@@ -180,17 +181,33 @@ def run_training(config: TrainConfig) -> None:
 
     # 1. Load Data
     console.print("Loading data...")
+    strategy = config.training_strategy
     df = pd.read_csv(config.input_csv)
     train_df, val_df, test_df = analyze_data_splits(df)
 
     label_col = "Protein families"
-    analyze_label_distribution_for_split(train_df, val_df, test_df, label_col, out_root)
+    is_binary = strategy == "binary"
+
+    if is_binary:
+        from toxfam.evaluation.metrics import to_binary_class
+
+        for split_df in (train_df, val_df, test_df):
+            split_df["binary_label"] = split_df[label_col].apply(to_binary_class)
+        effective_label_col = "binary_label"
+    else:
+        effective_label_col = label_col
+
+    analyze_label_distribution_for_split(
+        train_df, val_df, test_df, effective_label_col, out_root
+    )
 
     # 2. Init Datasets
     h5_paths = [str(p) for p in config.h5_paths]
     tax_h5 = str(config.tax_h5_path) if config.tax_h5_path else None
 
-    train_ds = ToxDataset(train_df, h5_paths, is_train=True, tax_h5_path=tax_h5)
+    train_ds = ToxDataset(
+        train_df, h5_paths, is_train=True, label_col=effective_label_col, tax_h5_path=tax_h5
+    )
 
     # Validate taxonomy vector dimension matches config
     if tax_h5 is not None and config.training_strategy == "combined":
@@ -216,6 +233,7 @@ def run_training(config: TrainConfig) -> None:
         h5_paths,
         label_encoder=train_ds.le,
         is_train=False,
+        label_col=effective_label_col,
         tax_h5_path=tax_h5,
     )
 
@@ -225,11 +243,14 @@ def run_training(config: TrainConfig) -> None:
     _, w_tensor, _ = get_class_weights(train_ds)
 
     # 3. Dispatch Strategy
-    strategy = config.training_strategy
     final_model = None
 
     if strategy == "standard":
         final_model = run_standard_strategy(
+            train_loader, val_loader, w_tensor, train_ds.num_classes, out_root, config
+        )
+    elif strategy == "binary":
+        final_model = run_binary_strategy(
             train_loader, val_loader, w_tensor, train_ds.num_classes, out_root, config
         )
     elif strategy == "combined":
@@ -250,7 +271,7 @@ def run_training(config: TrainConfig) -> None:
     val_metrics = evaluate_label_on_dataset(
         final_model,
         val_df,
-        label_col,
+        effective_label_col,
         train_ds.le,
         loss_fn,
         "val",
@@ -260,7 +281,7 @@ def run_training(config: TrainConfig) -> None:
     test_metrics = evaluate_label_on_dataset(
         final_model,
         test_df,
-        label_col,
+        effective_label_col,
         train_ds.le,
         loss_fn,
         "test",
@@ -300,7 +321,7 @@ def run_training(config: TrainConfig) -> None:
     val_cal_metrics = evaluate_label_on_dataset(
         scaled_model,
         val_df,
-        label_col,
+        effective_label_col,
         train_ds.le,
         loss_fn,
         "val_calibrated",
@@ -310,7 +331,7 @@ def run_training(config: TrainConfig) -> None:
     test_cal_metrics = evaluate_label_on_dataset(
         scaled_model,
         test_df,
-        label_col,
+        effective_label_col,
         train_ds.le,
         loss_fn,
         "test_calibrated",
@@ -330,8 +351,11 @@ def run_training(config: TrainConfig) -> None:
                 wandb.run.summary[k] = v
 
     # 7. Binary Metrics Pipeline
+    # For binary strategy, the model directly outputs binary classes,
+    # so we pass the effective label col. For other strategies, we derive
+    # binary from the original family labels.
     _run_binary_metrics_pipeline(
-        scaled_model, train_ds, val_df, test_df, config, out_root, label_col
+        scaled_model, train_ds, val_df, test_df, config, out_root, effective_label_col
     )
 
     train_ds.close()
