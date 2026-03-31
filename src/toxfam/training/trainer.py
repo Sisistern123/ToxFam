@@ -12,7 +12,10 @@ import torch.optim as optim
 from rich.console import Console
 from sklearn.metrics import accuracy_score, matthews_corrcoef
 from sklearn.preprocessing import label_binarize
-import wandb
+try:
+    import wandb
+except ImportError:
+    wandb = None
 
 if TYPE_CHECKING:
     from toxfam.config import TrainConfig
@@ -310,7 +313,7 @@ def train_model(model, train_loader, val_loader, weights_tensor, config: TrainCo
             f"Val Loss: {val_loss:.4f}, Val MCC: {val_mcc:.4f}, LR: {current_lr:.2e}"
         )
 
-        if wandb.run is not None:
+        if wandb is not None and wandb.run is not None:
             wandb.log(
                 {
                     "epoch": epoch + 1,
@@ -334,7 +337,7 @@ def train_model(model, train_loader, val_loader, weights_tensor, config: TrainCo
             epochs_no_improve = 0
             torch.save(model.state_dict(), best_model_path)
 
-            if wandb.run is not None:
+            if wandb is not None and wandb.run is not None:
                 artifact = wandb.Artifact(
                     name="toxfam-best-model",
                     type="model",

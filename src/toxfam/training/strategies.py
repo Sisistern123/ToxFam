@@ -9,7 +9,10 @@ import torch
 from rich.console import Console
 from sklearn.metrics import classification_report
 from torch.utils.data import DataLoader
-import wandb
+try:
+    import wandb
+except ImportError:
+    wandb = None
 
 from toxfam.data.dataset import ToxDataset
 from toxfam.model.architectures import ModularMLP, MultiInputMLP
@@ -169,7 +172,7 @@ def evaluate_label_on_dataset(
     )
 
     # Log to wandb
-    if wandb.run is not None:
+    if wandb is not None and wandb.run is not None:
         wandb.log(metrics)
         class_names = list(label_encoder.classes_)
         wandb.log(

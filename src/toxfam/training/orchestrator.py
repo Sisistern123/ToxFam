@@ -8,7 +8,10 @@ import torch
 import yaml
 from rich.console import Console
 from torch.utils.data import DataLoader
-import wandb
+try:
+    import wandb
+except ImportError:
+    wandb = None
 
 from toxfam.config import TrainConfig
 from toxfam.data.dataset import ToxDataset, analyze_data_splits
@@ -36,14 +39,15 @@ def run_training(config: TrainConfig) -> None:
     config_copy = out_root / "config.yaml"
     config_copy.write_text(yaml.dump(config.model_dump(mode="json"), sort_keys=False))
 
-    # wandb setup (required)
-    wandb.login()
-    wandb.init(
-        project=config.wandb_project,
-        entity=config.wandb_entity,
-        name=config.wandb_run_name,
-        config=config.model_dump(mode="json"),
-    )
+    # wandb setup (optional)
+    if wandb is not None:
+        wandb.login()
+        wandb.init(
+            project=config.wandb_project,
+            entity=config.wandb_entity,
+            name=config.wandb_run_name,
+            config=config.model_dump(mode="json"),
+        )
 
     device = get_device()
     console.print(f"Using device: [bold]{device}[/bold]")
@@ -118,7 +122,7 @@ def run_training(config: TrainConfig) -> None:
         raise ValueError(f"Unknown training strategy: {strategy}")
 
     # Watch model gradients in wandb
-    if wandb.run is not None:
+    if wandb is not None and wandb.run is not None:
         wandb.watch(final_model, log="gradients", log_freq=50)
 
     loss_fn = torch.nn.CrossEntropyLoss()
@@ -164,7 +168,7 @@ def run_training(config: TrainConfig) -> None:
     console.print(f"Saved calibrated model to {calibrated_path}")
 
     # Log calibrated model as a wandb artifact
-    if wandb.run is not None:
+    if wandb is not None and wandb.run is not None:
         calibrated_artifact = wandb.Artifact(
             name="toxfam-best-model-calibrated",
             type="model",
@@ -197,7 +201,7 @@ def run_training(config: TrainConfig) -> None:
     )
 
     # wandb summary
-    if wandb.run is not None:
+    if wandb is not None and wandb.run is not None:
         for tag, m in [
             ("val", val_metrics),
             ("test", test_metrics),
@@ -210,4 +214,5 @@ def run_training(config: TrainConfig) -> None:
     train_ds.close()
     val_ds.close()
 
-    wandb.finish()
+    if wandb is not None:
+        wandb.finish()
