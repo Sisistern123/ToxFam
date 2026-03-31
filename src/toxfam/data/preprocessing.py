@@ -593,3 +593,222 @@ def run_preprocessing_pipeline(
     )
     console.print(table)
     console.print("\n[bold green]Done.[/]")
+
+
+# ---------------------------------------------------------------------------
+# Identity-aware splitting
+# ---------------------------------------------------------------------------
+
+
+def _rebalance_splits(
+    df: pd.DataFrame,
+    cluster_df: pd.DataFrame,
+    train_cids: set,
+    val_cids: set,
+    test_cids: set,
+    *,
+    min_train_frac: float = 0.50,
+) -> Tuple[set, set, set]:
+    """Move clusters between splits to ensure minimum family representation in train.
+
+    For each family where train fraction < min_train_frac, move the smallest
+    cluster from val/test to train. Never leave val or test empty.
+    """
+    train_cids = set(train_cids)
+    val_cids = set(val_cids)
+    test_cids = set(test_cids)
+
+    cid_to_families: Dict[int, set] = {}
+    cid_to_size: Dict[int, int] = {}
+    for _, row in cluster_df.iterrows():
+        cid = row["_cluster_id"]
+        cid_to_families[cid] = row["families"]
+        cid_to_size[cid] = row["size"]
+
+    all_families = set(df["Protein families"].unique())
+    moved = 0
+
+    for fam in sorted(all_families):
+        fam_mask = df["Protein families"] == fam
+        total_fam = fam_mask.sum()
+        if total_fam < 10:
+            continue
+
+        for _ in range(20):
+            train_fam = (fam_mask & df["_cluster_id"].isin(train_cids)).sum()
+            if total_fam == 0 or train_fam / total_fam >= min_train_frac:
+                break
+
+            candidates = []
+            for source, source_cids in [("val", val_cids), ("test", test_cids)]:
+                if len(source_cids) <= 1:
+                    continue
+                for cid in source_cids:
+                    if fam in cid_to_families.get(cid, set()):
+                        candidates.append((cid_to_size.get(cid, 0), cid, source))
+
+            if not candidates:
+                break
+
+            candidates.sort()
+            _, move_cid, source = candidates[0]
+
+            train_cids.add(move_cid)
+            if source == "val":
+                val_cids.discard(move_cid)
+            else:
+                test_cids.discard(move_cid)
+            moved += 1
+
+    if moved > 0:
+        console.print(f"   Rebalancing: moved {moved} cluster(s) to train")
+
+    return train_cids, val_cids, test_cids
+
+
+def identity_aware_splits(
+    rep_df_all: pd.DataFrame,
+    *,
+    seq_id: float = 0.3,
+    train_ratio: float = 0.70,
+) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    """Split representatives using identity-based clustering.
+
+    1. Cluster all reps at seq_id (default 30%) via MMseqs2.
+    2. Assign whole clusters to splits via multilabel stratified splitting.
+    3. Rebalance to ensure minimum family representation in train.
+
+    Returns (train_df, val_df, test_df) without internal columns.
+    """
+    df = rep_df_all.copy()
+    fasta_dir = intermediate_dir() / "identity_splits"
+    fasta_dir.mkdir(parents=True, exist_ok=True)
+
+    # Write all reps to FASTA and cluster
+    all_fasta = fasta_dir / "all_reps.fasta"
+    write_fasta(df, all_fasta)
+
+    console.print(f"   Clustering all reps at {seq_id * 100:.0f}% identity ...")
+    cluster_prefix = fasta_dir / "global_cluster"
+    tmp_dir = fasta_dir / "tmp"
+    tmp_dir.mkdir(parents=True, exist_ok=True)
+
+    try:
+        with redirect_stdout(io.StringIO()):
+            easy_cluster(
+                fasta_files=str(all_fasta),
+                cluster_prefix=str(cluster_prefix),
+                tmp_dir=str(tmp_dir),
+                min_seq_id=seq_id,
+            )
+    except Exception as e:
+        console.print(f"[red]Global clustering failed: {e}[/]")
+        console.print("[yellow]Falling back to random stratified splits[/]")
+        return multilabel_stratified_splits(rep_df_all)
+
+    # Parse cluster assignments
+    cluster_tsv = fasta_dir / "global_cluster_cluster.tsv"
+    cluster_map: Dict[str, int] = {}
+    rep_to_cluster: Dict[str, int] = {}
+    cluster_id = 0
+    with open(cluster_tsv) as f:
+        for line in f:
+            rep, member = line.strip().split("\t")
+            if rep not in cluster_map:
+                cluster_map[rep] = cluster_id
+                cluster_id += 1
+            rep_to_cluster[member] = cluster_map[rep]
+
+    df["_cluster_id"] = df["identifier"].map(rep_to_cluster)
+    max_cid = df["_cluster_id"].max() if df["_cluster_id"].notna().any() else -1
+    missing_mask = df["_cluster_id"].isna()
+    if missing_mask.any():
+        df.loc[missing_mask, "_cluster_id"] = range(
+            int(max_cid) + 1, int(max_cid) + 1 + int(missing_mask.sum())
+        )
+    df["_cluster_id"] = df["_cluster_id"].astype(int)
+
+    # Build cluster-level DataFrame
+    cluster_groups = df.groupby("_cluster_id")
+    cluster_df = pd.DataFrame(
+        {
+            "_cluster_id": list(cluster_groups.groups.keys()),
+            "families": [set(g["Protein families"].unique()) for _, g in cluster_groups],
+            "size": [len(g) for _, g in cluster_groups],
+        }
+    )
+    cluster_df["fam_list"] = cluster_df["families"].apply(list)
+
+    mlb = MultiLabelBinarizer()
+    Y_clusters = mlb.fit_transform(cluster_df["fam_list"])
+
+    if len(cluster_df) < 4:
+        console.print(
+            f"   [yellow]Only {len(cluster_df)} clusters — falling back to "
+            f"random stratified splits[/]"
+        )
+        return multilabel_stratified_splits(rep_df_all)
+
+    # Stratified split at cluster level
+    val_test_ratio = 1.0 - train_ratio
+    msss1 = MultilabelStratifiedShuffleSplit(
+        n_splits=1, test_size=val_test_ratio, random_state=42
+    )
+    train_cidx, valtest_cidx = next(msss1.split(cluster_df, Y_clusters))
+    Y_valtest = Y_clusters[valtest_cidx]
+
+    msss2 = MultilabelStratifiedShuffleSplit(
+        n_splits=1, test_size=0.50, random_state=42
+    )
+    val_cidx, test_cidx = next(
+        msss2.split(cluster_df.iloc[valtest_cidx], Y_valtest)
+    )
+
+    train_cluster_ids = set(cluster_df.iloc[train_cidx]["_cluster_id"])
+    val_cluster_ids = set(
+        cluster_df.iloc[valtest_cidx].iloc[val_cidx]["_cluster_id"]
+    )
+    test_cluster_ids = (
+        set(cluster_df["_cluster_id"]) - train_cluster_ids - val_cluster_ids
+    )
+
+    # Assign split labels
+    def _assign_split(cid: int) -> str:
+        if cid in train_cluster_ids:
+            return "train"
+        if cid in val_cluster_ids:
+            return "val"
+        return "test"
+
+    df["_split"] = df["_cluster_id"].apply(_assign_split)
+
+    # Rebalance
+    train_cluster_ids, val_cluster_ids, test_cluster_ids = _rebalance_splits(
+        df, cluster_df, train_cluster_ids, val_cluster_ids, test_cluster_ids,
+    )
+
+    def _assign_split_rebalanced(cid: int) -> str:
+        if cid in train_cluster_ids:
+            return "train"
+        if cid in val_cluster_ids:
+            return "val"
+        return "test"
+
+    df["_split"] = df["_cluster_id"].apply(_assign_split_rebalanced)
+
+    # Build output DataFrames
+    train_df = df[df["_split"] == "train"].drop(
+        columns=["_cluster_id", "_split"], errors="ignore"
+    ).reset_index(drop=True)
+    val_df = df[df["_split"] == "val"].drop(
+        columns=["_cluster_id", "_split"], errors="ignore"
+    ).reset_index(drop=True)
+    test_df = df[df["_split"] == "test"].drop(
+        columns=["_cluster_id", "_split"], errors="ignore"
+    ).reset_index(drop=True)
+
+    console.print(
+        f"   Identity-aware splits: train={len(train_df)}, "
+        f"val={len(val_df)}, test={len(test_df)}"
+    )
+    return train_df, val_df, test_df

@@ -149,6 +149,20 @@ def _run_binary_metrics_pipeline(
     )
 
 
+def _extra_dataset_kwargs(config: TrainConfig) -> dict:
+    """Build auxiliary feature kwargs for ToxDataset from config."""
+    kwargs: dict = {}
+    if config.cpp_h5_path:
+        kwargs["cpp_h5_path"] = str(config.cpp_h5_path)
+    if config.hbi_h5_path:
+        kwargs["hbi_h5_path"] = str(config.hbi_h5_path)
+    if config.include_length:
+        kwargs["include_length"] = True
+    if config.include_venom_indicator:
+        kwargs["include_venom_indicator"] = True
+    return kwargs
+
+
 def run_training(config: TrainConfig) -> None:
     out_root = Path(config.output_dir)
     out_root.mkdir(parents=True, exist_ok=True)
@@ -206,9 +220,11 @@ def run_training(config: TrainConfig) -> None:
     # 2. Init Datasets
     h5_paths = [str(p) for p in config.h5_paths]
     tax_h5 = str(config.tax_h5_path) if config.tax_h5_path else None
+    extra_ds_kwargs = _extra_dataset_kwargs(config)
 
     train_ds = ToxDataset(
-        train_df, h5_paths, is_train=True, label_col=effective_label_col, tax_h5_path=tax_h5
+        train_df, h5_paths, is_train=True, label_col=effective_label_col,
+        tax_h5_path=tax_h5, **extra_ds_kwargs,
     )
 
     # Validate taxonomy vector dimension matches config
@@ -237,6 +253,7 @@ def run_training(config: TrainConfig) -> None:
         is_train=False,
         label_col=effective_label_col,
         tax_h5_path=tax_h5,
+        **extra_ds_kwargs,
     )
 
     train_loader = DataLoader(train_ds, batch_size=config.batch_size, shuffle=True)
@@ -274,11 +291,11 @@ def run_training(config: TrainConfig) -> None:
         val_ds.close()
         train_ds = ToxDataset(
             train_df, h5_paths, is_train=True,
-            label_col="binary_label", tax_h5_path=tax_h5,
+            label_col="binary_label", tax_h5_path=tax_h5, **extra_ds_kwargs,
         )
         val_ds = ToxDataset(
             val_df, h5_paths, label_encoder=train_ds.le, is_train=False,
-            label_col="binary_label", tax_h5_path=tax_h5,
+            label_col="binary_label", tax_h5_path=tax_h5, **extra_ds_kwargs,
         )
     elif strategy == "multitask":
         final_model = run_multitask_strategy(

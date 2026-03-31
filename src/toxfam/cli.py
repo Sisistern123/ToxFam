@@ -370,6 +370,77 @@ def eval_unreviewed(
 # ---------- Step 5d: toxfam eval-binary ----------
 
 
+@app.command("eval-ensemble")
+def eval_ensemble_cmd(
+    model_dirs: Annotated[
+        list[Path],
+        typer.Argument(help="Model output directories to ensemble"),
+    ],
+) -> None:
+    """Evaluate an ensemble of trained models.
+
+    Averages softmax predictions from multiple calibrated models, then
+    computes binary metrics with threshold optimization.
+    """
+    from toxfam.evaluation.ensemble import evaluate_ensemble
+
+    evaluate_ensemble(model_dirs)
+
+
+@app.command("profile-data")
+def profile_data(
+    input_csv: Annotated[
+        Path,
+        typer.Option(help="Training CSV to profile", exists=True),
+    ] = Path("data/processed/training_data.csv"),
+    h5_path: Annotated[
+        Optional[Path],
+        typer.Option(help="Embeddings H5 for similarity analysis"),
+    ] = None,
+) -> None:
+    """Profile training data for biases and class imbalance.
+
+    Analyzes class distribution, organism diversity, sequence lengths,
+    and optionally embedding similarities. Flags potential biases.
+    """
+    from toxfam.evaluation.data_quality import profile_training_data
+
+    profile_training_data(
+        str(input_csv), h5_path=str(h5_path) if h5_path else None
+    )
+
+
+@app.command()
+def cpp(
+    training_csv: Annotated[
+        Path,
+        typer.Option(help="Training CSV with family labels", exists=True),
+    ] = Path("data/processed/training_data.csv"),
+    output: Annotated[
+        Path,
+        typer.Option(help="Output H5 for CPP features"),
+    ] = Path("data/intermediate/cpp/cpp_features.h5"),
+    n_filter: Annotated[
+        int,
+        typer.Option(help="Number of CPP features to select"),
+    ] = 100,
+) -> None:
+    """Generate CPP (Comparative Physicochemical Profiling) features.
+
+    Uses AAanalysis to compute discriminative physicochemical properties
+    between toxic and non-toxic sequences. Outputs an HDF5 file with one
+    feature vector per protein.
+    """
+    from toxfam.data.cpp_features import generate_cpp_features
+
+    output.parent.mkdir(parents=True, exist_ok=True)
+    generate_cpp_features(
+        training_csv=str(training_csv),
+        output_h5=str(output),
+        n_filter=n_filter,
+    )
+
+
 @app.command("eval-binary")
 def eval_binary(
     model_dir: Annotated[
