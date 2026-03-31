@@ -142,9 +142,7 @@ def evaluate_label_on_dataset(
     )
 
     out_path = Path(out_dir)
-    conf_df.to_csv(
-        out_path / "predictions" / f"{tag}_predictions.csv", index=False
-    )
+    conf_df.to_csv(out_path / "predictions" / f"{tag}_predictions.csv", index=False)
 
     plot_confusion_matrix(
         y_true,

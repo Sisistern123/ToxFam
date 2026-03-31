@@ -66,6 +66,62 @@ def sanitize_filename(name: str) -> str:
     return re.sub(r"[^a-zA-Z0-9_-]", "_", name)
 
 
+# ---------- Family normalization ----------
+
+_CONOTOXIN_REPLACEMENTS = {
+    "I1 superfamily": "Conotoxin I1 superfamily",
+    "O1 superfamily": "Conotoxin O1 superfamily",
+    "O2 superfamily": "Conotoxin O2 superfamily",
+    "E superfamily": "Conotoxin E superfamily",
+    "F superfamily": "Conotoxin F superfamily",
+}
+
+_FAMILY_REGEX_MAPPING = {
+    r"Conotoxin.*": "Conotoxin family",
+    r"Neurotoxin.*": "Neurotoxin family",
+    r"Scoloptoxin.*|Scolopendra.*": "Scoloptoxin family",
+    r"Caterpillar.*": "Caterpillar family",
+    r"Teretoxin.*": "Teretoxin family",
+    r"Limacoditoxin.*": "Limacoditoxin family",
+    r"Scutigerotoxin.*": "Scutigerotoxin family",
+    r"Cationic peptide.*": "Cationic peptide family",
+    r"Formicidae venom.*": "Formicidae venom family",
+    r"Bradykinin-potentiating peptide family|Natriuretic peptide family|Natriuretic": "Natriuretic, Bradykinin potentiating peptide family",
+    r".*phospholipase.*|.*Phospholipase.*": "Phospholipase family",
+}
+
+
+def normalize_protein_families(
+    df: pd.DataFrame,
+    column: str = "Protein families",
+    min_count: int = 10,
+) -> pd.DataFrame:
+    """Normalize protein family labels.
+
+    Splits multi-annotation strings, applies conotoxin renaming and regex
+    mappings, and collapses families with fewer than *min_count* members to
+    ``"other"``.
+    """
+    df = df.copy()
+
+    df[column] = df[column].str.split(";").str[0]
+    df[column] = df[column].str.split(",").str[0]
+
+    df[column] = df[column].replace(_CONOTOXIN_REPLACEMENTS)
+
+    for pattern, replacement in _FAMILY_REGEX_MAPPING.items():
+        df[column] = df[column].str.replace(pattern, replacement, regex=True)
+
+    known_families = set(_FAMILY_REGEX_MAPPING.values())
+    counts = df[column].value_counts()
+    df[column] = df[column].where(
+        df[column].isin(known_families) | (df[column].map(counts) >= min_count),
+        "other",
+    )
+
+    return df
+
+
 # ---------- Preprocessing ----------
 
 
@@ -78,42 +134,7 @@ def load_and_prepare_raw() -> Tuple[pd.DataFrame, pd.DataFrame]:
         .copy()
     )
     tox.rename(columns={"Entry": "identifier"}, inplace=True)
-
-    tox["Protein families"] = tox["Protein families"].str.split(";").str[0]
-    tox["Protein families"] = tox["Protein families"].str.split(",").str[0]
-
-    repl = {
-        "I1 superfamily": "Conotoxin I1 superfamily",
-        "O1 superfamily": "Conotoxin O1 superfamily",
-        "O2 superfamily": "Conotoxin O2 superfamily",
-        "E superfamily": "Conotoxin E superfamily",
-        "F superfamily": "Conotoxin F superfamily",
-    }
-    tox["Protein families"] = tox["Protein families"].replace(repl)
-
-    mapping = {
-        r"Conotoxin.*": "Conotoxin family",
-        r"Neurotoxin.*": "Neurotoxin family",
-        r"Scoloptoxin.*|Scolopendra.*": "Scoloptoxin family",
-        r"Caterpillar.*": "Caterpillar family",
-        r"Teretoxin.*": "Teretoxin family",
-        r"Limacoditoxin.*": "Limacoditoxin family",
-        r"Scutigerotoxin.*": "Scutigerotoxin family",
-        r"Cationic peptide.*": "Cationic peptide family",
-        r"Formicidae venom.*": "Formicidae venom family",
-        r"Bradykinin-potentiating peptide family|Natriuretic peptide family|Natriuretic": "Natriuretic, Bradykinin potentiating peptide family",
-        r".*phospholipase.*|.*Phospholipase.*": "Phospholipase family",
-    }
-
-    for pattern, replacement in mapping.items():
-        tox["Protein families"] = tox["Protein families"].str.replace(
-            pattern, replacement, regex=True
-        )
-
-    tox["Protein families"] = tox["Protein families"].where(
-        tox["Protein families"].map(tox["Protein families"].value_counts()) >= 10,
-        "other",
-    )
+    tox = normalize_protein_families(tox)
 
     nontox = pd.read_csv(raw / "nontox.tsv", sep="\t").copy()
     nontox.rename(columns={"Entry": "identifier"}, inplace=True)
@@ -168,8 +189,15 @@ def _parse_sp6_output(sp6_dir: Path) -> Dict[str, str]:
 
     df_proc = fasta_to_dataframe(proc_fasta)
     gff_cols = [
-        "identifier", "source", "feature_type", "start", "end",
-        "score", "strand", "phase", "attributes",
+        "identifier",
+        "source",
+        "feature_type",
+        "start",
+        "end",
+        "score",
+        "strand",
+        "phase",
+        "attributes",
     ]
     df_gff = pd.read_csv(gff_path, sep="\t", comment="#", names=gff_cols)
     df_gff["identifier"] = (
@@ -181,7 +209,8 @@ def _parse_sp6_output(sp6_dir: Path) -> Dict[str, str]:
 
 
 def _bootstrap_sp6_cache(
-    tox: pd.DataFrame, nontox: pd.DataFrame,
+    tox: pd.DataFrame,
+    nontox: pd.DataFrame,
 ) -> Dict[str, str | None]:
     """Build cache from existing monolithic SP6 output files."""
     cache: Dict[str, str | None] = {}
@@ -196,7 +225,8 @@ def _bootstrap_sp6_cache(
 
 
 def _run_signalp6_batch(
-    df: pd.DataFrame, extra_args: str,
+    df: pd.DataFrame,
+    extra_args: str,
 ) -> Dict[str, str | None]:
     """Run SP6 on a batch of sequences → {seq_hash: mature_seq or None}."""
     if df.empty:
@@ -221,15 +251,25 @@ def _run_signalp6_batch(
 
     env = {k: v for k, v in os.environ.items() if k != "VIRTUAL_ENV"}
     cmd = [
-        "uv", "run", "--quiet", "--project", str(sp6_project),
+        "uv",
+        "run",
+        "--quiet",
+        "--project",
+        str(sp6_project),
         "signalp6",
-        "--fastafile", str(tmp_fasta),
-        "--output_dir", str(batch_dir),
-        "--model_dir", str(model_dir),
+        "--fastafile",
+        str(tmp_fasta),
+        "--output_dir",
+        str(batch_dir),
+        "--model_dir",
+        str(model_dir),
         *extra_args.split(),
-        "--mode", mode,
-        "--bsize", "10",
-        "--format", "none",
+        "--mode",
+        mode,
+        "--bsize",
+        "10",
+        "--format",
+        "none",
     ]
 
     try:
@@ -334,7 +374,11 @@ def cluster_per_family_and_collect(
             fam_mm_dir.mkdir(parents=True, exist_ok=True)
             family_fa = fam_mm_dir / "input.fasta"
             rep_fasta = fam_mm_dir / "cluster_rep_seq.fasta"
-            old_hash = hashlib.md5(family_fa.read_bytes()).hexdigest() if family_fa.exists() else None
+            old_hash = (
+                hashlib.md5(family_fa.read_bytes()).hexdigest()
+                if family_fa.exists()
+                else None
+            )
             write_fasta(group, family_fa)
             new_hash = hashlib.md5(family_fa.read_bytes()).hexdigest()
 
@@ -467,8 +511,6 @@ def run_preprocessing_pipeline(
     fasta_dir = interm / "fasta"
     rep_dir = interm / "mmseqs" / "representatives"
     proc = processed_dir()
-    bench_dir = get_project_root() / "benchmark"
-    bench_hbi_dir = bench_dir / "HBI"
 
     # -- Step 0: Check raw data --
     raw = raw_dir()
@@ -532,14 +574,8 @@ def run_preprocessing_pipeline(
     training_data.to_csv(proc / "training_data.csv", index=False)
 
     train_all_df = build_train_all_members(data, train_df)
-    bench_hbi_dir.mkdir(parents=True, exist_ok=True)
-    train_all_df.to_csv(bench_hbi_dir / "train_all_df.csv", index=False)
-    write_fasta(train_all_df, bench_hbi_dir / "train_all_members.fasta")
-    bench_dir.mkdir(parents=True, exist_ok=True)
-    test_df.to_csv(bench_dir / "test_data.csv", index=False)
-    write_fasta(test_df, bench_dir / "test_data.fasta")
-    val_df.to_csv(bench_dir / "val_data.csv", index=False)
-    write_fasta(val_df, bench_dir / "val_data.fasta")
+    train_all_df.to_csv(proc / "hbi_train_all.csv", index=False)
+    write_fasta(train_all_df, proc / "hbi_train_all.fasta")
 
     # -- Summary table --
     console.print()

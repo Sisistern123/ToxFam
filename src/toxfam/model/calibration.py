@@ -67,7 +67,9 @@ class ModelWithTemperature(nn.Module):
         after_temperature_ece = ece_criterion(
             self.temperature_scale(logits), labels
         ).item()
-        console.print(f"Optimal Temperature: [bold]{self.temperature.item():.3f}[/bold]")
+        console.print(
+            f"Optimal Temperature: [bold]{self.temperature.item():.3f}[/bold]"
+        )
         console.print(
             f"After Calibration  - NLL: {after_temperature_nll:.3f}, "
             f"ECE: {after_temperature_ece:.3f}"

@@ -24,6 +24,7 @@ console = Console()
 # Utilities
 # ---------------------------------------------------------------------------
 
+
 def get_device() -> torch.device:
     """Unified device selection: MPS > CUDA > CPU."""
     if torch.backends.mps.is_available():
@@ -46,6 +47,7 @@ def set_seed(seed: int | None) -> None:
 # ---------------------------------------------------------------------------
 # Loss
 # ---------------------------------------------------------------------------
+
 
 class FocalLoss(nn.Module):
     """Focal loss (Lin et al., 2017) with optional class weights."""
@@ -78,6 +80,7 @@ class FocalLoss(nn.Module):
 # Forward helper
 # ---------------------------------------------------------------------------
 
+
 def _forward_model(model, features, device):
     """Handle single-input (Tensor) or multi-input ((emb, tax)) forwarding."""
     if isinstance(features, (tuple, list)):
@@ -90,6 +93,7 @@ def _forward_model(model, features, device):
 # ---------------------------------------------------------------------------
 # Evaluation
 # ---------------------------------------------------------------------------
+
 
 def evaluate_model(model, data_loader, loss_fn, device, dataset_type="Validation"):
     model.eval()
@@ -146,6 +150,7 @@ def evaluate_model(model, data_loader, loss_fn, device, dataset_type="Validation
 # Class weights
 # ---------------------------------------------------------------------------
 
+
 def get_class_weights(train_dataset):
     encoded_col = train_dataset.label_col + "_encoded"
     class_counts = Counter(train_dataset.df[encoded_col])
@@ -174,6 +179,7 @@ def get_class_weights(train_dataset):
 # ---------------------------------------------------------------------------
 # LR Scheduler helpers
 # ---------------------------------------------------------------------------
+
 
 class _LinearWarmupCosineScheduler(optim.lr_scheduler.LRScheduler):
     """Linear warmup for `warmup_epochs`, then cosine annealing to 0."""
@@ -205,6 +211,7 @@ class _LinearWarmupCosineScheduler(optim.lr_scheduler.LRScheduler):
 # Training
 # ---------------------------------------------------------------------------
 
+
 def train_model(model, train_loader, val_loader, weights_tensor, config: TrainConfig):
     device = get_device()
     console.print(f"Using device: [bold]{device}[/bold]")
@@ -217,7 +224,9 @@ def train_model(model, train_loader, val_loader, weights_tensor, config: TrainCo
     # Optimizer
     if config.optimizer == "adamw":
         optimizer = optim.AdamW(
-            model.parameters(), lr=config.learning_rate, weight_decay=config.weight_decay
+            model.parameters(),
+            lr=config.learning_rate,
+            weight_decay=config.weight_decay,
         )
     else:
         optimizer = optim.Adam(model.parameters(), lr=config.learning_rate)
@@ -238,8 +247,9 @@ def train_model(model, train_loader, val_loader, weights_tensor, config: TrainCo
             weight=weights_tensor,
             label_smoothing=config.label_smoothing,
         )
-        console.print("Loss function: [bold]Focal Loss[/bold] "
-                       f"(gamma={config.focal_loss_gamma})")
+        console.print(
+            f"Loss function: [bold]Focal Loss[/bold] (gamma={config.focal_loss_gamma})"
+        )
     else:
         loss_fn = nn.CrossEntropyLoss(
             weight=weights_tensor, label_smoothing=config.label_smoothing

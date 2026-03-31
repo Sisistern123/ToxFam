@@ -27,5 +27,13 @@ def processed_dir() -> Path:
     return data_dir() / "processed"
 
 
+def evaluation_data_dir() -> Path:
+    return data_dir() / "evaluation"
+
+
+def benchmark_dir() -> Path:
+    return get_project_root() / "benchmark"
+
+
 def configs_dir() -> Path:
     return get_project_root() / "configs"

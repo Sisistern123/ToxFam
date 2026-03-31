@@ -222,6 +222,4 @@ def generate_embeddings(
         if extra:
             for key in extra:
                 del hf[key]
-            console.print(
-                f"\n[bold]5.[/] Pruned [red]{len(extra)}[/] stale embeddings"
-            )
+            console.print(f"\n[bold]5.[/] Pruned [red]{len(extra)}[/] stale embeddings")

@@ -223,7 +223,8 @@ def _resolve_lineages(
                 taxon = taxopy.Taxon(taxon_id, taxdb)
                 rnd = taxon.rank_name_dictionary
                 rank_dict = {
-                    "root": rnd.get("cellular root", "") or rnd.get("acellular root", ""),
+                    "root": rnd.get("cellular root", "")
+                    or rnd.get("acellular root", ""),
                     "domain": rnd.get("domain", "") or rnd.get("realm", ""),
                     "kingdom": rnd.get("kingdom", ""),
                     "phylum": rnd.get("phylum", ""),
@@ -235,8 +236,7 @@ def _resolve_lineages(
                 }
                 # Collect ALL ancestor names (clades, superclasses, etc.)
                 all_names = {
-                    taxopy.Taxon(tid, taxdb).name
-                    for tid in taxon.taxid_lineage
+                    taxopy.Taxon(tid, taxdb).name for tid in taxon.taxid_lineage
                 }
                 result[taxon_id] = (rank_dict, all_names)
             except Exception as e:
@@ -341,9 +341,7 @@ def run_multi_hot_taxonomy_pipeline(
     tax_dict = _build_multi_hot_vectors(df, lineage_names, id_col=id_col)
     vec_len = len(TAXA)
 
-    with h5py.File(input_h5_path, "r") as f_in, h5py.File(
-        output_h5_path, "w"
-    ) as f_out:
+    with h5py.File(input_h5_path, "r") as f_in, h5py.File(output_h5_path, "w") as f_out:
         # Store TAXA names as metadata so the H5 is self-documenting
         f_out.attrs["taxa"] = TAXA
 
@@ -358,9 +356,7 @@ def run_multi_hot_taxonomy_pipeline(
             BarColumn(),
             MofNCompleteColumn(),
         ) as progress:
-            task = progress.add_task(
-                "Writing taxonomy vectors", total=len(protein_ids)
-            )
+            task = progress.add_task("Writing taxonomy vectors", total=len(protein_ids))
 
             for protein_id in protein_ids:
                 if protein_id in tax_dict:
@@ -372,8 +368,10 @@ def run_multi_hot_taxonomy_pipeline(
                     unmatched_ids.append(protein_id)
 
                 f_out.create_dataset(
-                    protein_id, data=vec,
-                    compression="gzip", compression_opts=1,
+                    protein_id,
+                    data=vec,
+                    compression="gzip",
+                    compression_opts=1,
                 )
                 progress.advance(task)
 

@@ -19,10 +19,13 @@ def plot_loss_curve(history, output_path):
     plt.close()
 
 
-def plot_confusion_matrix(all_labels, all_preds, label_encoder, output_path):
-    cm = confusion_matrix(
-        all_labels, all_preds, labels=range(len(label_encoder.classes_))
-    )
+def plot_confusion_matrix(all_labels, all_preds, label_encoder_or_names, output_path):
+    if hasattr(label_encoder_or_names, "classes_"):
+        class_names = list(label_encoder_or_names.classes_)
+    else:
+        class_names = list(label_encoder_or_names)
+
+    cm = confusion_matrix(all_labels, all_preds, labels=range(len(class_names)))
 
     row_sums = cm.sum(axis=1, keepdims=True)
     row_sums[row_sums == 0] = 1
@@ -39,8 +42,6 @@ def plot_confusion_matrix(all_labels, all_preds, label_encoder, output_path):
     cmap = LinearSegmentedColormap.from_list("custom_lilac", colors)
     boundaries = [0, 1, 10, 20, 30, 40, 50, 60, 70, 80, 100]
     norm = BoundaryNorm(boundaries, cmap.N)
-
-    class_names = list(label_encoder.classes_)
     cm_percent_display = np.where(cm == 0, np.nan, cm_percentage)
 
     plt.figure(figsize=(15, 10), dpi=200)

@@ -24,6 +24,7 @@ RELEASE_TAG = "data-v1"
 _RAW = "raw"
 _PROCESSED = "processed"
 _INTERMEDIATE = "intermediate"
+_EVALUATION = "evaluation"
 
 DATA_ASSETS: list[tuple[str, str, str, str]] = [
     # (release asset name, target dir, relative path inside target, file to check for skip)
@@ -31,7 +32,10 @@ DATA_ASSETS: list[tuple[str, str, str, str]] = [
     ("nontox.tsv", _RAW, "nontox.tsv", "nontox.tsv"),
     ("training_data.csv", _PROCESSED, "training_data.csv", "training_data.csv"),
     ("embeddings.h5", _PROCESSED, "embeddings.h5", "embeddings.h5"),
+    ("hbi_train_all.csv", _PROCESSED, "hbi_train_all.csv", "hbi_train_all.csv"),
+    ("hbi_train_all.fasta", _PROCESSED, "hbi_train_all.fasta", "hbi_train_all.fasta"),
     ("sp6_cache.zip", _INTERMEDIATE, "sp6", "sp6/sp6_cache.json"),
+    ("evaluation_data.zip", _EVALUATION, ".", "non_metazoan/non_metazoan.tsv"),
 ]
 
 
@@ -64,12 +68,9 @@ def _download_with_progress(url: str, dest: Path, label: str) -> None:
                     progress.advance(task, len(chunk))
 
 
-
 @app.command("download-data")
 def download_data(
-    tag: Annotated[
-        str, typer.Option(help="GitHub release tag")
-    ] = RELEASE_TAG,
+    tag: Annotated[str, typer.Option(help="GitHub release tag")] = RELEASE_TAG,
     force: Annotated[
         bool, typer.Option("--force", "-f", help="Re-download even if files exist")
     ] = False,
@@ -85,9 +86,19 @@ def download_data(
     import tempfile
     import zipfile
 
-    from toxfam._paths import intermediate_dir, processed_dir, raw_dir
+    from toxfam._paths import (
+        evaluation_data_dir,
+        intermediate_dir,
+        processed_dir,
+        raw_dir,
+    )
 
-    dirs = {_RAW: raw_dir(), _PROCESSED: processed_dir(), _INTERMEDIATE: intermediate_dir()}
+    dirs = {
+        _RAW: raw_dir(),
+        _PROCESSED: processed_dir(),
+        _INTERMEDIATE: intermediate_dir(),
+        _EVALUATION: evaluation_data_dir(),
+    }
     base_url = f"https://github.com/{GITHUB_REPO}/releases/download/{tag}"
 
     for asset_name, dir_key, rel_path, skip_file in DATA_ASSETS:
@@ -276,7 +287,7 @@ def eval_test(
     loads pre-computed NN predictions from the model directory. Computes
     accuracy, MCC, and per-class F1 for both methods, saves a side-by-side
     comparison CSV, confusion matrices, and a detailed classification report
-    to benchmark/new/evaluation/test_set/results/.
+    to benchmark/test_set/.
     """
     from toxfam.evaluation.eval_test_set import run_eval_test_set
 
@@ -306,7 +317,7 @@ def eval_nonmetazoan(
     Loads reviewed non-metazoan sequences, runs both an MMseqs2 homology
     search (HBI) and the trained model to predict toxin vs non-toxin, then
     computes binary accuracy and MCC for each method. Results are saved to
-    benchmark/new/evaluation/non-metazoa/results/.
+    benchmark/non_metazoan/.
     """
     from toxfam.evaluation.eval_nonmetazoan import run_eval_nonmetazoan
 
@@ -326,10 +337,6 @@ def eval_unreviewed(
         Path,
         typer.Option(help="Input TSV with protein data", exists=True),
     ],
-    input_fasta: Annotated[
-        Path,
-        typer.Option(help="Input FASTA file", exists=True),
-    ],
     input_h5: Annotated[
         Path,
         typer.Option(help="Input H5 embeddings", exists=True),
@@ -348,13 +355,12 @@ def eval_unreviewed(
     Normalizes family labels (same rules as preprocessing), runs an MMseqs2
     homology search (HBI) against training sequences, and computes multi-class
     accuracy, MCC, and per-class F1. Results are saved to
-    benchmark/new/evaluation/unreviewed_metazoan/results/.
+    benchmark/unreviewed/.
     """
     from toxfam.evaluation.eval_unreviewed import run_eval_unreviewed
 
     run_eval_unreviewed(
         input_tsv=input_tsv,
-        input_fasta=input_fasta,
         input_h5=input_h5,
         train_data=train_data,
         train_fasta=train_fasta,
