@@ -20,9 +20,11 @@ from toxfam.data.dataset import ToxDataset, analyze_data_splits
 from toxfam.model.calibration import ModelWithTemperature
 from toxfam.training.strategies import (
     DataSelector,
+    _MultiTaskFamilyWrapper,
     evaluate_label_on_dataset,
     run_binary_strategy,
     run_combined_strategy,
+    run_multitask_strategy,
     run_standard_strategy,
 )
 from toxfam.training.trainer import _forward_model, get_class_weights, get_device, set_seed
@@ -253,6 +255,38 @@ def run_training(config: TrainConfig) -> None:
         final_model = run_binary_strategy(
             train_loader, val_loader, w_tensor, train_ds.num_classes, out_root, config
         )
+    elif strategy == "hierarchical":
+        from toxfam.training.hierarchical import run_hierarchical_strategy
+
+        final_model, _binary_le = run_hierarchical_strategy(
+            train_loader, val_loader, w_tensor, train_ds.num_classes,
+            train_df, val_df, h5_paths, out_root, config,
+        )
+        # Hierarchical produces a binary model — override label col for eval
+        effective_label_col = "binary_label"
+        if "binary_label" not in val_df.columns:
+            from toxfam.evaluation.metrics import to_binary_class
+
+            for split_df in (train_df, val_df, test_df):
+                split_df["binary_label"] = split_df[label_col].apply(to_binary_class)
+        # Rebuild datasets with binary labels for evaluation
+        train_ds.close()
+        val_ds.close()
+        train_ds = ToxDataset(
+            train_df, h5_paths, is_train=True,
+            label_col="binary_label", tax_h5_path=tax_h5,
+        )
+        val_ds = ToxDataset(
+            val_df, h5_paths, label_encoder=train_ds.le, is_train=False,
+            label_col="binary_label", tax_h5_path=tax_h5,
+        )
+    elif strategy == "multitask":
+        final_model = run_multitask_strategy(
+            train_loader, val_loader, w_tensor, train_ds.num_classes,
+            train_df, out_root, config,
+        )
+        # Wrap for family evaluation
+        final_model = _MultiTaskFamilyWrapper(final_model)
     elif strategy == "combined":
         final_model = run_combined_strategy(
             train_loader, val_loader, w_tensor, train_ds.num_classes, out_root, config
