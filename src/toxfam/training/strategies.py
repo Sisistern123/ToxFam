@@ -349,6 +349,7 @@ def evaluate_label_on_dataset(
     report = classification_report(
         y_true,
         y_pred,
+        labels=list(range(len(ds.le.classes_))),
         target_names=ds.le.classes_,
         output_dict=True,
         zero_division=0,
