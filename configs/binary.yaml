@@ -1,15 +1,33 @@
-input_csv: data/processed/training_data.csv
-h5_path: data/processed/embeddings.h5
-output_dir: model/binary
+# binary.yaml — Direct toxic/nontoxin binary MLP
+input_csv: "data/processed/training_data.csv"
+h5_paths_glob: "data/processed/embeddings.h5"
+output_dir: "model/model_output/binary_run"
 
-training_strategy: binary
+# Strategy
+training_strategy: "binary"
 
-embedding_dim: 1024
+# Optimizer
+optimizer: "adamw"
+weight_decay: 0.01
+learning_rate: 0.0001
+
+# LR Scheduler
+lr_scheduler: "cosine"
+warmup_epochs: 5
+
+# Loss
+use_focal_loss: false
+label_smoothing: 0.0
+
+# Architecture
 hidden_dims: [256, 256]
-dropout: 0.3
+dropout: 0.5
+embedding_dim: 1024
 
+# Training
 batch_size: 64
 num_epochs: 200
-learning_rate: 0.0001
 early_stopping_patience: 10
-early_stopping_metric: mcc
+early_stopping_metric: "mcc"
+max_grad_norm: 1.0
+seed: 42

@@ -174,15 +174,20 @@ def run_training(config: TrainConfig) -> None:
     config_copy = out_root / "config.yaml"
     config_copy.write_text(yaml.dump(config.model_dump(mode="json"), sort_keys=False))
 
-    # wandb setup (optional)
+    # wandb setup (optional — gracefully degrade if not logged in)
+    _use_wandb = False
     if wandb is not None:
-        wandb.login()
-        wandb.init(
-            project=config.wandb_project,
-            entity=config.wandb_entity,
-            name=config.wandb_run_name,
-            config=config.model_dump(mode="json"),
-        )
+        try:
+            wandb.login()
+            wandb.init(
+                project=config.wandb_project,
+                entity=config.wandb_entity,
+                name=config.wandb_run_name,
+                config=config.model_dump(mode="json"),
+            )
+            _use_wandb = True
+        except Exception:
+            console.print("[yellow]wandb login failed — continuing without wandb[/yellow]")
 
     device = get_device()
     console.print(f"Using device: [bold]{device}[/bold]")
@@ -312,7 +317,7 @@ def run_training(config: TrainConfig) -> None:
         raise ValueError(f"Unknown training strategy: {strategy}")
 
     # Watch model gradients in wandb
-    if wandb is not None and wandb.run is not None:
+    if _use_wandb:
         wandb.watch(final_model, log="gradients", log_freq=50)
 
     loss_fn = torch.nn.CrossEntropyLoss()
@@ -358,7 +363,7 @@ def run_training(config: TrainConfig) -> None:
     console.print(f"Saved calibrated model to {calibrated_path}")
 
     # Log calibrated model as a wandb artifact
-    if wandb is not None and wandb.run is not None:
+    if _use_wandb:
         calibrated_artifact = wandb.Artifact(
             name="toxfam-best-model-calibrated",
             type="model",
@@ -391,7 +396,7 @@ def run_training(config: TrainConfig) -> None:
     )
 
     # wandb summary
-    if wandb is not None and wandb.run is not None:
+    if _use_wandb:
         for tag, m in [
             ("val", val_metrics),
             ("test", test_metrics),
@@ -412,5 +417,5 @@ def run_training(config: TrainConfig) -> None:
     train_ds.close()
     val_ds.close()
 
-    if wandb is not None:
+    if _use_wandb:
         wandb.finish()
