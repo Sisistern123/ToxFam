@@ -129,6 +129,10 @@ def evaluate_model(model, data_loader, loss_fn, device, dataset_type="Validation
     # Macro MCC: average of per-class one-vs-rest MCCs
     y_true_bin = label_binarize(all_labels, classes=list(range(n_classes)))
     y_pred_bin = label_binarize(all_preds, classes=list(range(n_classes)))
+    # sklearn returns (N, 1) for binary case — expand to (N, 2)
+    if n_classes == 2 and y_true_bin.ndim == 2 and y_true_bin.shape[1] == 1:
+        y_true_bin = np.hstack([1 - y_true_bin, y_true_bin])
+        y_pred_bin = np.hstack([1 - y_pred_bin, y_pred_bin])
     per_class_mcc = []
     for c in range(n_classes):
         mcc_c = matthews_corrcoef(y_true_bin[:, c], y_pred_bin[:, c])
