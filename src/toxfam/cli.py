@@ -367,6 +367,149 @@ def eval_unreviewed(
     )
 
 
+# ---------- Step 5d: toxfam eval-binary ----------
+
+
+@app.command("eval-binary")
+def eval_binary(
+    model_dir: Annotated[
+        Path,
+        typer.Argument(
+            help="Model output directory containing config.yaml and models/",
+            exists=True,
+        ),
+    ],
+) -> None:
+    """Re-compute binary toxic/nontoxin metrics from a trained model.
+
+    Loads the calibrated model and config from the model output directory,
+    computes P(toxic) for val and test sets, optimizes the threshold on val
+    (Youden's J), and evaluates on test with both default and optimized
+    thresholds. Saves binary_metrics.json and ROC/PR plots.
+    """
+    import json as _json
+
+    import numpy as np
+    import pandas as pd
+    import torch
+
+    from toxfam.config import TrainConfig
+    from toxfam.data.dataset import ToxDataset, analyze_data_splits
+    from toxfam.evaluation.metrics import (
+        calculate_binary_metrics_with_scores,
+        find_optimal_threshold,
+    )
+    from toxfam.model.architectures import ModularMLP, MultiInputMLP
+    from toxfam.model.calibration import ModelWithTemperature
+    from toxfam.training.orchestrator import (
+        _compute_binary_labels,
+        _compute_p_toxic,
+    )
+    from toxfam.training.trainer import get_device
+    from toxfam.visualization.analysis import plot_binary_pr, plot_binary_roc
+
+    config = TrainConfig.from_yaml(model_dir / "config.yaml")
+    config = config.model_copy(update={"output_dir": model_dir})
+
+    df = pd.read_csv(config.input_csv)
+    train_df, val_df, test_df = analyze_data_splits(df)
+
+    h5_paths = [str(p) for p in config.h5_paths]
+    train_ds = ToxDataset(train_df, h5_paths, is_train=True)
+
+    # Load calibrated model
+    device = get_device()
+    calibrated_path = model_dir / "models" / "best_model_calibrated.pt"
+    if not calibrated_path.exists():
+        typer.echo(f"Calibrated model not found at {calibrated_path}", err=True)
+        raise typer.Exit(code=1)
+
+    class_map_path = model_dir / "class_indices.json"
+    with open(class_map_path) as f:
+        class_map = _json.load(f)
+    num_classes = len(class_map)
+
+    if config.training_strategy == "combined":
+        base_model = MultiInputMLP(
+            embed_dim=config.effective_embedding_dim,
+            tax_dim=config.tax_dim,
+            hidden_dims=config.hidden_dims,
+            num_classes=num_classes,
+            dropout=config.dropout,
+        )
+    else:
+        base_model = ModularMLP(
+            input_dim=config.effective_embedding_dim,
+            hidden_dims=config.hidden_dims,
+            num_classes=num_classes,
+            dropout=config.dropout,
+        )
+
+    scaled_model = ModelWithTemperature(base_model, device)
+    scaled_model.load_state_dict(
+        torch.load(calibrated_path, map_location=device, weights_only=True)
+    )
+    scaled_model.eval()
+
+    label_col = "Protein families"
+    val_y_true = _compute_binary_labels(val_df, label_col)
+    val_p_toxic = _compute_p_toxic(scaled_model, val_df, config, train_ds.le, label_col)
+    opt_threshold = find_optimal_threshold(val_y_true, val_p_toxic)
+
+    test_y_true = _compute_binary_labels(test_df, label_col)
+    test_p_toxic = _compute_p_toxic(
+        scaled_model, test_df, config, train_ds.le, label_col
+    )
+
+    test_default = calculate_binary_metrics_with_scores(
+        test_y_true, test_p_toxic, threshold=0.5
+    )
+    test_opt = calculate_binary_metrics_with_scores(
+        test_y_true, test_p_toxic, threshold=opt_threshold
+    )
+
+    typer.echo(f"Threshold (Youden): {opt_threshold:.4f}")
+    typer.echo(
+        f"Test (t=0.5):   ROC-AUC={test_default['roc_auc']:.4f} "
+        f"PR-AUC={test_default['pr_auc']:.4f} MCC={test_default['mcc']:.4f}"
+    )
+    typer.echo(
+        f"Test (t={opt_threshold:.3f}): ROC-AUC={test_opt['roc_auc']:.4f} "
+        f"PR-AUC={test_opt['pr_auc']:.4f} MCC={test_opt['mcc']:.4f}"
+    )
+
+    metrics_dir = model_dir / "metrics"
+    metrics_dir.mkdir(exist_ok=True)
+    results = {
+        "optimized_threshold": opt_threshold,
+        "test_default": {
+            k: v for k, v in test_default.items() if not isinstance(v, np.ndarray)
+        },
+        "test_optimized": {
+            k: v for k, v in test_opt.items() if not isinstance(v, np.ndarray)
+        },
+    }
+    (metrics_dir / "binary_metrics.json").write_text(_json.dumps(results, indent=4))
+
+    plots_dir = model_dir / "plots"
+    plots_dir.mkdir(exist_ok=True)
+    plot_binary_roc(
+        test_default["fpr"],
+        test_default["tpr"],
+        test_default["roc_auc"],
+        plots_dir / "binary_roc.png",
+    )
+    plot_binary_pr(
+        test_default["precision_curve"],
+        test_default["recall_curve"],
+        test_default["pr_auc"],
+        plots_dir / "binary_pr.png",
+    )
+
+    train_ds.close()
+    typer.echo("Binary metrics saved.")
+
+
 # ---------- toxfam plot ----------
 
 plot_app = typer.Typer(
