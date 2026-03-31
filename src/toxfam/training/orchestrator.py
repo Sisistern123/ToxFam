@@ -3,8 +3,10 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 import torch
+import torch.nn.functional as F
 import yaml
 from rich.console import Console
 from torch.utils.data import DataLoader
@@ -22,10 +24,126 @@ from toxfam.training.strategies import (
     run_combined_strategy,
     run_standard_strategy,
 )
-from toxfam.training.trainer import get_class_weights, get_device, set_seed
-from toxfam.visualization.analysis import analyze_label_distribution_for_split
+from toxfam.training.trainer import _forward_model, get_class_weights, get_device, set_seed
+from toxfam.visualization.analysis import (
+    analyze_label_distribution_for_split,
+    plot_binary_pr,
+    plot_binary_roc,
+)
 
 console = Console()
+
+
+def _compute_binary_labels(df: pd.DataFrame, label_col: str = "Protein families") -> np.ndarray:
+    """Convert family labels to binary: 1 = toxic, 0 = nontoxin."""
+    from toxfam.evaluation.metrics import to_binary_class
+
+    return (df[label_col].apply(to_binary_class) == "toxin").astype(int).values
+
+
+def _compute_p_toxic(
+    model, dataset_df, config, label_encoder, label_col="Protein families"
+) -> np.ndarray:
+    """Compute P(toxic) for each sample by summing toxic-class probabilities."""
+    from toxfam.evaluation.metrics import NONTOXIN_LABELS
+
+    ds = ToxDataset(
+        dataset_df,
+        [str(p) for p in config.h5_paths],
+        label_encoder=label_encoder,
+        is_train=False,
+        label_col=label_col,
+        tax_h5_path=str(config.tax_h5_path) if config.tax_h5_path else None,
+    )
+    loader = DataLoader(ds, batch_size=config.batch_size, shuffle=False)
+
+    strategy = config.training_strategy
+    if strategy == "combined":
+        selector = DataSelector(loader, "both")
+    else:
+        selector = DataSelector(loader, "emb_only")
+
+    device = get_device()
+    model = model.to(device)
+    model.eval()
+
+    all_probs = []
+    with torch.no_grad():
+        for features, _ in selector:
+            outputs = _forward_model(model, features, device)
+            probs = F.softmax(outputs, dim=1).cpu().numpy()
+            all_probs.append(probs)
+
+    all_probs = np.concatenate(all_probs, axis=0)
+    ds.close()
+
+    # Sum probabilities of all nontoxin classes
+    nontox_indices = [
+        i for i, cls in enumerate(label_encoder.classes_)
+        if cls.lower() in NONTOXIN_LABELS
+    ]
+    p_nontox = all_probs[:, nontox_indices].sum(axis=1)
+    return 1.0 - p_nontox
+
+
+def _run_binary_metrics_pipeline(
+    model, train_ds, val_df, test_df, config, out_root, label_col="Protein families"
+):
+    """Full binary metrics pipeline: threshold optimization on val, evaluate on test."""
+    from toxfam.evaluation.metrics import (
+        calculate_binary_metrics_with_scores,
+        find_optimal_threshold,
+    )
+
+    console.print("\n[bold]Running Binary Metrics Pipeline...[/bold]")
+
+    # Val set
+    val_y_true = _compute_binary_labels(val_df, label_col)
+    val_p_toxic = _compute_p_toxic(model, val_df, config, train_ds.le, label_col)
+
+    # Threshold optimization on val
+    opt_threshold = find_optimal_threshold(val_y_true, val_p_toxic, method="youden")
+    console.print(f"  Optimized threshold (Youden's J): {opt_threshold:.4f}")
+
+    # Test set
+    test_y_true = _compute_binary_labels(test_df, label_col)
+    test_p_toxic = _compute_p_toxic(model, test_df, config, train_ds.le, label_col)
+
+    # Test with default threshold
+    test_default = calculate_binary_metrics_with_scores(test_y_true, test_p_toxic, threshold=0.5)
+    console.print(
+        f"  Test (t=0.5): ROC-AUC={test_default['roc_auc']:.4f}, "
+        f"PR-AUC={test_default['pr_auc']:.4f}, MCC={test_default['mcc']:.4f}"
+    )
+
+    # Test with optimized threshold
+    test_opt = calculate_binary_metrics_with_scores(test_y_true, test_p_toxic, threshold=opt_threshold)
+    console.print(
+        f"  Test (t={opt_threshold:.3f}): ROC-AUC={test_opt['roc_auc']:.4f}, "
+        f"PR-AUC={test_opt['pr_auc']:.4f}, MCC={test_opt['mcc']:.4f}"
+    )
+
+    # Save metrics
+    metrics_dir = out_root / "metrics"
+    metrics_dir.mkdir(exist_ok=True)
+    binary_results = {
+        "optimized_threshold": opt_threshold,
+        "test_default": {k: v for k, v in test_default.items() if not isinstance(v, np.ndarray)},
+        "test_optimized": {k: v for k, v in test_opt.items() if not isinstance(v, np.ndarray)},
+    }
+    (metrics_dir / "binary_metrics.json").write_text(json.dumps(binary_results, indent=4))
+
+    # Plots
+    plots_dir = out_root / "plots"
+    plots_dir.mkdir(exist_ok=True)
+    plot_binary_roc(
+        test_default["fpr"], test_default["tpr"], test_default["roc_auc"],
+        plots_dir / "binary_roc.png",
+    )
+    plot_binary_pr(
+        test_default["precision_curve"], test_default["recall_curve"],
+        test_default["pr_auc"], plots_dir / "binary_pr.png",
+    )
 
 
 def run_training(config: TrainConfig) -> None:
@@ -210,6 +328,11 @@ def run_training(config: TrainConfig) -> None:
         ]:
             for k, v in m.items():
                 wandb.run.summary[k] = v
+
+    # 7. Binary Metrics Pipeline
+    _run_binary_metrics_pipeline(
+        scaled_model, train_ds, val_df, test_df, config, out_root, label_col
+    )
 
     train_ds.close()
     val_ds.close()
