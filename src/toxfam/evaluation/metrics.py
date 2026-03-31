@@ -16,12 +16,20 @@ import numpy as np
 import pandas as pd
 from rich.console import Console
 from rich.table import Table
-from sklearn.metrics import accuracy_score, classification_report, matthews_corrcoef
+from sklearn.metrics import (
+    accuracy_score,
+    classification_report,
+    f1_score,
+    matthews_corrcoef,
+    precision_recall_curve,
+    roc_auc_score,
+    roc_curve,
+)
 from sklearn.preprocessing import label_binarize
 
 console = Console()
 
-NONTOXIN_LABELS: set[str] = {"nontox"}
+NONTOXIN_LABELS: set[str] = {"nontox", "nontoxic"}
 
 
 @dataclass
@@ -154,6 +162,75 @@ def calculate_binary_metrics(
         y_true.apply(to_binary_class),
         y_pred.apply(to_binary_class),
     )
+
+
+def calculate_binary_metrics_with_scores(
+    y_true: np.ndarray,
+    y_scores: np.ndarray,
+    threshold: float = 0.5,
+) -> dict:
+    """Compute binary metrics using probability scores.
+
+    Parameters
+    ----------
+    y_true : array of {0, 1} — 1 = toxic, 0 = nontoxin.
+    y_scores : array of floats — probability of being toxic.
+    threshold : decision threshold for binary classification.
+
+    Returns
+    -------
+    dict with keys: roc_auc, pr_auc, f1, mcc, accuracy, threshold,
+    fpr, tpr, precision_curve, recall_curve.
+    """
+    y_pred = (y_scores >= threshold).astype(int)
+
+    roc_auc = roc_auc_score(y_true, y_scores)
+    precision_vals, recall_vals, _ = precision_recall_curve(y_true, y_scores)
+    pr_auc = float(np.trapezoid(precision_vals[::-1], recall_vals[::-1]))
+    fpr, tpr, _ = roc_curve(y_true, y_scores)
+
+    return {
+        "roc_auc": float(roc_auc),
+        "pr_auc": float(pr_auc),
+        "f1": float(f1_score(y_true, y_pred, zero_division=0)),
+        "mcc": float(matthews_corrcoef(y_true, y_pred)),
+        "accuracy": float(accuracy_score(y_true, y_pred)),
+        "threshold": threshold,
+        "fpr": fpr,
+        "tpr": tpr,
+        "precision_curve": precision_vals,
+        "recall_curve": recall_vals,
+    }
+
+
+def find_optimal_threshold(
+    y_true: np.ndarray,
+    y_scores: np.ndarray,
+    method: str = "youden",
+) -> float:
+    """Find optimal classification threshold.
+
+    Parameters
+    ----------
+    method : "youden" (maximizes TPR - FPR), "f1" (maximizes F1 score).
+    """
+    if method == "youden":
+        fpr, tpr, thresholds = roc_curve(y_true, y_scores)
+        j_scores = tpr - fpr
+        best_idx = np.argmax(j_scores)
+        return float(thresholds[best_idx])
+    elif method == "f1":
+        thresholds = np.linspace(0.01, 0.99, 200)
+        best_f1, best_t = 0.0, 0.5
+        for t in thresholds:
+            y_pred = (y_scores >= t).astype(int)
+            f = f1_score(y_true, y_pred, zero_division=0)
+            if f > best_f1:
+                best_f1 = f
+                best_t = t
+        return float(best_t)
+    else:
+        raise ValueError(f"Unknown method: {method}. Use 'youden' or 'f1'.")
 
 
 def print_metrics_table(results: dict[str, MetricsResult]) -> None:
