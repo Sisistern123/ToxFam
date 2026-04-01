@@ -110,3 +110,127 @@ class TestJointProbabilityMath:
         joint_ranks = joint_toxic.argsort(dim=1, descending=True)
         fam_ranks = fam_toxic.argsort(dim=1, descending=True)
         assert torch.equal(joint_ranks, fam_ranks)
+
+
+class TestNumericalStability:
+    """Verify wrapper handles extreme inputs without NaN or Inf."""
+
+    def test_extreme_logits_no_nan(self):
+        """Model outputs extreme logits — wrapper must not produce NaN/Inf."""
+        from toxfam.training.strategies import MultiTaskJointWrapper
+
+        model = _make_model(num_family_classes=5)
+
+        class _ExtremeModel(torch.nn.Module):
+            def __init__(self, base):
+                super().__init__()
+                self.base = base
+                self.family_head = base.family_head
+
+            def forward(self, x):
+                fam, bin_ = self.base(x)
+                return fam * 100, bin_ * 100
+
+        extreme = _ExtremeModel(model)
+        wrapper = MultiTaskJointWrapper(extreme, nontoxin_indices=[2])
+
+        x = torch.randn(8, 64)
+        wrapper.eval()
+        with torch.no_grad():
+            log_probs = wrapper(x)
+
+        assert not torch.isnan(log_probs).any(), "NaN detected in output"
+        assert not torch.isinf(log_probs).any(), "Inf detected in output"
+
+        probs = F.softmax(log_probs, dim=1)
+        assert torch.allclose(probs.sum(dim=1), torch.ones(8), atol=1e-4)
+
+    def test_single_sample_batch(self):
+        """Wrapper works with batch size 1."""
+        from toxfam.training.strategies import MultiTaskJointWrapper
+
+        model = _make_model(num_family_classes=5)
+        wrapper = MultiTaskJointWrapper(model, nontoxin_indices=[2])
+
+        x = torch.randn(1, 64)
+        wrapper.eval()
+        with torch.no_grad():
+            log_probs = wrapper(x)
+            probs = F.softmax(log_probs, dim=1)
+
+        assert probs.shape == (1, 5)
+        assert torch.allclose(probs.sum(), torch.tensor(1.0), atol=1e-5)
+
+
+class TestDownstreamCompatibility:
+    """Verify wrapper output works with CrossEntropyLoss and ModelWithTemperature."""
+
+    def test_cross_entropy_loss_compatible(self):
+        """CE loss on wrapper output equals -log(joint_prob[true_class])."""
+        from toxfam.training.strategies import MultiTaskJointWrapper
+
+        model = _make_model(num_family_classes=5)
+        wrapper = MultiTaskJointWrapper(model, nontoxin_indices=[2])
+
+        x = torch.randn(4, 64)
+        labels = torch.tensor([0, 1, 2, 3])
+
+        wrapper.eval()
+        with torch.no_grad():
+            log_probs = wrapper(x)
+            joint_probs = F.softmax(log_probs, dim=1)
+
+            ce_loss = F.cross_entropy(log_probs, labels)
+            manual_nll = -torch.log(
+                joint_probs[range(4), labels].clamp(min=1e-8)
+            ).mean()
+
+        assert torch.allclose(ce_loss, manual_nll, atol=1e-4), (
+            f"CE loss ({ce_loss:.6f}) != manual NLL ({manual_nll:.6f})"
+        )
+
+    def test_temperature_scaling_integration(self):
+        """ModelWithTemperature wrapping the joint wrapper produces valid probs."""
+        from toxfam.model.calibration import ModelWithTemperature
+        from toxfam.training.strategies import MultiTaskJointWrapper
+
+        model = _make_model(num_family_classes=5)
+        wrapper = MultiTaskJointWrapper(model, nontoxin_indices=[2])
+
+        device = torch.device("cpu")
+        scaled = ModelWithTemperature(wrapper, device)
+        scaled.temperature.data.fill_(2.0)
+
+        x = torch.randn(8, 64)
+        scaled.eval()
+        with torch.no_grad():
+            out = scaled(x)
+            probs = F.softmax(out, dim=1)
+
+        assert probs.shape == (8, 5)
+        assert torch.allclose(probs.sum(dim=1), torch.ones(8), atol=1e-5)
+
+    def test_temperature_gradient_flows(self):
+        """Temperature parameter receives gradients through the joint wrapper."""
+        from toxfam.model.calibration import ModelWithTemperature
+        from toxfam.training.strategies import MultiTaskJointWrapper
+
+        model = _make_model(num_family_classes=5)
+        wrapper = MultiTaskJointWrapper(model, nontoxin_indices=[2])
+
+        device = torch.device("cpu")
+        scaled = ModelWithTemperature(wrapper, device)
+
+        x = torch.randn(4, 64)
+        labels = torch.tensor([0, 1, 2, 3])
+
+        out = scaled(x)
+        loss = F.cross_entropy(out, labels)
+        loss.backward()
+
+        assert scaled.temperature.grad is not None, (
+            "Temperature should receive gradients"
+        )
+        assert scaled.temperature.grad.abs().item() > 0, (
+            "Temperature gradient should be non-zero"
+        )
