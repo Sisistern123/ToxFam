@@ -11,7 +11,6 @@ import shutil
 import subprocess
 from contextlib import redirect_stdout
 from pathlib import Path
-from typing import Dict, List, Set, Tuple
 
 import numpy as np
 import pandas as pd
@@ -70,7 +69,7 @@ def sanitize_filename(name: str) -> str:
 # ---------- Preprocessing ----------
 
 
-def load_and_prepare_raw() -> Tuple[pd.DataFrame, pd.DataFrame]:
+def load_and_prepare_raw() -> tuple[pd.DataFrame, pd.DataFrame]:
     raw = raw_dir()
 
     tox = (
@@ -104,7 +103,7 @@ def _sp6_cache_path() -> Path:
     return intermediate_dir() / "sp6" / "sp6_cache.json"
 
 
-def _load_sp6_cache() -> Dict[str, str | None]:
+def _load_sp6_cache() -> dict[str, str | None]:
     """Load per-sequence SP6 cache. Returns {seq_hash: mature_seq or None}."""
     path = _sp6_cache_path()
     if not path.exists():
@@ -116,7 +115,7 @@ def _load_sp6_cache() -> Dict[str, str | None]:
         return {}
 
 
-def _save_sp6_cache(cache: Dict[str, str | None]) -> None:
+def _save_sp6_cache(cache: dict[str, str | None]) -> None:
     path = _sp6_cache_path()
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_suffix(".tmp")
@@ -125,7 +124,7 @@ def _save_sp6_cache(cache: Dict[str, str | None]) -> None:
     tmp.rename(path)
 
 
-def _parse_sp6_output(sp6_dir: Path) -> Dict[str, str]:
+def _parse_sp6_output(sp6_dir: Path) -> dict[str, str]:
     """Parse SP6 output → {identifier: mature_sequence} for high-confidence hits."""
     proc_fasta = sp6_dir / "processed_entries.fasta"
     gff_path = sp6_dir / "output.gff3"
@@ -156,9 +155,9 @@ def _parse_sp6_output(sp6_dir: Path) -> Dict[str, str]:
 def _bootstrap_sp6_cache(
     tox: pd.DataFrame,
     nontox: pd.DataFrame,
-) -> Dict[str, str | None]:
+) -> dict[str, str | None]:
     """Build cache from existing monolithic SP6 output files."""
-    cache: Dict[str, str | None] = {}
+    cache: dict[str, str | None] = {}
     sp6_base = intermediate_dir() / "sp6"
 
     for label, df in [("tox", tox), ("nontox", nontox)]:
@@ -172,7 +171,7 @@ def _bootstrap_sp6_cache(
 def _run_signalp6_batch(
     df: pd.DataFrame,
     extra_args: str,
-) -> Dict[str, str | None]:
+) -> dict[str, str | None]:
     """Run SP6 on a batch of sequences → {seq_hash: mature_seq or None}."""
     if df.empty:
         return {}
@@ -225,7 +224,7 @@ def _run_signalp6_batch(
         return {}
 
     sp_hits = _parse_sp6_output(batch_dir)
-    result: Dict[str, str | None] = {}
+    result: dict[str, str | None] = {}
     for _, row in df.iterrows():
         h = _seq_hash(row["Sequence"])
         result[h] = sp_hits.get(row["identifier"])
@@ -238,7 +237,7 @@ def run_signalp6_step(
     tox: pd.DataFrame,
     nontox: pd.DataFrame,
     extra_args: str = "--organism euk",
-) -> Tuple[pd.DataFrame, pd.DataFrame]:
+) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Apply SignalP6 signal peptide removal with per-sequence caching.
 
     Each sequence is cached by its MD5 hash. Only sequences not in the cache
@@ -293,10 +292,10 @@ def run_signalp6_step(
 
 def cluster_per_family_and_collect(
     data: pd.DataFrame, min_seq_id: float = 0.9
-) -> Tuple[pd.DataFrame, pd.DataFrame]:
+) -> tuple[pd.DataFrame, pd.DataFrame]:
     mmseqs_dir = intermediate_dir() / "mmseqs"
     mmseqs_dir.mkdir(parents=True, exist_ok=True)
-    failures: List[Tuple[str, str, str]] = []
+    failures: list[tuple[str, str, str]] = []
 
     grouped = list(data.groupby("Protein families"))
 
@@ -421,7 +420,7 @@ def multilabel_stratified_splits(rep_df_all: pd.DataFrame):
 def build_train_all_members(data: pd.DataFrame, train_df: pd.DataFrame) -> pd.DataFrame:
     mmseqs_dir = intermediate_dir() / "mmseqs"
     train_reps = set(train_df["identifier"])
-    rep2members: Dict[str, Set[str]] = {}
+    rep2members: dict[str, set[str]] = {}
     for family in os.listdir(mmseqs_dir):
         fam_dir = mmseqs_dir / family
         tsv_path = fam_dir / "cluster_cluster.tsv"
@@ -553,7 +552,7 @@ def _rebalance_splits(
     test_cids: set,
     *,
     min_train_frac: float = 0.50,
-) -> Tuple[set, set, set]:
+) -> tuple[set, set, set]:
     """Move clusters between splits to ensure minimum family representation in train.
 
     For each family where train fraction < min_train_frac, move the smallest
@@ -563,8 +562,8 @@ def _rebalance_splits(
     val_cids = set(val_cids)
     test_cids = set(test_cids)
 
-    cid_to_families: Dict[int, set] = {}
-    cid_to_size: Dict[int, int] = {}
+    cid_to_families: dict[int, set] = {}
+    cid_to_size: dict[int, int] = {}
     for _, row in cluster_df.iterrows():
         cid = row["_cluster_id"]
         cid_to_families[cid] = row["families"]
@@ -616,7 +615,7 @@ def identity_aware_splits(
     *,
     seq_id: float = 0.3,
     train_ratio: float = 0.70,
-) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """Split representatives using identity-based clustering.
 
     1. Cluster all reps at seq_id (default 30%) via MMseqs2.
@@ -653,8 +652,8 @@ def identity_aware_splits(
 
     # Parse cluster assignments
     cluster_tsv = fasta_dir / "global_cluster_cluster.tsv"
-    cluster_map: Dict[str, int] = {}
-    rep_to_cluster: Dict[str, int] = {}
+    cluster_map: dict[str, int] = {}
+    rep_to_cluster: dict[str, int] = {}
     cluster_id = 0
     with open(cluster_tsv) as f:
         for line in f:

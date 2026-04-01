@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import math
 import os
-from typing import Dict, List, Optional
 
 import h5py
 import pandas as pd
@@ -31,9 +30,9 @@ class ToxDataset(Dataset):
     def __init__(
         self,
         df: pd.DataFrame,
-        h5_paths: List[str] | str,
+        h5_paths: list[str] | str,
         *,
-        label_encoder: Optional[LabelEncoder] = None,
+        label_encoder: LabelEncoder | None = None,
         is_train: bool = True,
         label_col: str = "Protein families",
         cache_size: int = 3,
@@ -73,8 +72,8 @@ class ToxDataset(Dataset):
         if not self.h5_paths:
             raise ValueError("No HDF5 files found.")
 
-        self._open_cache: Dict[str, h5py.File] = {}
-        self._lru: List[str] = []
+        self._open_cache: dict[str, h5py.File] = {}
+        self._lru: list[str] = []
 
         # Auxiliary feature H5 files
         self.tax_h5 = h5py.File(tax_h5_path, "r") if tax_h5_path else None

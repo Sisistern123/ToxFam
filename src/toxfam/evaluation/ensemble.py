@@ -13,7 +13,7 @@ from rich.console import Console
 
 from toxfam.config import TrainConfig
 from toxfam.data.dataset import ToxDataset, analyze_data_splits
-from toxfam.training.trainer import get_device
+from toxfam.device import get_device
 from toxfam.evaluation.metrics import calculate_binary_metrics_with_scores
 from toxfam.training.strategies import DataSelector
 from toxfam.visualization.analysis import plot_binary_pr, plot_binary_roc
