@@ -75,29 +75,48 @@ Available datasets: `test_set`, `val_set`, `non_metazoan`, `unreviewed`. Results
 ```
 src/toxfam/
 ├── cli.py                    # Typer app: unified CLI entry point
-├── config.py                 # Pydantic TrainConfig model
-├── _paths.py                 # get_project_root() utility
+├── config.py                 # Pydantic TrainConfig model (effective_embedding_dim property)
+├── device.py                 # Canonical get_device() (cuda > mps > cpu)
+├── _paths.py                 # get_project_root() and directory helpers
 ├── data/                     # Data loading, preprocessing, feature generation
-│   ├── dataset.py            # ToxDataset, analyze_data_splits
-│   ├── preprocessing.py      # Full preprocessing pipeline
+│   ├── _fasta.py             # parse_fasta, read_fasta_as_dict, write_fasta
+│   ├── dataset.py            # ToxDataset (embeddings + optional CPP/HBI/taxonomy)
+│   ├── preprocessing.py      # Full pipeline incl. identity-aware splits
 │   ├── embedding.py          # ProtT5 embedding generation
 │   ├── taxonomy.py           # Taxonomy retrieval + multi-hot vector generation
-│   └── signalp.py            # SignalP6 signal peptide removal
+│   ├── signalp.py            # SignalP6 signal peptide removal
+│   ├── normalization.py      # normalize_protein_families (shared)
+│   ├── xml_parser.py         # Parse UniProt XML → DataFrame
+│   ├── label_validation.py   # MMseqs2-based family label validation
+│   ├── cpp_features.py       # CPP physicochemical profiling via AAanalysis
+│   ├── hbi_features.py       # HBI sequence similarity features via MMseqs2
+│   └── counterpart_acquisition.py  # Non-toxic structural counterpart fetching
 ├── model/                    # Neural network architectures
-│   ├── architectures.py      # ModularMLP, MultiInputMLP
+│   ├── architectures.py      # ModularMLP, MultiInputMLP, HierarchicalMLP, MultiTaskMLP
 │   ├── calibration.py        # ModelWithTemperature
+│   ├── model_config.py       # ModelConfig for deterministic architecture reconstruction
 │   └── inference.py          # Model loading + inference for evaluation
 ├── training/                 # Training loop, strategies, orchestration
-│   ├── trainer.py            # train_model, evaluate_model, get_class_weights
-│   ├── strategies.py         # DataSelector, run_*_strategy, evaluate_label_on_dataset
-│   └── orchestrator.py       # run_training(config) — main pipeline
-├── evaluation/               # Benchmark evaluation (run → store → compare)
+│   ├── trainer.py            # train_model, evaluate_model, FocalLoss, get_class_weights
+│   ├── strategies.py         # DataSelector, run_{standard,binary,combined,multitask}_strategy
+│   ├── orchestrator.py       # run_training(config) + binary metrics pipeline
+│   ├── hierarchical.py       # Two-stage hierarchical training (family → binary)
+│   └── cross_validation.py   # k-Fold CV at cluster level
+├── evaluation/               # Benchmark evaluation
 │   ├── runner.py             # run_hbi_evaluation, run_model_evaluation, compare_methods
 │   ├── hbi.py                # MMseqs2 HBI search (run_hbi_search, HBIResult)
-│   └── metrics.py            # MetricsResult, calculate_metrics, print_metrics_table
+│   ├── metrics.py            # MetricsResult + binary score metrics + threshold optimization
+│   ├── ensemble.py           # Ensemble model evaluation
+│   ├── data_quality.py       # Training data profiling for bias detection
+│   ├── hbi_binary_baseline.py # HBI binary evaluation baseline
+│   ├── comparison.py         # Full method comparison pipeline
+│   ├── confidence_routing.py # Model confidence-based routing
+│   ├── per_family_eval.py    # Per-family breakdown analysis
+│   └── external_benchmarks.py # ToxinPred2/3 integration
 └── visualization/            # Plotting utilities
     ├── plots.py              # plot_loss_curve, plot_confusion_matrix
-    └── analysis.py           # label distribution, ROC curves
+    ├── analysis.py           # label distribution, ROC curves, binary ROC/PR
+    └── publication.py        # Publication-quality figures
 ```
 
 ### Training Strategies (the central design axis)
