@@ -1,0 +1,24 @@
+# Binary strategy + CPP + HBI features (the kitchen sink)
+input_csv: "data/processed/training_data.csv"
+h5_paths_glob: "data/processed/embeddings.h5"
+output_dir: "model/model_output/binary_augmented"
+training_strategy: "binary"
+embedding_dim: 1024
+cpp_h5_path: "data/intermediate/cpp/cpp_features.h5"
+cpp_dim: 100
+hbi_h5_path: "data/intermediate/hbi/hbi_features_with_counterparts.h5"
+hbi_dim: 4
+# effective_embedding_dim = 1024 + 100 + 4 = 1128
+hidden_dims: [256, 256]
+dropout: 0.5
+optimizer: "adamw"
+weight_decay: 0.01
+learning_rate: 0.0001
+lr_scheduler: "cosine"
+warmup_epochs: 5
+batch_size: 64
+num_epochs: 200
+early_stopping_patience: 10
+early_stopping_metric: "mcc"
+max_grad_norm: 1.0
+seed: 42

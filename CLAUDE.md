@@ -87,10 +87,8 @@ src/toxfam/
 │   ├── signalp.py            # SignalP6 signal peptide removal
 │   ├── normalization.py      # normalize_protein_families (shared)
 │   ├── xml_parser.py         # Parse UniProt XML → DataFrame
-│   ├── label_validation.py   # MMseqs2-based family label validation
 │   ├── cpp_features.py       # CPP physicochemical profiling via AAanalysis
-│   ├── hbi_features.py       # HBI sequence similarity features via MMseqs2
-│   └── counterpart_acquisition.py  # Non-toxic structural counterpart fetching
+│   └── hbi_features.py       # HBI sequence similarity features via MMseqs2
 ├── model/                    # Neural network architectures
 │   ├── architectures.py      # ModularMLP, MultiInputMLP, HierarchicalMLP, MultiTaskMLP
 │   ├── calibration.py        # ModelWithTemperature
@@ -98,7 +96,7 @@ src/toxfam/
 │   └── inference.py          # Model loading + inference for evaluation
 ├── training/                 # Training loop, strategies, orchestration
 │   ├── trainer.py            # train_model, evaluate_model, FocalLoss, get_class_weights
-│   ├── strategies.py         # DataSelector, run_{standard,binary,combined,multitask}_strategy
+│   ├── strategies.py         # DataSelector, MultiTaskJointWrapper, run_{standard,binary,combined,multitask}_strategy
 │   ├── orchestrator.py       # run_training(config) + binary metrics pipeline
 │   ├── hierarchical.py       # Two-stage hierarchical training (family → binary)
 │   └── cross_validation.py   # k-Fold CV at cluster level
@@ -107,16 +105,10 @@ src/toxfam/
 │   ├── hbi.py                # MMseqs2 HBI search (run_hbi_search, HBIResult)
 │   ├── metrics.py            # MetricsResult + binary score metrics + threshold optimization
 │   ├── ensemble.py           # Ensemble model evaluation
-│   ├── data_quality.py       # Training data profiling for bias detection
-│   ├── hbi_binary_baseline.py # HBI binary evaluation baseline
-│   ├── comparison.py         # Full method comparison pipeline
-│   ├── confidence_routing.py # Model confidence-based routing
-│   ├── per_family_eval.py    # Per-family breakdown analysis
-│   └── external_benchmarks.py # ToxinPred2/3 integration
+│   └── data_quality.py       # Training data profiling for bias detection
 └── visualization/            # Plotting utilities
     ├── plots.py              # plot_loss_curve, plot_confusion_matrix
-    ├── analysis.py           # label distribution, ROC curves, binary ROC/PR
-    └── publication.py        # Publication-quality figures
+    └── analysis.py           # label distribution, ROC curves, binary ROC/PR
 ```
 
 ### Training Strategies (the central design axis)
