@@ -25,6 +25,8 @@ from toxfam.model.architectures import (
     MultiTaskMultiInputMLP,
 )
 from toxfam.training.trainer import (
+    FocalLoss,
+    _LinearWarmupCosineScheduler,
     _forward_model,
     evaluate_model,
     get_device,
@@ -302,19 +304,57 @@ def run_multitask_strategy(
         device=device,
     )
 
-    family_loss_fn = torch.nn.CrossEntropyLoss(weight=w_tensor)
-    binary_loss_fn = torch.nn.CrossEntropyLoss(weight=binary_weights)
+    # --- Loss functions (with focal loss support) ---
+    if config.use_focal_loss:
+        family_loss_fn = FocalLoss(
+            gamma=config.focal_loss_gamma,
+            weight=w_tensor,
+            label_smoothing=config.label_smoothing,
+        )
+        binary_loss_fn = FocalLoss(
+            gamma=config.focal_loss_gamma,
+            weight=binary_weights,
+            label_smoothing=config.label_smoothing,
+        )
+        console.print(
+            f"Loss: [bold]Focal Loss[/bold] (gamma={config.focal_loss_gamma})"
+        )
+    else:
+        family_loss_fn = nn.CrossEntropyLoss(
+            weight=w_tensor, label_smoothing=config.label_smoothing,
+        )
+        binary_loss_fn = nn.CrossEntropyLoss(
+            weight=binary_weights, label_smoothing=config.label_smoothing,
+        )
 
-    optimizer = torch.optim.AdamW(
-        model.parameters(),
-        lr=config.learning_rate,
-        weight_decay=config.weight_decay,
-    )
+    # --- Optimizer ---
+    if config.optimizer == "adamw":
+        optimizer = torch.optim.AdamW(
+            model.parameters(),
+            lr=config.learning_rate,
+            weight_decay=config.weight_decay,
+        )
+    else:
+        optimizer = torch.optim.Adam(
+            model.parameters(), lr=config.learning_rate,
+        )
+
+    # --- LR Scheduler ---
+    scheduler = None
+    if config.lr_scheduler == "cosine":
+        scheduler = _LinearWarmupCosineScheduler(
+            optimizer,
+            warmup_epochs=config.warmup_epochs,
+            total_epochs=config.num_epochs,
+        )
 
     alpha = config.multitask_family_weight
     beta = config.multitask_binary_weight
+    console.print(
+        f"Loss weights: family={alpha}, binary={beta}"
+    )
 
-    best_mcc = float("-inf")
+    best_binary_mcc = float("-inf")
     patience_counter = 0
     train_losses = []
     val_losses = []
@@ -338,6 +378,11 @@ def run_multitask_strategy(
             loss = alpha * family_loss_fn(fam_out, labels) + beta * binary_loss_fn(
                 bin_out, binary_labels
             )
+
+            if torch.isnan(loss):
+                console.print("[bold red]Stopping: Loss became NaN.[/bold red]")
+                return model
+
             loss.backward()
             if config.max_grad_norm:
                 nn.utils.clip_grad_norm_(model.parameters(), config.max_grad_norm)
@@ -347,31 +392,59 @@ def run_multitask_strategy(
         train_loss = total_loss / len(train_loader)
         train_losses.append(train_loss)
 
-        # Validation using family wrapper
-        family_wrapper = _MultiTaskFamilyWrapper(model)
-        val_metrics, _, _, _ = evaluate_model(
-            family_wrapper,
-            DataSelector(val_loader, ds_mode),
-            family_loss_fn,
-            device,
-        )
-        val_mcc = val_metrics["Validation_mcc"]
-        val_loss = val_metrics["Validation_loss"]
+        if scheduler is not None:
+            scheduler.step()
+
+        # Validation — evaluate BOTH heads
+        # We can't use evaluate_model for the binary head directly because
+        # the DataLoader yields 38-class family labels, not binary labels.
+        model.eval()
+        all_fam_preds, all_bin_preds, all_labels_np = [], [], []
+        val_total_loss = 0.0
+        with torch.no_grad():
+            for features, labels in DataSelector(val_loader, ds_mode):
+                labels = labels.to(device)
+                fam_out, bin_out = _forward_model(model, features, device)
+                b_labels = binary_mapping[labels]
+
+                # Combined val loss (same as training loss)
+                v_loss = alpha * family_loss_fn(fam_out, labels) + beta * binary_loss_fn(bin_out, b_labels)
+                val_total_loss += v_loss.item()
+
+                all_fam_preds.extend(fam_out.argmax(dim=1).cpu().numpy())
+                all_bin_preds.extend(bin_out.argmax(dim=1).cpu().numpy())
+                all_labels_np.extend(labels.cpu().numpy())
+
+        from sklearn.metrics import matthews_corrcoef
+        import numpy as np
+
+        val_loss = val_total_loss / len(val_loader)
         val_losses.append(val_loss)
+        bin_labels_np = binary_mapping.cpu()[torch.tensor(all_labels_np)].numpy()
+        val_binary_mcc = float(matthews_corrcoef(bin_labels_np, all_bin_preds))
+        val_family_mcc = float(matthews_corrcoef(all_labels_np, all_fam_preds))
 
+        current_lr = optimizer.param_groups[0]["lr"]
         console.print(
-            f"Epoch {epoch + 1}: Loss={train_loss:.4f}, Val MCC={val_mcc:.4f}"
+            f"Epoch {epoch + 1}: Loss={train_loss:.4f}, "
+            f"Val Binary MCC={val_binary_mcc:.4f}, "
+            f"Val Family MCC={val_family_mcc:.4f}, LR={current_lr:.2e}"
         )
 
-        if val_mcc > best_mcc:
-            best_mcc = val_mcc
+        # Early stopping on binary MCC
+        if val_binary_mcc > best_binary_mcc:
+            best_binary_mcc = val_binary_mcc
             patience_counter = 0
             torch.save(model.state_dict(), best_model_path)
         else:
             patience_counter += 1
 
         if patience_counter >= config.early_stopping_patience:
-            console.print("[yellow]Early stopping triggered.[/yellow]")
+            console.print(
+                f"[bold yellow]Early stopping triggered. "
+                f"Binary MCC did not improve for "
+                f"{config.early_stopping_patience} epochs.[/bold yellow]"
+            )
             break
 
     # Load best

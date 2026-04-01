@@ -31,6 +31,7 @@ early_stopping_metric: "mcc"
 max_grad_norm: 1.0
 seed: 42
 
-# Multitask loss weights
+# Multitask loss weights (binary upweighted to compensate for entropy
+# imbalance: 38-class CE ~3.6 nats vs 2-class CE ~0.7 nats)
 multitask_family_weight: 1.0
-multitask_binary_weight: 1.0
+multitask_binary_weight: 3.0
