@@ -1,0 +1,23 @@
+# One Embedding experiment: baseline mean-pooled 1024d (control)
+input_csv: "data/processed/one_embedding/training_data_balanced.csv"
+h5_path: "data/processed/one_embedding/baseline_1024.h5"
+output_dir: "model/model_output/oe_baseline"
+
+training_strategy: "binary"
+
+embedding_dim: 1024
+hidden_dims: [256, 256]
+dropout: 0.5
+
+optimizer: "adamw"
+weight_decay: 0.01
+learning_rate: 0.0001
+lr_scheduler: "cosine"
+warmup_epochs: 5
+
+batch_size: 64
+num_epochs: 200
+early_stopping_patience: 10
+early_stopping_metric: "mcc"
+max_grad_norm: 1.0
+seed: 42
