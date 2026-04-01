@@ -29,7 +29,7 @@ from sklearn.preprocessing import label_binarize
 
 console = Console()
 
-NONTOXIN_LABELS: set[str] = {"nontox", "nontoxic"}
+NONTOXIN_LABELS: set[str] = {"nontox", "nontoxic", "nontoxin"}
 
 
 @dataclass

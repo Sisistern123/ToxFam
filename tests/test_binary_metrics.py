@@ -26,9 +26,13 @@ class TestToBinaryClass:
 
 
 class TestNontoxinLabels:
-    def test_both_variants(self):
+    def test_all_variants(self):
         assert "nontox" in NONTOXIN_LABELS
         assert "nontoxic" in NONTOXIN_LABELS
+        assert "nontoxin" in NONTOXIN_LABELS
+
+    def test_nontoxin_maps_correctly(self):
+        assert to_binary_class("nontoxin") == "nontoxin"
 
 
 class TestCalculateBinaryMetricsWithScores:
