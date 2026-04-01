@@ -438,7 +438,6 @@ def eval_binary(
     import json as _json
 
     import pandas as pd
-    import torch
 
     from toxfam.config import TrainConfig
     from toxfam.data.dataset import ToxDataset, analyze_data_splits
@@ -446,13 +445,11 @@ def eval_binary(
         calculate_binary_metrics_with_scores,
         find_optimal_threshold,
     )
-    from toxfam.model.architectures import ModularMLP, MultiInputMLP
-    from toxfam.model.calibration import ModelWithTemperature
+    from toxfam.model.inference import load_calibrated_model
     from toxfam.training.orchestrator import (
         _compute_binary_labels,
         _compute_p_toxic,
     )
-    from toxfam.training.trainer import get_device
     from toxfam.visualization.analysis import plot_binary_pr, plot_binary_roc
 
     config = TrainConfig.from_yaml(model_dir / "config.yaml")
@@ -464,39 +461,7 @@ def eval_binary(
     h5_paths = [str(p) for p in config.h5_paths]
     train_ds = ToxDataset(train_df, h5_paths, is_train=True)
 
-    # Load calibrated model
-    device = get_device()
-    calibrated_path = model_dir / "models" / "best_model_calibrated.pt"
-    if not calibrated_path.exists():
-        typer.echo(f"Calibrated model not found at {calibrated_path}", err=True)
-        raise typer.Exit(code=1)
-
-    class_map_path = model_dir / "class_indices.json"
-    with open(class_map_path) as f:
-        class_map = _json.load(f)
-    num_classes = len(class_map)
-
-    if config.training_strategy == "combined":
-        base_model = MultiInputMLP(
-            embed_dim=config.effective_embedding_dim,
-            tax_dim=config.tax_dim,
-            hidden_dims=config.hidden_dims,
-            num_classes=num_classes,
-            dropout=config.dropout,
-        )
-    else:
-        base_model = ModularMLP(
-            input_dim=config.effective_embedding_dim,
-            hidden_dims=config.hidden_dims,
-            num_classes=num_classes,
-            dropout=config.dropout,
-        )
-
-    scaled_model = ModelWithTemperature(base_model, device)
-    scaled_model.load_state_dict(
-        torch.load(calibrated_path, map_location=device, weights_only=True)
-    )
-    scaled_model.eval()
+    scaled_model, _, _ = load_calibrated_model(model_dir)
 
     label_col = "Protein families"
     val_y_true = _compute_binary_labels(val_df, label_col)

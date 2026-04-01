@@ -30,6 +30,7 @@ from rich.table import Table
 from sklearn.preprocessing import MultiLabelBinarizer
 
 from toxfam._paths import get_project_root, raw_dir, intermediate_dir, processed_dir
+from toxfam.data.normalization import normalize_protein_families  # noqa: F401
 
 console = Console()
 
@@ -64,62 +65,6 @@ def fasta_to_dataframe(fasta_file: os.PathLike | str) -> pd.DataFrame:
 
 def sanitize_filename(name: str) -> str:
     return re.sub(r"[^a-zA-Z0-9_-]", "_", name)
-
-
-# ---------- Family normalization ----------
-
-_CONOTOXIN_REPLACEMENTS = {
-    "I1 superfamily": "Conotoxin I1 superfamily",
-    "O1 superfamily": "Conotoxin O1 superfamily",
-    "O2 superfamily": "Conotoxin O2 superfamily",
-    "E superfamily": "Conotoxin E superfamily",
-    "F superfamily": "Conotoxin F superfamily",
-}
-
-_FAMILY_REGEX_MAPPING = {
-    r"Conotoxin.*": "Conotoxin family",
-    r"Neurotoxin.*": "Neurotoxin family",
-    r"Scoloptoxin.*|Scolopendra.*": "Scoloptoxin family",
-    r"Caterpillar.*": "Caterpillar family",
-    r"Teretoxin.*": "Teretoxin family",
-    r"Limacoditoxin.*": "Limacoditoxin family",
-    r"Scutigerotoxin.*": "Scutigerotoxin family",
-    r"Cationic peptide.*": "Cationic peptide family",
-    r"Formicidae venom.*": "Formicidae venom family",
-    r"Bradykinin-potentiating peptide family|Natriuretic peptide family|Natriuretic": "Natriuretic, Bradykinin potentiating peptide family",
-    r".*phospholipase.*|.*Phospholipase.*": "Phospholipase family",
-}
-
-
-def normalize_protein_families(
-    df: pd.DataFrame,
-    column: str = "Protein families",
-    min_count: int = 10,
-) -> pd.DataFrame:
-    """Normalize protein family labels.
-
-    Splits multi-annotation strings, applies conotoxin renaming and regex
-    mappings, and collapses families with fewer than *min_count* members to
-    ``"other"``.
-    """
-    df = df.copy()
-
-    df[column] = df[column].str.split(";").str[0]
-    df[column] = df[column].str.split(",").str[0]
-
-    df[column] = df[column].replace(_CONOTOXIN_REPLACEMENTS)
-
-    for pattern, replacement in _FAMILY_REGEX_MAPPING.items():
-        df[column] = df[column].str.replace(pattern, replacement, regex=True)
-
-    known_families = set(_FAMILY_REGEX_MAPPING.values())
-    counts = df[column].value_counts()
-    df[column] = df[column].where(
-        df[column].isin(known_families) | (df[column].map(counts) >= min_count),
-        "other",
-    )
-
-    return df
 
 
 # ---------- Preprocessing ----------

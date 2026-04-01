@@ -15,22 +15,15 @@ import pandas as pd
 import torch
 from rich.console import Console
 
+from toxfam.device import get_device
 from toxfam.model.model_config import ModelConfig
 
 console = Console()
 
 
-def get_device() -> str:
-    if torch.backends.mps.is_available():
-        return "mps"
-    if torch.cuda.is_available():
-        return "cuda"
-    return "cpu"
-
-
 def load_calibrated_model(
     model_dir: str | Path,
-    device: str | None = None,
+    device: str | torch.device | None = None,
 ):
     """Load a calibrated model from a training output directory.
 
@@ -84,6 +77,10 @@ def run_inference(
     """Run model inference on a DataFrame of proteins.
 
     Returns DataFrame with columns: identifier, predicted_label, confidence.
+
+    Note: For MultiInputMLP models, taxonomy vectors are set to zero.
+    For models trained with auxiliary features (CPP, HBI), use the
+    evaluation runner (``toxfam eval model``) which loads full feature sets.
     """
     device = get_device()
     model, model_config, idx_to_label = load_calibrated_model(model_dir, device=device)

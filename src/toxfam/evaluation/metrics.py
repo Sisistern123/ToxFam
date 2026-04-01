@@ -13,7 +13,7 @@ ProtTucker convention (Heinzinger et al. 2022).
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Dict
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -203,7 +203,7 @@ def calculate_binary_metrics_with_scores(
     y_scores_toxic: np.ndarray,
     *,
     threshold: float = 0.5,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Binary metrics using toxic class probability scores.
 
     Args:

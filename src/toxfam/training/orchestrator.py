@@ -48,21 +48,7 @@ def _compute_p_toxic(
     """Compute P(toxic) for each sample by summing toxic-class probabilities."""
     from toxfam.evaluation.metrics import NONTOXIN_LABELS
 
-    ds = ToxDataset(
-        dataset_df,
-        [str(p) for p in config.h5_paths],
-        label_encoder=label_encoder,
-        is_train=False,
-        label_col=label_col,
-        tax_h5_path=str(config.tax_h5_path) if config.tax_h5_path else None,
-        **_extra_dataset_kwargs(config),
-    )
-    loader = DataLoader(ds, batch_size=config.batch_size, shuffle=False)
-
-    strategy = config.training_strategy
-    selector = DataSelector(
-        loader, "both" if strategy == "combined" else "emb_only"
-    )
+    ds, selector = build_eval_loader(dataset_df, config, label_encoder, label_col)
 
     device = get_device()
     model = model.to(device)
@@ -164,6 +150,29 @@ def _extra_dataset_kwargs(config: TrainConfig) -> dict:
     return kwargs
 
 
+def build_eval_loader(
+    dataset_df, config: TrainConfig, label_encoder, label_col="Protein families",
+):
+    """Build a ToxDataset + DataLoader + DataSelector for evaluation.
+
+    Returns (dataset, selector) — caller must call dataset.close() when done.
+    """
+    ds = ToxDataset(
+        dataset_df,
+        [str(p) for p in config.h5_paths],
+        label_encoder=label_encoder,
+        is_train=False,
+        label_col=label_col,
+        tax_h5_path=str(config.tax_h5_path) if config.tax_h5_path else None,
+        **_extra_dataset_kwargs(config),
+    )
+    loader = DataLoader(ds, batch_size=config.batch_size, shuffle=False)
+    selector = DataSelector(
+        loader, "both" if config.training_strategy == "combined" else "emb_only",
+    )
+    return ds, selector
+
+
 def run_training(config: TrainConfig) -> None:
     out_root = Path(config.output_dir)
     out_root.mkdir(parents=True, exist_ok=True)
@@ -260,7 +269,7 @@ def run_training(config: TrainConfig) -> None:
         architecture="MultiInputMLP"
         if config.training_strategy == "combined"
         else "ModularMLP",
-        embedding_dim=config.embedding_dim,
+        embedding_dim=config.effective_embedding_dim,
         hidden_dims=config.hidden_dims,
         num_classes=num_classes,
         dropout=config.dropout,

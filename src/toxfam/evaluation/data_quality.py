@@ -7,13 +7,16 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+from rich.console import Console
+
+console = Console()
 
 
 def profile_training_data(
-    input_csv: Path,
+    input_csv: str | Path,
     *,
-    h5_path: Path | None = None,
-    output_dir: Path = Path("data/profile"),
+    h5_path: str | Path | None = None,
+    output_dir: str | Path = Path("data/profile"),
     sample_size: int = 500,
 ) -> dict:
     """Profile training data for potential biases.
@@ -155,11 +158,11 @@ def profile_training_data(
     with open(report_path, "w") as f:
         json.dump(report, f, indent=4, default=str)
 
-    print(f"Data profile saved to {report_path}")
-    print(f"  Total samples: {len(df)}")
-    print(f"  Toxic: {tox_count}, Nontoxic: {nontox_count}")
+    console.print(f"Data profile saved to {report_path}")
+    console.print(f"  Total samples: {len(df)}")
+    console.print(f"  Toxic: {tox_count}, Nontoxic: {nontox_count}")
     if bias_warnings:
         for w in bias_warnings:
-            print(f"  WARNING: {w}")
+            console.print(f"  WARNING: {w}")
 
     return report

@@ -89,7 +89,7 @@ class _ECELoss(nn.Module):
         accuracies = predictions.eq(labels)
 
         ece = torch.zeros(1, device=logits.device)
-        bin_boundaries = torch.linspace(0, 1, self.n_bins + 1)
+        bin_boundaries = torch.linspace(0, 1, self.n_bins + 1, device=logits.device)
 
         for bin_lower, bin_upper in zip(bin_boundaries[:-1], bin_boundaries[1:]):
             in_bin = confidences.gt(bin_lower.item()) * confidences.le(bin_upper.item())

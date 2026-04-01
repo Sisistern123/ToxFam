@@ -34,7 +34,7 @@ def run_cpp_pipeline(
     """Generate global CPP features (tox vs nontox) and store in HDF5.
 
     Args:
-        training_csv: Path to hierarchical_training_data.csv (must have
+        training_csv: Path to training_data.csv (must have
             'identifier', 'Sequence', 'is_toxic' columns).
         output_h5: Where to write the H5 file. Defaults to
             data/intermediate/cpp/cpp_features.h5.

@@ -19,9 +19,12 @@ import h5py
 import numpy as np
 import pandas as pd
 from pymmseqs.commands import createdb, search
+from rich.console import Console
 
 from toxfam._paths import get_project_root
 from toxfam.evaluation.metrics import to_binary_class
+
+console = Console()
 
 
 def _write_fasta(df: pd.DataFrame, path: Path) -> None:
@@ -138,13 +141,13 @@ def compute_hbi_features(
 
     output_h5.parent.mkdir(parents=True, exist_ok=True)
 
-    print("Loading data...")
+    console.print("Loading data...")
     df = pd.read_csv(training_csv)
     train_df = df[df["Split"] == "train"].copy()
     val_df = df[df["Split"] == "val"].copy()
     test_df = df[df["Split"] == "test"].copy()
 
-    print(f"  Train: {len(train_df)}, Val: {len(val_df)}, Test: {len(test_df)}")
+    console.print(f"  Train: {len(train_df)}, Val: {len(val_df)}, Test: {len(test_df)}")
 
     # Build binary label map from family labels
     label_map = {}
@@ -160,7 +163,7 @@ def compute_hbi_features(
         _write_fasta(train_df, train_fasta)
 
         # --- Train: search train vs train (leave-one-out) ---
-        print("\nComputing train HBI features (leave-one-out)...")
+        console.print("\nComputing train HBI features (leave-one-out)...")
         train_work = tmpdir / "train_work"
         train_work.mkdir()
         train_hits = _run_mmseqs_search(train_fasta, train_fasta, train_work)
@@ -170,10 +173,10 @@ def compute_hbi_features(
             label_map,
             exclude_self=True,
         )
-        print(f"  Train queries with hits: {(train_features[:, 0] > 0).sum()}/{len(train_df)}")
+        console.print(f"  Train queries with hits: {(train_features[:, 0] > 0).sum()}/{len(train_df)}")
 
         # --- Val: search val vs train ---
-        print("Computing val HBI features...")
+        console.print("Computing val HBI features...")
         if len(val_df) > 0:
             val_fasta = tmpdir / "val.fasta"
             _write_fasta(val_df, val_fasta)
@@ -186,12 +189,12 @@ def compute_hbi_features(
                 label_map,
                 exclude_self=False,
             )
-            print(f"  Val queries with hits: {(val_features[:, 0] > 0).sum()}/{len(val_df)}")
+            console.print(f"  Val queries with hits: {(val_features[:, 0] > 0).sum()}/{len(val_df)}")
         else:
             val_features = np.zeros((0, 4), dtype=np.float32)
 
         # --- Test: search test vs train ---
-        print("Computing test HBI features...")
+        console.print("Computing test HBI features...")
         test_fasta = tmpdir / "test.fasta"
         _write_fasta(test_df, test_fasta)
         test_work = tmpdir / "test_work"
@@ -203,10 +206,10 @@ def compute_hbi_features(
             label_map,
             exclude_self=False,
         )
-        print(f"  Test queries with hits: {(test_features[:, 0] > 0).sum()}/{len(test_df)}")
+        console.print(f"  Test queries with hits: {(test_features[:, 0] > 0).sum()}/{len(test_df)}")
 
     # Save to H5
-    print(f"\nSaving HBI features to {output_h5}...")
+    console.print(f"\nSaving HBI features to {output_h5}...")
     with h5py.File(str(output_h5), "w") as f:
         for split_name, split_df, features in [
             ("train", train_df, train_features),
@@ -217,6 +220,6 @@ def compute_hbi_features(
                 f.create_dataset(ident, data=features[i])
 
     total = len(train_df) + len(val_df) + len(test_df)
-    print(f"Saved {total} feature vectors (shape: 4) to {output_h5}")
+    console.print(f"Saved {total} feature vectors (shape: 4) to {output_h5}")
 
     return output_h5

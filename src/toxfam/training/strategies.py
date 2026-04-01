@@ -8,13 +8,11 @@ import pandas as pd
 import torch
 from rich.console import Console
 from sklearn.metrics import classification_report
-from torch.utils.data import DataLoader
 try:
     import wandb
 except ImportError:
     wandb = None
 
-from toxfam.data.dataset import ToxDataset
 from toxfam.model.architectures import (
     ModularMLP,
     MultiInputMLP,
@@ -143,26 +141,9 @@ def evaluate_label_on_dataset(
     config: TrainConfig,
 ) -> dict:
     """Evaluate the model on a dataframe. Returns the metrics dict."""
-    strategy = config.training_strategy
+    from toxfam.training.orchestrator import build_eval_loader
 
-    from toxfam.training.orchestrator import _extra_dataset_kwargs
-
-    extra_kwargs = _extra_dataset_kwargs(config)
-
-    ds = ToxDataset(
-        dataset_df,
-        [str(p) for p in config.h5_paths],
-        label_encoder=label_encoder,
-        is_train=False,
-        label_col=label_col,
-        tax_h5_path=str(config.tax_h5_path) if config.tax_h5_path else None,
-        **extra_kwargs,
-    )
-    loader = DataLoader(ds, batch_size=config.batch_size, shuffle=False)
-
-    selector = DataSelector(
-        loader, "both" if strategy == "combined" else "emb_only"
-    )
+    ds, selector = build_eval_loader(dataset_df, config, label_encoder, label_col)
 
     device = get_device()
     model = model.to(device)

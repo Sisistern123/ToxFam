@@ -9,14 +9,16 @@ import numpy as np
 import pandas as pd
 import torch
 import torch.nn.functional as F
+from rich.console import Console
 
 from toxfam.config import TrainConfig
 from toxfam.data.dataset import ToxDataset, analyze_data_splits
 from toxfam.training.trainer import get_device
 from toxfam.evaluation.metrics import calculate_binary_metrics_with_scores
-from toxfam.model.calibration import ModelWithTemperature
 from toxfam.training.strategies import DataSelector
 from toxfam.visualization.analysis import plot_binary_pr, plot_binary_roc
+
+console = Console()
 
 
 def evaluate_ensemble(
@@ -93,9 +95,9 @@ def evaluate_ensemble(
         le = LabelEncoder()
         le.classes_ = np.array(classes_i)
 
-        print(f"Loading model {i + 1}/{len(model_dirs)} from {md} (strategy={strategy}, classes={len(classes_i)})")
+        console.print(f"Loading model {i + 1}/{len(model_dirs)} from {md} (strategy={strategy}, classes={len(classes_i)})")
 
-        model = _load_calibrated_model(md, cfg, len(classes_i), device)
+        model = _load_calibrated_model(md, device)
         probs = _get_model_probs(model, df_model, label_col, le, cfg, device)
 
         # Derive p_toxic from this model's softmax output
@@ -107,7 +109,7 @@ def evaluate_ensemble(
             p_toxic_i = 1.0 - probs[:, nontox_idx]
 
         all_p_toxic.append(p_toxic_i)
-        print(f"  p_toxic range: [{p_toxic_i.min():.4f}, {p_toxic_i.max():.4f}]")
+        console.print(f"  p_toxic range: [{p_toxic_i.min():.4f}, {p_toxic_i.max():.4f}]")
 
     # Ensemble at binary probability level
     stacked = np.stack(all_p_toxic, axis=0)  # (n_models, n_samples)
@@ -151,7 +153,7 @@ def evaluate_ensemble(
         plots_dir / "ensemble_binary_pr.png",
     )
 
-    print(
+    console.print(
         f"Ensemble ({method}, {len(model_dirs)} models): "
         f"ROC-AUC={binary_metrics['roc_auc']:.4f}, "
         f"PR-AUC={binary_metrics['pr_auc']:.4f}, "
@@ -162,37 +164,12 @@ def evaluate_ensemble(
 
 
 def _load_calibrated_model(
-    model_dir: Path, config: TrainConfig, num_classes: int, device: torch.device,
+    model_dir: Path, device: torch.device,
 ) -> torch.nn.Module:
-    """Load a calibrated model from a model directory."""
-    strategy = config.training_strategy
-    calibrated_path = model_dir / "best_model_calibrated.pt"
+    """Load a calibrated model from a model directory using ModelConfig."""
+    from toxfam.model.inference import load_calibrated_model
 
-    if strategy == "combined":
-        from toxfam.model.architectures import MultiInputMLP
-
-        base = MultiInputMLP(
-            embed_dim=config.effective_embedding_dim,
-            tax_dim=config.tax_dim,
-            hidden_dims=config.hidden_dims,
-            num_classes=num_classes,
-            dropout=config.dropout,
-        )
-    else:
-        from toxfam.model.architectures import ModularMLP
-
-        base = ModularMLP(
-            input_dim=config.effective_embedding_dim,
-            hidden_dims=config.hidden_dims,
-            num_classes=num_classes,
-            dropout=config.dropout,
-        )
-
-    state_dict = torch.load(calibrated_path, map_location=device, weights_only=True)
-    model = ModelWithTemperature(base, device)
-    model.load_state_dict(state_dict)
-    model.to(device)
-    model.eval()
+    model, _, _ = load_calibrated_model(model_dir, device=device)
     return model
 
 
