@@ -18,16 +18,9 @@ from rich.progress import (
 )
 from transformers import T5EncoderModel, T5Tokenizer
 
+from toxfam.device import get_device  # re-export for backward compat
+
 console = Console()
-
-
-def get_device():
-    if torch.cuda.is_available():
-        return torch.device("cuda")
-    elif torch.backends.mps.is_available():
-        return torch.device("mps")
-    else:
-        return torch.device("cpu")
 
 
 def get_T5_model(model_dir, transformer_link, device):

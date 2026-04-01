@@ -379,11 +379,14 @@ def run_all_external_benchmarks(
 
     # TOXIFY (reimplemented) — Atchley GRU trained from scratch
     print("\n--- TOXIFY (reimplemented, Atchley GRU) ---")
-    from toxfam.evaluation.toxify_benchmark import run_toxify_benchmark
+    try:
+        from toxfam.evaluation.toxify_benchmark import run_toxify_benchmark
 
-    m_tox = run_toxify_benchmark(test_df, y_true, output_dir)
-    if m_tox:
-        all_results["toxify"] = m_tox
+        m_tox = run_toxify_benchmark(test_df, y_true, output_dir)
+        if m_tox:
+            all_results["toxify"] = m_tox
+    except ImportError:
+        print("  Skipped: toxify_benchmark module not available")
 
     # Summary
     print("\n" + "=" * 60)

@@ -243,13 +243,14 @@ def _get_model_probs(
     device: torch.device,
 ) -> np.ndarray:
     """Get softmax probabilities from a model on test data."""
+    from toxfam.training.orchestrator import _extra_dataset_kwargs
+
     h5_paths = [str(p) for p in config.h5_paths]
-    cpp_h5 = str(config.cpp_h5_path) if config.cpp_h5_path else None
     tax_h5 = str(config.tax_h5_path) if config.tax_h5_path else None
 
     ds = ToxDataset(
         test_df, h5_paths, label_encoder=label_encoder, is_train=False,
-        label_col=label_col, tax_h5_path=tax_h5, cpp_h5_path=cpp_h5,
+        label_col=label_col, tax_h5_path=tax_h5, **_extra_dataset_kwargs(config),
     )
     from torch.utils.data import DataLoader
 

@@ -12,6 +12,7 @@ import torch.optim as optim
 from rich.console import Console
 from sklearn.metrics import accuracy_score, matthews_corrcoef
 from sklearn.preprocessing import label_binarize
+from toxfam.device import get_device  # re-export for backward compatibility
 try:
     import wandb
 except ImportError:
@@ -26,15 +27,6 @@ console = Console()
 # ---------------------------------------------------------------------------
 # Utilities
 # ---------------------------------------------------------------------------
-
-
-def get_device() -> torch.device:
-    """Unified device selection: MPS > CUDA > CPU."""
-    if torch.backends.mps.is_available():
-        return torch.device("mps")
-    if torch.cuda.is_available():
-        return torch.device("cuda")
-    return torch.device("cpu")
 
 
 def set_seed(seed: int | None) -> None:

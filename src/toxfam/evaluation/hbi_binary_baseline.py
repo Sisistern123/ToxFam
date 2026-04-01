@@ -31,11 +31,10 @@ from toxfam.evaluation.metrics import (
 
 
 def _write_fasta(df: pd.DataFrame, path: Path) -> None:
-    """Write a FASTA file from a DataFrame with identifier and Sequence columns."""
-    lines = []
-    for ident, seq in zip(df["identifier"], df["Sequence"]):
-        lines.append(f">{ident}\n{seq}\n")
-    path.write_text("".join(lines))
+    """Write FASTA from DataFrame — delegates to shared helper."""
+    from toxfam.data._fasta import write_fasta
+
+    write_fasta(df, path)
 
 
 def _run_mmseqs2_search(

@@ -74,18 +74,10 @@ def _train_stage2(
     train_df["binary_label"] = train_df["Protein families"].apply(to_binary_class)
     val_df["binary_label"] = val_df["Protein families"].apply(to_binary_class)
 
-    tax_h5 = str(config.tax_h5_path) if config.tax_h5_path else None
+    from toxfam.training.orchestrator import _extra_dataset_kwargs
 
-    # Build auxiliary feature kwargs
-    extra_kwargs: dict = {}
-    if config.cpp_h5_path:
-        extra_kwargs["cpp_h5_path"] = str(config.cpp_h5_path)
-    if config.hbi_h5_path:
-        extra_kwargs["hbi_h5_path"] = str(config.hbi_h5_path)
-    if config.include_length:
-        extra_kwargs["include_length"] = True
-    if config.include_venom_indicator:
-        extra_kwargs["include_venom_indicator"] = True
+    tax_h5 = str(config.tax_h5_path) if config.tax_h5_path else None
+    extra_kwargs = _extra_dataset_kwargs(config)
 
     train_ds = ToxDataset(
         train_df, h5_paths, is_train=True, label_col="binary_label",
