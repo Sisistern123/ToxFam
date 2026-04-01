@@ -20,7 +20,7 @@ from toxfam.data.dataset import ToxDataset, analyze_data_splits
 from toxfam.model.calibration import ModelWithTemperature
 from toxfam.training.strategies import (
     DataSelector,
-    _MultiTaskFamilyWrapper,
+    MultiTaskJointWrapper,
     evaluate_label_on_dataset,
     run_binary_strategy,
     run_combined_strategy,
@@ -327,8 +327,14 @@ def run_training(config: TrainConfig) -> None:
             train_loader, val_loader, w_tensor, train_ds.num_classes,
             train_df, out_root, config,
         )
-        # Wrap for family evaluation
-        final_model = _MultiTaskFamilyWrapper(final_model)
+        # Wrap for joint inference: binary head controls toxic/nontoxin boundary,
+        # family head picks specific family (renormalized over toxic families).
+        from toxfam.evaluation.metrics import NONTOXIN_LABELS
+        nontoxin_indices = [
+            i for i, c in enumerate(train_ds.le.classes_)
+            if c.lower() in NONTOXIN_LABELS
+        ]
+        final_model = MultiTaskJointWrapper(final_model, nontoxin_indices)
     elif strategy == "combined":
         final_model = run_combined_strategy(
             train_loader, val_loader, w_tensor, train_ds.num_classes, out_root, config
