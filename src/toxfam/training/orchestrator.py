@@ -89,6 +89,22 @@ def run_training(config: TrainConfig) -> None:
         json.dump(class_indices, f, indent=4)
     console.print(f"Saved class mapping to {class_json_path}")
 
+    # Save model config for deterministic architecture reconstruction at inference
+    from toxfam.model.model_config import ModelConfig
+
+    num_classes = len(class_indices)
+    model_config = ModelConfig(
+        architecture="MultiInputMLP"
+        if config.training_strategy == "combined"
+        else "ModularMLP",
+        embedding_dim=config.embedding_dim,
+        hidden_dims=config.hidden_dims,
+        num_classes=num_classes,
+        dropout=config.dropout,
+        tax_dim=config.tax_dim if config.training_strategy == "combined" else None,
+    )
+    model_config.save(out_root / "model_config.json")
+
     val_ds = ToxDataset(
         val_df,
         h5_paths,

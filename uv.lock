@@ -3190,6 +3190,7 @@ dependencies = [
 dev = [
     { name = "kaleido" },
     { name = "plotly" },
+    { name = "pytest" },
     { name = "ruff" },
 ]
 
@@ -3216,6 +3217,7 @@ requires-dist = [
 dev = [
     { name = "kaleido", specifier = ">=1.2.0" },
     { name = "plotly", specifier = ">=6.6.0" },
+    { name = "pytest", specifier = ">=9.0.2" },
     { name = "ruff", specifier = ">=0.15.4" },
 ]
 

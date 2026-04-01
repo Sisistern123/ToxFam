@@ -299,14 +299,13 @@ def run_model_evaluation(
     df = load_dataset(dataset)
     output_dir = benchmark_dir() / dataset / method_name
 
-    # Locate model files
-    model_path = model_dir / "models" / "best_model_calibrated.pt"
-    class_map_path = model_dir / "class_indices.json"
-
-    if not model_path.exists():
-        raise FileNotFoundError(f"Model not found: {model_path}")
-    if not class_map_path.exists():
-        raise FileNotFoundError(f"Class map not found: {class_map_path}")
+    # Check model dir has required files
+    config_path = model_dir / "model_config.json"
+    if not config_path.exists():
+        raise FileNotFoundError(
+            f"model_config.json not found in {model_dir}. "
+            "Re-run training or generate it from config.yaml."
+        )
 
     # Find embeddings H5
     cfg = DATASETS[dataset]
@@ -329,7 +328,7 @@ def run_model_evaluation(
         console.print(f"   Filtered to {len(df)}/{n_before} sequences with embeddings")
 
     # Run inference
-    inference_df = run_inference(df, h5_path, model_path, class_map_path)
+    inference_df = run_inference(df, h5_path, model_dir)
 
     # Compute metrics
     task = _get_task(dataset)

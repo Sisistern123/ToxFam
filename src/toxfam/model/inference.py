@@ -1,8 +1,8 @@
 """Model loading and inference for evaluation.
 
-Loads a calibrated (temperature-scaled) model from a training output directory,
-auto-detecting the architecture (ModularMLP vs MultiInputMLP) from the state
-dict keys.
+Loads a calibrated (temperature-scaled) model from a training output directory
+using the saved ``model_config.json`` for deterministic architecture
+reconstruction. No fragile state_dict key parsing.
 """
 
 from __future__ import annotations
@@ -14,6 +14,8 @@ import h5py
 import pandas as pd
 import torch
 from rich.console import Console
+
+from toxfam.model.model_config import ModelConfig
 
 console = Console()
 
@@ -27,97 +29,67 @@ def get_device() -> str:
 
 
 def load_calibrated_model(
-    model_path: Path,
-    class_map_path: Path,
-    h5_path: Path,
+    model_dir: str | Path,
     device: str | None = None,
 ):
-    """Load a calibrated model, auto-detecting architecture from state dict.
+    """Load a calibrated model from a training output directory.
 
-    Returns (model, is_multi_input, idx_to_label).
+    Reads ``model_config.json`` to reconstruct the architecture, then loads
+    weights from ``models/best_model_calibrated.pt``.
+
+    Returns (model, model_config, idx_to_label).
     """
-    from toxfam.model.architectures import ModularMLP, MultiInputMLP
     from toxfam.model.calibration import ModelWithTemperature
 
+    model_dir = Path(model_dir)
     if device is None:
         device = get_device()
 
-    with open(class_map_path, "r") as f:
-        class_indices = json.load(f)
-    num_classes = len(class_indices)
-    idx_to_label = {int(k): v for k, v in class_indices.items()}
-
-    with h5py.File(h5_path, "r") as f:
-        first_key = list(f.keys())[0]
-        embedding_dim = f[first_key][:].shape[0]
-
-    state_dict = torch.load(model_path, map_location=torch.device(device))
-    is_multi_input = any(k.startswith("model.tax_net.") for k in state_dict)
-
-    if is_multi_input:
-        tax_dim = state_dict["model.tax_net.0.weight"].shape[1]
-        tax_hidden_dim = state_dict["model.tax_net.0.weight"].shape[0]
-        hidden_dims = []
-        i = 0
-        while f"model.joint.{i}.weight" in state_dict:
-            hidden_dims.append(state_dict[f"model.joint.{i}.weight"].shape[0])
-            i += 3
-        if hidden_dims:
-            hidden_dims.pop()
-
-        base_model = MultiInputMLP(
-            embed_dim=embedding_dim,
-            tax_dim=tax_dim,
-            hidden_dims=hidden_dims,
-            num_classes=num_classes,
-            tax_hidden_dim=tax_hidden_dim,
+    # Load architecture config
+    config_path = model_dir / "model_config.json"
+    if not config_path.exists():
+        raise FileNotFoundError(
+            f"model_config.json not found in {model_dir}. "
+            "Re-run training or generate it from config.yaml."
         )
-    else:
-        hidden_dims = [state_dict["model.projector.0.weight"].shape[0]]
-        i = 0
-        while f"model.backbone.{i}.weight" in state_dict:
-            hidden_dims.append(state_dict[f"model.backbone.{i}.weight"].shape[0])
-            i += 3
-        if hidden_dims and len(hidden_dims) > 1:
-            hidden_dims.pop()
+    model_config = ModelConfig.load(config_path)
 
-        base_model = ModularMLP(
-            input_dim=embedding_dim,
-            hidden_dims=hidden_dims,
-            num_classes=num_classes,
-        )
+    # Load class mapping
+    with open(model_dir / "class_indices.json") as f:
+        idx_to_label = {int(k): v for k, v in json.load(f).items()}
 
+    # Build model from config and load weights
+    base_model = model_config.build_model()
     scaled_model = ModelWithTemperature(base_model, torch.device(device))
+
+    checkpoint = model_dir / "models" / "best_model_calibrated.pt"
+    state_dict = torch.load(checkpoint, map_location=torch.device(device))
     scaled_model.load_state_dict(state_dict)
+    scaled_model.to(device)
     scaled_model.eval()
 
     console.print(
-        f"   Loaded calibrated model (T={scaled_model.temperature.item():.3f}, "
-        f"{'MultiInputMLP' if is_multi_input else 'ModularMLP'})"
+        f"   Loaded {model_config.architecture} "
+        f"(T={scaled_model.temperature.item():.3f})"
     )
 
-    return scaled_model, is_multi_input, idx_to_label
+    return scaled_model, model_config, idx_to_label
 
 
 def run_inference(
     df: pd.DataFrame,
-    h5_path: Path,
-    model_path: Path,
-    class_map_path: Path,
+    h5_path: str | Path,
+    model_dir: str | Path,
 ) -> pd.DataFrame:
     """Run model inference on a DataFrame of proteins.
 
     Returns DataFrame with columns: identifier, predicted_label, confidence.
     """
     device = get_device()
-    model, is_multi_input, idx_to_label = load_calibrated_model(
-        model_path, class_map_path, h5_path, device=device
-    )
+    model, model_config, idx_to_label = load_calibrated_model(model_dir, device=device)
 
-    if is_multi_input:
-        tax_dim = model.model.tax_net[0].in_features
-    else:
-        tax_dim = None
+    is_multi_input = model_config.architecture == "MultiInputMLP"
+    tax_dim = model_config.tax_dim if is_multi_input else None
 
     preds = []
     confs = []
