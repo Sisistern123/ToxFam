@@ -60,11 +60,13 @@ class FocalLoss(nn.Module):
         gamma: float = 2.0,
         weight: torch.Tensor | None = None,
         label_smoothing: float = 0.0,
+        reduction: str = "mean",
     ):
         super().__init__()
         self.gamma = gamma
         self.register_buffer("weight", weight)
         self.label_smoothing = label_smoothing
+        self.reduction = reduction
 
     def forward(self, inputs: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
         ce_loss = F.cross_entropy(
@@ -76,7 +78,11 @@ class FocalLoss(nn.Module):
         )
         pt = torch.exp(-ce_loss)
         focal_loss = ((1 - pt) ** self.gamma) * ce_loss
-        return focal_loss.mean()
+        if self.reduction == "mean":
+            return focal_loss.mean()
+        elif self.reduction == "sum":
+            return focal_loss.sum()
+        return focal_loss
 
 
 # ---------------------------------------------------------------------------

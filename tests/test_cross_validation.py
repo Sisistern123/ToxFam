@@ -1,6 +1,5 @@
 """Tests for k-fold cross-validation metric aggregation."""
 
-import numpy as np
 import pytest
 
 from toxfam.training.cross_validation import _aggregate_fold_metrics

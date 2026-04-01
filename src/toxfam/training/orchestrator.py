@@ -106,7 +106,8 @@ def _run_binary_metrics_pipeline(
     val_p_toxic = _compute_p_toxic(model, val_df, config, train_ds.le, label_col)
 
     # Threshold optimization on val
-    opt_threshold = find_optimal_threshold(val_y_true, val_p_toxic, method="youden")
+    thresh_result = find_optimal_threshold(val_y_true, val_p_toxic, method="youden")
+    opt_threshold = thresh_result["optimal_threshold"]
     console.print(f"  Optimized threshold (Youden's J): {opt_threshold:.4f}")
 
     # Test set
@@ -127,13 +128,15 @@ def _run_binary_metrics_pipeline(
         f"PR-AUC={test_opt['pr_auc']:.4f}, MCC={test_opt['mcc']:.4f}"
     )
 
-    # Save metrics
+    # Save metrics (curve data already serializable lists)
     metrics_dir = out_root / "metrics"
     metrics_dir.mkdir(exist_ok=True)
+    # Filter out large curve arrays for the summary JSON
+    _curve_keys = {"fpr", "tpr", "precision_curve", "recall_curve", "roc_thresholds", "pr_thresholds"}
     binary_results = {
         "optimized_threshold": opt_threshold,
-        "test_default": {k: v for k, v in test_default.items() if not isinstance(v, np.ndarray)},
-        "test_optimized": {k: v for k, v in test_opt.items() if not isinstance(v, np.ndarray)},
+        "test_default": {k: v for k, v in test_default.items() if k not in _curve_keys},
+        "test_optimized": {k: v for k, v in test_opt.items() if k not in _curve_keys},
     }
     (metrics_dir / "binary_metrics.json").write_text(json.dumps(binary_results, indent=4))
 

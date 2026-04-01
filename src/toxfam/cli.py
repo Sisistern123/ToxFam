@@ -460,7 +460,6 @@ def eval_binary(
     """
     import json as _json
 
-    import numpy as np
     import pandas as pd
     import torch
 
@@ -525,7 +524,8 @@ def eval_binary(
     label_col = "Protein families"
     val_y_true = _compute_binary_labels(val_df, label_col)
     val_p_toxic = _compute_p_toxic(scaled_model, val_df, config, train_ds.le, label_col)
-    opt_threshold = find_optimal_threshold(val_y_true, val_p_toxic)
+    thresh_result = find_optimal_threshold(val_y_true, val_p_toxic)
+    opt_threshold = thresh_result["optimal_threshold"]
 
     test_y_true = _compute_binary_labels(test_df, label_col)
     test_p_toxic = _compute_p_toxic(
@@ -551,14 +551,11 @@ def eval_binary(
 
     metrics_dir = model_dir / "metrics"
     metrics_dir.mkdir(exist_ok=True)
+    _curve_keys = {"fpr", "tpr", "precision_curve", "recall_curve", "roc_thresholds", "pr_thresholds"}
     results = {
         "optimized_threshold": opt_threshold,
-        "test_default": {
-            k: v for k, v in test_default.items() if not isinstance(v, np.ndarray)
-        },
-        "test_optimized": {
-            k: v for k, v in test_opt.items() if not isinstance(v, np.ndarray)
-        },
+        "test_default": {k: v for k, v in test_default.items() if k not in _curve_keys},
+        "test_optimized": {k: v for k, v in test_opt.items() if k not in _curve_keys},
     }
     (metrics_dir / "binary_metrics.json").write_text(_json.dumps(results, indent=4))
 
