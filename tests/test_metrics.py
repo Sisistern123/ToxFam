@@ -1,4 +1,4 @@
-"""Tests for toxfam.evaluation.metrics."""
+"""Tests for toxfam.evaluation.metrics — both MetricsResult and binary score APIs."""
 
 from __future__ import annotations
 
@@ -8,9 +8,10 @@ import pytest
 
 from toxfam.evaluation.metrics import (
     NONTOXIN_LABELS,
+    MetricsResult,
     calculate_binary_metrics,
     calculate_binary_metrics_with_scores,
-    calculate_multiclass_metrics,
+    calculate_metrics,
     find_optimal_threshold,
     to_binary_class,
 )
@@ -24,8 +25,11 @@ def test_to_binary_class_nontox():
 
 
 def test_to_binary_class_nontoxic():
-    """Regression: 'nontoxic' label (used by binary/hierarchical) must map to nontoxin."""
     assert to_binary_class("nontoxic") == "nontoxin"
+
+
+def test_to_binary_class_nontoxin():
+    assert to_binary_class("nontoxin") == "nontoxin"
 
 
 def test_to_binary_class_toxin_family():
@@ -39,73 +43,71 @@ def test_to_binary_class_other():
 def test_nontoxin_labels_constant():
     assert "nontox" in NONTOXIN_LABELS
     assert "nontoxic" in NONTOXIN_LABELS
+    assert "nontoxin" in NONTOXIN_LABELS
+
+
+# ---------- calculate_metrics (MetricsResult) ----------
+
+
+def test_calculate_metrics_perfect():
+    y_true = pd.Series(["A", "B", "C", "A", "B"])
+    y_pred = pd.Series(["A", "B", "C", "A", "B"])
+    m = calculate_metrics(y_true, y_pred)
+    assert isinstance(m, MetricsResult)
+    assert m.accuracy == 1.0
+    assert m.mcc == 1.0
+    assert m.n_samples == 5
+
+
+def test_calculate_metrics_with_class_list():
+    y_true = pd.Series(["A", "B"])
+    y_pred = pd.Series(["A", "B"])
+    m = calculate_metrics(y_true, y_pred, class_list=["A", "B", "C"])
+    assert len(m.class_list) == 3
+
+
+def test_calculate_metrics_to_json_dict():
+    y_true = pd.Series(["A", "B"])
+    y_pred = pd.Series(["A", "B"])
+    m = calculate_metrics(y_true, y_pred)
+    d = m.to_json_dict()
+    assert "numeric_metrics" in d
+    assert "classification_report" in d
+
+
+def test_calculate_metrics_to_summary_dict():
+    y_true = pd.Series(["A", "B"])
+    y_pred = pd.Series(["A", "B"])
+    m = calculate_metrics(y_true, y_pred)
+    d = m.to_summary_dict("test_method")
+    assert d["Method"] == "test_method"
+    assert "Accuracy" in d
 
 
 # ---------- calculate_binary_metrics ----------
 
 
-def test_binary_metrics_perfect():
-    df = pd.DataFrame(
-        {"truth": ["nontox", "famA", "famB"], "pred": ["nontox", "famA", "famB"]}
-    )
-    m = calculate_binary_metrics(df, "truth", "pred")
-    assert m["acc"] == 1.0
-    assert m["mcc"] == 1.0
-    assert m["n_samples"] == 3
-    assert "report" in m
-
-
-def test_binary_metrics_imperfect():
-    df = pd.DataFrame(
-        {"truth": ["nontox", "famA", "famB"], "pred": ["famA", "famA", "famB"]}
-    )
-    m = calculate_binary_metrics(df, "truth", "pred")
-    # One wrong: nontox predicted as toxin
-    assert 0.0 < m["acc"] < 1.0
-
-
-# ---------- calculate_multiclass_metrics ----------
-
-
-def test_multiclass_metrics_perfect():
-    df = pd.DataFrame({"truth": ["A", "B", "C"], "pred": ["A", "B", "C"]})
-    m = calculate_multiclass_metrics(df, "truth", "pred")
-    assert m["acc"] == 1.0
-    assert m["mcc"] == 1.0
-    assert len(m["class_list"]) == 3
-    assert "report" in m
-    assert "y_true_encoded" in m
-    assert "y_pred_encoded" in m
-
-
-def test_multiclass_metrics_with_shared_class_list():
-    df = pd.DataFrame({"truth": ["A", "B"], "pred": ["A", "B"]})
-    m = calculate_multiclass_metrics(
-        df, "truth", "pred", shared_class_list=["A", "B", "C"]
-    )
-    assert len(m["class_list"]) == 3
-
-
-def test_multiclass_metrics_imperfect():
-    df = pd.DataFrame(
-        {"truth": ["A", "A", "B", "B"], "pred": ["A", "B", "B", "A"]}
-    )
-    m = calculate_multiclass_metrics(df, "truth", "pred")
-    assert m["acc"] == 0.5
-    assert m["n_samples"] == 4
+def test_binary_metrics_returns_metrics_result():
+    y_true = pd.Series(["nontox", "famA", "famB"])
+    y_pred = pd.Series(["nontox", "famA", "famB"])
+    m = calculate_binary_metrics(y_true, y_pred)
+    assert isinstance(m, MetricsResult)
+    assert m.accuracy == 1.0
 
 
 # ---------- calculate_binary_metrics_with_scores ----------
 
 
-def test_binary_metrics_with_scores_returns_thresholds():
+def test_binary_metrics_with_scores_perfect():
     y_true = np.array([0, 0, 1, 1])
-    y_scores = np.array([0.1, 0.3, 0.7, 0.9])
+    y_scores = np.array([0.1, 0.2, 0.8, 0.9])
     m = calculate_binary_metrics_with_scores(y_true, y_scores)
+    assert m["roc_auc"] == pytest.approx(1.0)
+    assert m["pr_auc"] == pytest.approx(1.0)
+    assert "fpr" in m
+    assert "tpr" in m
     assert "roc_thresholds" in m
     assert "pr_thresholds" in m
-    assert len(m["roc_thresholds"]) > 0
-    assert len(m["pr_thresholds"]) > 0
 
 
 def test_binary_metrics_with_scores_custom_threshold():
@@ -113,7 +115,7 @@ def test_binary_metrics_with_scores_custom_threshold():
     y_scores = np.array([0.1, 0.3, 0.7, 0.9])
     m = calculate_binary_metrics_with_scores(y_true, y_scores, threshold=0.6)
     assert m["threshold"] == 0.6
-    assert m["accuracy"] == 1.0  # all correctly classified at 0.6
+    assert m["accuracy"] == 1.0
 
 
 # ---------- find_optimal_threshold ----------

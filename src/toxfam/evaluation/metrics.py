@@ -1,11 +1,24 @@
-"""Shared evaluation metrics for ToxFam."""
+"""Evaluation metrics for protein family classification.
+
+Provides:
+- MetricsResult dataclass with multiclass metrics (accuracy, MCC, micro-MCC)
+- Score-based binary metrics (ROC-AUC, PR-AUC, F1, MCC from probability scores)
+- Threshold optimization (Youden's J, F1, target precision)
+
+Predictions not in the class list (including "no hit") are mapped to an
+out-of-vocabulary index and counted as wrong predictions, following the
+ProtTucker convention (Heinzinger et al. 2022).
+"""
 
 from __future__ import annotations
 
-from typing import Any, Dict, Optional
+from dataclasses import dataclass, field
+from typing import Any, Dict
 
 import numpy as np
 import pandas as pd
+from rich.console import Console
+from rich.table import Table
 from sklearn.metrics import (
     accuracy_score,
     average_precision_score,
@@ -18,81 +31,96 @@ from sklearn.metrics import (
 )
 from sklearn.preprocessing import label_binarize
 
-NONTOXIN_LABELS = {"nontox", "nontoxic", "nontoxin"}
+console = Console()
+
+NONTOXIN_LABELS: set[str] = {"nontox", "nontoxic", "nontoxin"}
 
 
-def to_binary_class(label: str) -> str:
-    """Map a family label to 'toxin' or 'nontoxin'."""
-    if str(label).lower() in NONTOXIN_LABELS:
-        return "nontoxin"
-    return "toxin"
+# ---------------------------------------------------------------------------
+# Multiclass metrics (MetricsResult dataclass)
+# ---------------------------------------------------------------------------
 
 
-def calculate_binary_metrics(
-    df: pd.DataFrame,
-    truth_col: str,
-    pred_col: str,
-) -> Dict[str, Any]:
-    """Binary toxin/nontoxin metrics (accuracy, MCC, classification report)."""
-    y_true = df[truth_col].apply(to_binary_class).to_numpy()
-    y_pred = df[pred_col].apply(to_binary_class).to_numpy()
+@dataclass
+class MetricsResult:
+    """Container for evaluation metrics."""
 
-    acc = accuracy_score(y_true, y_pred)
-    mcc = matthews_corrcoef(y_true, y_pred)
-    n_samples = len(y_true)
-    std_error = np.sqrt((acc * (1 - acc)) / n_samples)
+    accuracy: float
+    mcc: float
+    micro_mcc: float
+    std_error: float
+    n_samples: int
+    class_list: list[str] = field(repr=False)
+    classification_report: dict[str, Any] = field(repr=False)
+    y_true_encoded: np.ndarray = field(repr=False)
+    y_pred_encoded: np.ndarray = field(repr=False)
 
-    report = classification_report(
-        y_true,
-        y_pred,
-        target_names=["nontoxin", "toxin"],
-        output_dict=True,
-        zero_division=0,
-    )
+    def to_summary_dict(self, method_name: str) -> dict[str, Any]:
+        """Return a dict suitable for one row of a summary DataFrame."""
+        return {
+            "Method": method_name,
+            "Accuracy": self.accuracy,
+            "MCC": self.mcc,
+            "Micro_MCC": self.micro_mcc,
+            "Std_Error": self.std_error,
+            "Sample_Size": self.n_samples,
+        }
 
-    return {
-        "acc": acc,
-        "mcc": mcc,
-        "std_error": std_error,
-        "n_samples": n_samples,
-        "report": report,
-    }
+    def to_json_dict(self) -> dict[str, Any]:
+        """Return a dict suitable for JSON serialization."""
+        return {
+            "numeric_metrics": {
+                "Test_Accuracy": self.accuracy,
+                "Test_MCC": self.mcc,
+                "Test_Micro_MCC": self.micro_mcc,
+                "Test_Std_Error": self.std_error,
+            },
+            "classification_report": self.classification_report,
+        }
 
 
-def calculate_multiclass_metrics(
-    df: pd.DataFrame,
-    truth_col: str,
-    pred_col: str,
+def calculate_metrics(
+    y_true: pd.Series,
+    y_pred: pd.Series,
     *,
-    shared_class_list: Optional[list[str]] = None,
-) -> Dict[str, Any]:
-    """Multiclass metrics with optional shared class list.
+    class_list: list[str] | None = None,
+) -> MetricsResult:
+    """Compute multiclass classification metrics.
 
-    Returns acc, mcc, micro_mcc, std_error, n_samples, report, class_list,
-    cls2idx, y_true_encoded, y_pred_encoded.
+    Parameters
+    ----------
+    y_true : Series of string labels (ground truth).
+    y_pred : Series of string labels (predictions).
+    class_list : Ordered class names. Defaults to ``sorted(y_true.unique())``.
+        Predictions not in this list (e.g. "no hit") are mapped to an
+        out-of-vocabulary index and counted as wrong.
     """
-    if shared_class_list is not None:
-        class_list = shared_class_list
-    else:
-        class_list = sorted(
-            list(set(df[truth_col].unique()) | set(df[pred_col].unique()))
+    if class_list is None:
+        class_list = sorted(y_true.unique().tolist())
+
+    n_classes = len(class_list)
+    cls2idx = {name: i for i, name in enumerate(class_list)}
+    oov_idx = n_classes  # guaranteed wrong for any valid true label
+
+    y_true_enc = y_true.map(lambda x: cls2idx.get(x, oov_idx)).to_numpy(dtype=int)
+    y_pred_enc = y_pred.map(lambda x: cls2idx.get(x, oov_idx)).to_numpy(dtype=int)
+
+    n_oov_true = int((y_true_enc == oov_idx).sum())
+    if n_oov_true > 0:
+        console.print(
+            f"   [yellow]WARNING: {n_oov_true} ground-truth labels not in class_list[/]"
         )
 
-    cls2idx = {cls_name: i for i, cls_name in enumerate(class_list)}
+    n_samples = len(y_true_enc)
+    acc = accuracy_score(y_true_enc, y_pred_enc)
+    mcc = matthews_corrcoef(y_true_enc, y_pred_enc)
 
-    y_true = df[truth_col].map(cls2idx).to_numpy()
-    y_pred = df[pred_col].map(cls2idx).to_numpy()
+    # Micro-MCC via binarization
+    all_labels = list(range(n_classes)) + [oov_idx]
+    y_true_bin = label_binarize(y_true_enc, classes=all_labels)
+    y_pred_bin = label_binarize(y_pred_enc, classes=all_labels)
 
-    n_samples = len(y_true)
-    n_classes = len(class_list)
-
-    acc = accuracy_score(y_true, y_pred)
-    mcc = matthews_corrcoef(y_true, y_pred)
-
-    y_true_bin = label_binarize(y_true, classes=range(n_classes))
-    y_pred_bin = label_binarize(y_pred, classes=range(n_classes))
-
-    if n_classes == 2 and y_true_bin.shape[1] == 1:
+    if len(all_labels) == 2 and y_true_bin.shape[1] == 1:
         y_true_bin = np.hstack((1 - y_true_bin, y_true_bin))
         y_pred_bin = np.hstack((1 - y_pred_bin, y_pred_bin))
 
@@ -103,26 +131,71 @@ def calculate_multiclass_metrics(
     )
 
     report = classification_report(
-        y_true,
-        y_pred,
-        labels=range(n_classes),
+        y_true_enc,
+        y_pred_enc,
+        labels=list(range(n_classes)),
         target_names=class_list,
         output_dict=True,
         zero_division=0,
     )
 
-    return {
-        "acc": acc,
-        "mcc": mcc,
-        "micro_mcc": micro_mcc,
-        "std_error": std_error,
-        "n_samples": n_samples,
-        "report": report,
-        "class_list": class_list,
-        "cls2idx": cls2idx,
-        "y_true_encoded": y_true,
-        "y_pred_encoded": y_pred,
-    }
+    return MetricsResult(
+        accuracy=acc,
+        mcc=mcc,
+        micro_mcc=micro_mcc,
+        std_error=std_error,
+        n_samples=n_samples,
+        class_list=class_list,
+        classification_report=report,
+        y_true_encoded=y_true_enc,
+        y_pred_encoded=y_pred_enc,
+    )
+
+
+def to_binary_class(label: str) -> str:
+    """Map a protein family label to binary toxin/nontoxin."""
+    if str(label).lower() in NONTOXIN_LABELS:
+        return "nontoxin"
+    return "toxin"
+
+
+def calculate_binary_metrics(
+    y_true: pd.Series,
+    y_pred: pd.Series,
+) -> MetricsResult:
+    """Compute binary toxin/nontoxin metrics."""
+    return calculate_metrics(
+        y_true.apply(to_binary_class),
+        y_pred.apply(to_binary_class),
+    )
+
+
+def print_metrics_table(results: dict[str, MetricsResult]) -> None:
+    """Print a rich comparison table of metrics from multiple methods."""
+    table = Table(show_header=True, header_style="bold", padding=(0, 1))
+    table.add_column("Method", style="cyan")
+    table.add_column("Accuracy", justify="right")
+    table.add_column("MCC", justify="right")
+    table.add_column("Micro-MCC", justify="right")
+    table.add_column("Std Error", justify="right")
+    table.add_column("Samples", justify="right")
+
+    for name, m in results.items():
+        table.add_row(
+            name,
+            f"{m.accuracy:.4f}",
+            f"{m.mcc:.4f}",
+            f"{m.micro_mcc:.4f}",
+            f"{m.std_error:.4f}",
+            str(m.n_samples),
+        )
+
+    console.print(table)
+
+
+# ---------------------------------------------------------------------------
+# Score-based binary metrics (dict returns for flexibility)
+# ---------------------------------------------------------------------------
 
 
 def calculate_binary_metrics_with_scores(
@@ -139,8 +212,8 @@ def calculate_binary_metrics_with_scores(
         threshold: Classification threshold.
 
     Returns:
-        Dict with roc_auc, pr_auc, f1, mcc, precision, recall, fpr, tpr,
-        precision_curve, recall_curve.
+        Dict with roc_auc, pr_auc, f1, mcc, accuracy, threshold,
+        fpr, tpr, precision_curve, recall_curve, roc_thresholds, pr_thresholds.
     """
     y_pred = (y_scores_toxic >= threshold).astype(int)
 
@@ -149,23 +222,20 @@ def calculate_binary_metrics_with_scores(
         y_true_binary, y_scores_toxic
     )
 
-    result: Dict[str, Any] = {
+    return {
         "roc_auc": float(roc_auc_score(y_true_binary, y_scores_toxic)),
         "pr_auc": float(average_precision_score(y_true_binary, y_scores_toxic)),
         "f1": float(f1_score(y_true_binary, y_pred, zero_division=0)),
         "mcc": float(matthews_corrcoef(y_true_binary, y_pred)),
         "accuracy": float(accuracy_score(y_true_binary, y_pred)),
         "threshold": threshold,
-        # Curve data for plotting
         "fpr": fpr.tolist(),
         "tpr": tpr.tolist(),
         "precision_curve": prec_curve.tolist(),
         "recall_curve": rec_curve.tolist(),
-        # Thresholds for downstream optimization
         "roc_thresholds": roc_thresholds.tolist(),
         "pr_thresholds": pr_thresholds.tolist(),
     }
-    return result
 
 
 def find_optimal_threshold(
@@ -201,10 +271,8 @@ def find_optimal_threshold(
         detail = {"best_f1": float(f1_scores[best_idx])}
     elif method == "target_precision":
         prec, rec, thresholds = precision_recall_curve(y_true, y_scores)
-        # precision_recall_curve returns n+1 prec/rec values but n thresholds
         valid = prec[:-1] >= target_precision
         if valid.any():
-            # Among those meeting precision target, maximize recall
             recall_filtered = np.where(valid, rec[:-1], -1)
             best_idx = int(np.argmax(recall_filtered))
             optimal = float(thresholds[best_idx])
@@ -213,7 +281,6 @@ def find_optimal_threshold(
                 "achieved_recall": float(rec[best_idx]),
             }
         else:
-            # No threshold meets target — use highest precision
             best_idx = int(np.argmax(prec[:-1]))
             optimal = float(thresholds[best_idx])
             detail = {
@@ -224,7 +291,6 @@ def find_optimal_threshold(
     else:
         raise ValueError(f"Unknown method: {method}")
 
-    # Compute metrics at optimal threshold
     y_pred = (y_scores >= optimal).astype(int)
     return {
         "optimal_threshold": optimal,

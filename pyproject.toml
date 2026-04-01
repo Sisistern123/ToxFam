@@ -36,5 +36,6 @@ packages = ["src/toxfam"]
 dev = [
     "kaleido>=1.2.0",
     "plotly>=6.6.0",
+    "pytest>=9.0.2",
     "ruff>=0.15.4",
 ]

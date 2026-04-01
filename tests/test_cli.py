@@ -19,9 +19,7 @@ def test_app_has_expected_commands():
         "embed",
         "taxonomy",
         "train",
-        "eval-test",
-        "eval-nonmetazoan",
-        "eval-unreviewed",
+        "eval",           # subcommand group (hbi, model, compare)
         "eval-binary",
         "eval-ensemble",
         "profile-data",
