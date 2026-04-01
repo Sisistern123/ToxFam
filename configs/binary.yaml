@@ -1,5 +1,5 @@
 # binary.yaml — Direct toxic/nontoxin binary MLP
-input_csv: "data/processed/training_data.csv"
+input_csv: "data/processed/training_data_embedded.csv"
 h5_paths_glob: "data/processed/embeddings.h5"
 output_dir: "model/model_output/binary_run"
 

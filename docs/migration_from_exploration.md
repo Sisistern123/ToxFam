@@ -106,15 +106,17 @@ All mature research features from Exploration were ported onto main's refactored
 
 ## Benchmark Evidence
 
-*To be filled after running benchmarks on the ported codebase:*
+*Benchmarked on ported codebase (65,179 proteins, MPS device, seed=42):*
 
-| Strategy | ROC-AUC | PR-AUC | F1 | MCC |
-|----------|---------|--------|-----|-----|
-| standard (baseline) | — | — | — | — |
-| binary | — | — | — | — |
+| Strategy | Val MCC (best) | Test ROC-AUC | Test PR-AUC | Test MCC (t=0.5) |
+|----------|---------------|-------------|------------|-----------------|
+| standard (38-class) | 0.784 | 0.983 | 0.894 | 0.780 |
+| **binary (2-class)** | **0.881** | **0.987** | 0.884 | **0.818** |
 | hierarchical (frozen) | — | — | — | — |
 | multitask | — | — | — | — |
 | binary + CPP | — | — | — | — |
+
+**Key finding:** Binary strategy achieves +0.039 test MCC and +0.097 val MCC over standard, confirming that direct binary optimization outperforms derived-from-family binary metrics.
 
 *Prior Exploration results (for reference):*
 

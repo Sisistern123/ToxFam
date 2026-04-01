@@ -1,5 +1,5 @@
 # standard.yaml — Embeddings-only MLP
-input_csv: "data/processed/training_data.csv"
+input_csv: "data/processed/training_data_embedded.csv"
 h5_paths_glob: "data/processed/embeddings.h5"
 tax_h5_path: null
 output_dir: "model/model_output/standard_run"
