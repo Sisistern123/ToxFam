@@ -55,6 +55,9 @@ def plot_multiclass_roc_from_scores(
     y_true, y_scores, classes, output_path, legend_cols=3
 ):
     y_bin = label_binarize(y_true, classes=list(range(len(classes))))
+    # sklearn returns (N, 1) for binary — expand to (N, 2)
+    if len(classes) == 2 and y_bin.ndim == 2 and y_bin.shape[1] == 1:
+        y_bin = np.hstack([1 - y_bin, y_bin])
     n_classes = y_bin.shape[1]
     fpr, tpr, roc_auc = {}, {}, {}
 
