@@ -18,7 +18,12 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from toxfam.data.dataset import ToxDataset
-from toxfam.model.architectures import ModularMLP, MultiInputMLP, MultiTaskMLP
+from toxfam.model.architectures import (
+    ModularMLP,
+    MultiInputMLP,
+    MultiTaskMLP,
+    MultiTaskMultiInputMLP,
+)
 from toxfam.training.trainer import (
     _forward_model,
     evaluate_model,
@@ -134,26 +139,34 @@ def run_binary_strategy(
 
 
 class _MultiTaskFamilyWrapper(nn.Module):
-    """Wraps MultiTaskMLP to return only family logits for evaluation."""
+    """Wraps a multitask model to return only family logits for evaluation.
 
-    def __init__(self, model: MultiTaskMLP):
+    Works with both MultiTaskMLP (single input) and
+    MultiTaskMultiInputMLP (dual input).
+    """
+
+    def __init__(self, model: MultiTaskMLP | MultiTaskMultiInputMLP):
         super().__init__()
         self.model = model
 
-    def forward(self, x):
-        fam_out, _ = self.model(x)
+    def forward(self, *args):
+        fam_out, _ = self.model(*args)
         return fam_out
 
 
 class _MultiTaskBinaryWrapper(nn.Module):
-    """Wraps MultiTaskMLP to return only binary logits for evaluation."""
+    """Wraps a multitask model to return only binary logits for evaluation.
 
-    def __init__(self, model: MultiTaskMLP):
+    Works with both MultiTaskMLP (single input) and
+    MultiTaskMultiInputMLP (dual input).
+    """
+
+    def __init__(self, model: MultiTaskMLP | MultiTaskMultiInputMLP):
         super().__init__()
         self.model = model
 
-    def forward(self, x):
-        _, bin_out = self.model(x)
+    def forward(self, *args):
+        _, bin_out = self.model(*args)
         return bin_out
 
 
@@ -180,7 +193,7 @@ class MultiTaskJointWrapper(nn.Module):
         Binary head convention: index 0 = nontoxin, index 1 = toxic.
     """
 
-    def __init__(self, model: MultiTaskMLP, nontoxin_indices: list[int]):
+    def __init__(self, model: MultiTaskMLP | MultiTaskMultiInputMLP, nontoxin_indices: list[int]):
         super().__init__()
         self.model = model
         self.register_buffer(
@@ -189,8 +202,8 @@ class MultiTaskJointWrapper(nn.Module):
         )
         self._nontoxin_mask[nontoxin_indices] = True
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        fam_logits, bin_logits = self.model(x)
+    def forward(self, *args) -> torch.Tensor:
+        fam_logits, bin_logits = self.model(*args)
 
         # Binary probabilities: [batch, 2] where [:,0]=nontoxin, [:,1]=toxic
         bin_probs = F.softmax(bin_logits, dim=1)
@@ -232,19 +245,38 @@ def run_multitask_strategy(
 ):
     """Train a multitask model with shared backbone, joint family + binary heads.
 
-    Returns the trained MultiTaskMLP (not wrapped — caller wraps as needed).
+    When taxonomy is available (config.tax_h5_path is set), uses
+    MultiTaskMultiInputMLP with two-branch input. Otherwise uses
+    MultiTaskMLP with embeddings only.
+
+    Returns the trained model (not wrapped — caller wraps as needed).
     """
     from toxfam.evaluation.metrics import to_binary_class
 
-    console.print("[bold]>>> Running Strategy: MULTITASK (Family + Binary)[/bold]")
+    use_taxonomy = config.tax_h5_path is not None
+    ds_mode = "both" if use_taxonomy else "emb_only"
 
-    model = MultiTaskMLP(
-        input_dim=config.effective_embedding_dim,
-        hidden_dims=config.hidden_dims,
-        num_family_classes=num_classes,
-        num_binary_classes=2,
-        dropout=config.dropout,
-    )
+    if use_taxonomy:
+        console.print(
+            "[bold]>>> Running Strategy: MULTITASK (Family + Binary + Taxonomy)[/bold]"
+        )
+        model = MultiTaskMultiInputMLP(
+            embed_dim=config.effective_embedding_dim,
+            tax_dim=config.tax_dim,
+            hidden_dims=config.hidden_dims,
+            num_family_classes=num_classes,
+            num_binary_classes=2,
+            dropout=config.dropout,
+        )
+    else:
+        console.print("[bold]>>> Running Strategy: MULTITASK (Family + Binary)[/bold]")
+        model = MultiTaskMLP(
+            input_dim=config.effective_embedding_dim,
+            hidden_dims=config.hidden_dims,
+            num_family_classes=num_classes,
+            num_binary_classes=2,
+            dropout=config.dropout,
+        )
 
     device = get_device()
     model.to(device)
@@ -295,7 +327,7 @@ def run_multitask_strategy(
         model.train()
         total_loss = 0.0
 
-        for features, labels in DataSelector(train_loader, "emb_only"):
+        for features, labels in DataSelector(train_loader, ds_mode):
             labels = labels.to(device)
             binary_labels = binary_mapping[labels]
 
@@ -319,7 +351,7 @@ def run_multitask_strategy(
         family_wrapper = _MultiTaskFamilyWrapper(model)
         val_metrics, _, _, _ = evaluate_model(
             family_wrapper,
-            DataSelector(val_loader, "emb_only"),
+            DataSelector(val_loader, ds_mode),
             family_loss_fn,
             device,
         )
@@ -384,7 +416,8 @@ def evaluate_label_on_dataset(
     )
     loader = DataLoader(ds, batch_size=config.batch_size, shuffle=False)
 
-    if strategy == "combined":
+    use_both = strategy == "combined" or (strategy == "multitask" and config.tax_h5_path)
+    if use_both:
         selector = DataSelector(loader, "both")
     else:
         selector = DataSelector(loader, "emb_only")

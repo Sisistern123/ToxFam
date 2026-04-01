@@ -6,6 +6,7 @@ from toxfam.model.architectures import (
     ModularMLP,
     MultiInputMLP,
     MultiTaskMLP,
+    MultiTaskMultiInputMLP,
 )
 
 
@@ -99,5 +100,52 @@ class TestMultiTaskMLP:
         )
         x = torch.randn(2, 256)
         fam, bn = model(x)
+        assert fam.shape == (2, 5)
+        assert bn.shape == (2, 2)
+
+
+class TestMultiTaskMultiInputMLP:
+    def test_forward_shapes(self):
+        model = MultiTaskMultiInputMLP(
+            embed_dim=1024, tax_dim=50, hidden_dims=[256, 128],
+            num_family_classes=38, num_binary_classes=2,
+        )
+        emb = torch.randn(8, 1024)
+        tax = torch.randn(8, 50)
+        fam_out, bin_out = model(emb, tax)
+        assert fam_out.shape == (8, 38)
+        assert bin_out.shape == (8, 2)
+
+    def test_taxonomy_branch_exists(self):
+        model = MultiTaskMultiInputMLP(
+            embed_dim=512, tax_dim=50, hidden_dims=[64],
+            num_family_classes=10,
+        )
+        assert hasattr(model, "tax_net")
+        assert hasattr(model, "shared")
+        assert hasattr(model, "family_head")
+        assert hasattr(model, "binary_head")
+
+    def test_shared_backbone_gets_gradients(self):
+        model = MultiTaskMultiInputMLP(
+            embed_dim=512, tax_dim=50, hidden_dims=[128],
+            num_family_classes=10,
+        )
+        emb = torch.randn(4, 512)
+        tax = torch.randn(4, 50)
+        fam_out, bin_out = model(emb, tax)
+        loss = fam_out.sum() + bin_out.sum()
+        loss.backward()
+        assert model.shared[0].weight.grad is not None
+        assert model.tax_net[0].weight.grad is not None
+
+    def test_custom_tax_hidden(self):
+        model = MultiTaskMultiInputMLP(
+            embed_dim=256, tax_dim=50, hidden_dims=[64],
+            num_family_classes=5, tax_hidden_dim=16,
+        )
+        emb = torch.randn(2, 256)
+        tax = torch.randn(2, 50)
+        fam, bn = model(emb, tax)
         assert fam.shape == (2, 5)
         assert bn.shape == (2, 2)

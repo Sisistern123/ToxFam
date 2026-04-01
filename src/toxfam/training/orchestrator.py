@@ -62,7 +62,8 @@ def _compute_p_toxic(
     loader = DataLoader(ds, batch_size=config.batch_size, shuffle=False)
 
     strategy = config.training_strategy
-    if strategy == "combined":
+    use_both = strategy == "combined" or (strategy == "multitask" and config.tax_h5_path)
+    if use_both:
         selector = DataSelector(loader, "both")
     else:
         selector = DataSelector(loader, "emb_only")
@@ -370,7 +371,8 @@ def run_training(config: TrainConfig) -> None:
     # 5. Calibration (Temperature Scaling)
     console.print("\n[bold]Running Calibration (Temperature Scaling)...[/bold]")
 
-    if strategy == "combined":
+    use_both = strategy == "combined" or (strategy == "multitask" and config.tax_h5_path)
+    if use_both:
         val_selector = DataSelector(val_loader, "both")
     else:
         val_selector = DataSelector(val_loader, "emb_only")

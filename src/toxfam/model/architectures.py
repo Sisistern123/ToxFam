@@ -145,6 +145,67 @@ class HierarchicalMLP(nn.Module):
         return self.head(features)
 
 
+class MultiTaskMultiInputMLP(nn.Module):
+    """Two-branch input (embeddings + taxonomy) with dual task heads.
+
+    Combines MultiInputMLP's input processing (separate taxonomy branch,
+    concatenation) with MultiTaskMLP's dual heads (family + binary).
+
+    Parameters
+    ----------
+    embed_dim : embedding dimension
+    tax_dim : taxonomy vector dimension
+    hidden_dims : list of hidden layer sizes for the shared backbone
+    num_family_classes : number of family classes (e.g. 38)
+    num_binary_classes : 2 (toxic, nontoxin)
+    dropout : dropout rate
+    tax_hidden_dim : hidden size of the taxonomy branch
+    """
+
+    def __init__(
+        self,
+        embed_dim: int,
+        tax_dim: int,
+        hidden_dims: list[int],
+        num_family_classes: int,
+        num_binary_classes: int = 2,
+        dropout: float = 0.3,
+        tax_hidden_dim: int = 8,
+    ):
+        super().__init__()
+        if isinstance(hidden_dims, int):
+            hidden_dims = [hidden_dims]
+
+        # Taxonomy branch
+        self.tax_net = nn.Sequential(
+            nn.Linear(tax_dim, tax_hidden_dim),
+            nn.BatchNorm1d(tax_hidden_dim),
+            nn.ReLU(),
+            nn.Dropout(dropout),
+        )
+
+        # Shared backbone (after concatenation)
+        joint_in = embed_dim + tax_hidden_dim
+        layers: list[nn.Module] = []
+        for h in hidden_dims:
+            layers.append(nn.Linear(joint_in, h))
+            layers.append(nn.BatchNorm1d(h))
+            layers.append(nn.ReLU())
+            layers.append(nn.Dropout(dropout))
+            joint_in = h
+        self.shared = nn.Sequential(*layers)
+
+        # Dual heads
+        self.family_head = nn.Linear(joint_in, num_family_classes)
+        self.binary_head = nn.Linear(joint_in, num_binary_classes)
+
+    def forward(self, emb, tax):
+        tax_h = self.tax_net(tax)
+        x = torch.cat([emb, tax_h], dim=1)
+        shared_out = self.shared(x)
+        return self.family_head(shared_out), self.binary_head(shared_out)
+
+
 class MultiTaskMLP(nn.Module):
     """Shared backbone with dual heads for family classification and
     binary toxic/nontoxin classification.

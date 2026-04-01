@@ -5,7 +5,7 @@ from __future__ import annotations
 import torch
 import torch.nn.functional as F
 
-from toxfam.model.architectures import MultiTaskMLP
+from toxfam.model.architectures import MultiTaskMLP, MultiTaskMultiInputMLP
 
 
 def _make_model(input_dim=64, hidden_dims=None, num_family_classes=5):
@@ -14,6 +14,19 @@ def _make_model(input_dim=64, hidden_dims=None, num_family_classes=5):
         hidden_dims = [32]
     return MultiTaskMLP(
         input_dim=input_dim,
+        hidden_dims=hidden_dims,
+        num_family_classes=num_family_classes,
+        num_binary_classes=2,
+    )
+
+
+def _make_dual_input_model(embed_dim=64, tax_dim=10, hidden_dims=None, num_family_classes=5):
+    """Create a small MultiTaskMultiInputMLP for testing."""
+    if hidden_dims is None:
+        hidden_dims = [32]
+    return MultiTaskMultiInputMLP(
+        embed_dim=embed_dim,
+        tax_dim=tax_dim,
         hidden_dims=hidden_dims,
         num_family_classes=num_family_classes,
         num_binary_classes=2,
@@ -234,3 +247,67 @@ class TestDownstreamCompatibility:
         assert scaled.temperature.grad.abs().item() > 0, (
             "Temperature gradient should be non-zero"
         )
+
+
+class TestDualInputJointWrapper:
+    """Verify joint wrapper works with MultiTaskMultiInputMLP (emb + tax)."""
+
+    def test_joint_probs_sum_to_one(self):
+        from toxfam.training.strategies import MultiTaskJointWrapper
+
+        model = _make_dual_input_model()
+        wrapper = MultiTaskJointWrapper(model, nontoxin_indices=[2])
+        wrapper.eval()
+
+        emb = torch.randn(8, 64)
+        tax = torch.randn(8, 10)
+        with torch.no_grad():
+            log_probs = wrapper(emb, tax)
+            probs = F.softmax(log_probs, dim=1)
+
+        sums = probs.sum(dim=1)
+        torch.testing.assert_close(sums, torch.ones(8), atol=1e-5, rtol=1e-5)
+
+    def test_binary_head_controls_boundary(self):
+        """P_joint(nontoxin) == P_bin(nontoxin) for dual-input model."""
+        from toxfam.training.strategies import MultiTaskJointWrapper
+
+        model = _make_dual_input_model()
+        nontoxin_idx = 2
+        wrapper = MultiTaskJointWrapper(model, nontoxin_indices=[nontoxin_idx])
+        wrapper.eval()
+
+        emb = torch.randn(8, 64)
+        tax = torch.randn(8, 10)
+        with torch.no_grad():
+            _, bin_logits = model(emb, tax)
+            p_bin_nontoxin = F.softmax(bin_logits, dim=1)[:, 0]
+
+            log_probs = wrapper(emb, tax)
+            joint_probs = F.softmax(log_probs, dim=1)
+            p_joint_nontoxin = joint_probs[:, nontoxin_idx]
+
+        torch.testing.assert_close(
+            p_joint_nontoxin, p_bin_nontoxin, atol=1e-5, rtol=1e-5
+        )
+
+    def test_temperature_scaling_dual_input(self):
+        from toxfam.model.calibration import ModelWithTemperature
+        from toxfam.training.strategies import MultiTaskJointWrapper
+
+        model = _make_dual_input_model()
+        wrapper = MultiTaskJointWrapper(model, nontoxin_indices=[2])
+
+        device = torch.device("cpu")
+        scaled = ModelWithTemperature(wrapper, device)
+        scaled.temperature.data.fill_(2.0)
+        scaled.eval()
+
+        emb = torch.randn(4, 64)
+        tax = torch.randn(4, 10)
+        with torch.no_grad():
+            out = scaled(emb, tax)
+            probs = F.softmax(out, dim=1)
+
+        assert probs.shape == (4, 5)
+        assert torch.allclose(probs.sum(dim=1), torch.ones(4), atol=1e-5)
