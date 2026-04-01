@@ -86,7 +86,7 @@ def evaluate_ensemble(
         # Determine label column for this model's strategy
         label_col = "Protein families"
         df_model = test_df.copy()
-        if strategy in ("binary", "hierarchical"):
+        if strategy == "binary":
             label_col = "is_toxic_label"
             df_model[label_col] = df_model["is_toxic"].map({True: "toxic", False: "nontoxic"})
 
@@ -99,7 +99,7 @@ def evaluate_ensemble(
         probs = _get_model_probs(model, df_model, label_col, le, cfg, device)
 
         # Derive p_toxic from this model's softmax output
-        if strategy in ("binary", "hierarchical"):
+        if strategy == "binary":
             toxic_idx = list(le.classes_).index("toxic") if "toxic" in le.classes_ else 1
             p_toxic_i = probs[:, toxic_idx]
         else:
@@ -168,33 +168,7 @@ def _load_calibrated_model(
     strategy = config.training_strategy
     calibrated_path = model_dir / "best_model_calibrated.pt"
 
-    if strategy == "multitask":
-        from toxfam.model.architectures import MultiTaskMLP
-
-        base = MultiTaskMLP(
-            input_dim=config.effective_embedding_dim,
-            hidden_dims=config.hidden_dims,
-            num_family_classes=num_classes,
-            dropout=config.dropout,
-        )
-    elif strategy == "hierarchical":
-        from toxfam.model.architectures import HierarchicalMLP, ModularMLP
-
-        # Build a dummy projector to get the state dict structure
-        dummy = ModularMLP(
-            input_dim=config.effective_embedding_dim,
-            hidden_dims=config.hidden_dims,
-            num_classes=2,
-            dropout=config.dropout,
-        )
-        base = HierarchicalMLP(
-            projector_state=dummy.projector.state_dict(),
-            projector_out_dim=config.hidden_dims[0],
-            hidden_dim=config.stage2_hidden_dim,
-            num_binary_classes=num_classes,
-            freeze_backbone=config.stage2_freeze_backbone,
-        )
-    elif strategy == "combined":
+    if strategy == "combined":
         from toxfam.model.architectures import MultiInputMLP
 
         base = MultiInputMLP(
@@ -215,23 +189,11 @@ def _load_calibrated_model(
         )
 
     state_dict = torch.load(calibrated_path, map_location=device, weights_only=True)
-
-    if strategy == "multitask":
-        # MultiTaskMLP returns a tuple, which ModelWithTemperature can't handle.
-        # Load the model directly and store temperature separately.
-        model_sd = {k.removeprefix("model."): v for k, v in state_dict.items() if k.startswith("model.")}
-        base.load_state_dict(model_sd)
-        base.to(device)
-        base.eval()
-        temperature = state_dict.get("temperature", torch.ones(1))
-        base._ensemble_temperature = temperature.to(device)
-        return base
-    else:
-        model = ModelWithTemperature(base, device)
-        model.load_state_dict(state_dict)
-        model.to(device)
-        model.eval()
-        return model
+    model = ModelWithTemperature(base, device)
+    model.load_state_dict(state_dict)
+    model.to(device)
+    model.eval()
+    return model
 
 
 def _get_model_probs(
@@ -258,7 +220,6 @@ def _get_model_probs(
     selector = DataSelector(loader, "both" if config.training_strategy == "combined" else "emb_only")
 
     all_probs = []
-    temperature = getattr(model, "_ensemble_temperature", None)
     model.eval()
     with torch.no_grad():
         for features, _ in selector:
@@ -267,12 +228,6 @@ def _get_model_probs(
                 outputs = model(*features)
             else:
                 outputs = model(features.to(device))
-            # MultiTaskMLP returns (family_logits, binary_logits) tuple
-            if isinstance(outputs, tuple):
-                outputs = outputs[0]  # use family logits
-            # Apply temperature scaling for manually-loaded multitask models
-            if temperature is not None:
-                outputs = outputs / temperature
             probs = F.softmax(outputs, dim=1)
             all_probs.append(probs.cpu().numpy())
 

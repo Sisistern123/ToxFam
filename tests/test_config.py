@@ -22,7 +22,7 @@ def minimal_config(tmp_path):
 class TestStrategyTypes:
     @pytest.mark.parametrize(
         "strategy",
-        ["standard", "combined", "binary", "hierarchical", "multitask"],
+        ["standard", "combined", "binary"],
     )
     def test_all_valid_strategies(self, minimal_config, strategy):
         minimal_config["training_strategy"] = strategy
@@ -53,35 +53,6 @@ class TestFocalLoss:
         minimal_config["use_focal_loss"] = True
         minimal_config["focal_loss_gamma"] = -1.0
         with pytest.raises(ValueError, match="focal_loss_gamma"):
-            TrainConfig(**minimal_config)
-
-
-class TestHierarchicalFields:
-    def test_defaults(self, minimal_config):
-        minimal_config["training_strategy"] = "hierarchical"
-        cfg = TrainConfig(**minimal_config)
-        assert cfg.stage2_freeze_backbone is True
-        assert cfg.stage2_hidden_dim == 64
-        assert cfg.stage2_learning_rate == 1e-5
-        assert cfg.stage1_model_path is None
-
-
-class TestMultitaskFields:
-    def test_defaults(self, minimal_config):
-        minimal_config["training_strategy"] = "multitask"
-        cfg = TrainConfig(**minimal_config)
-        assert cfg.multitask_family_weight == 1.0
-        assert cfg.multitask_binary_weight == 1.0
-
-
-class TestCrossValidation:
-    def test_n_folds_default(self, minimal_config):
-        cfg = TrainConfig(**minimal_config)
-        assert cfg.n_folds == 1
-
-    def test_n_folds_invalid(self, minimal_config):
-        minimal_config["n_folds"] = 0
-        with pytest.raises(ValueError, match="n_folds"):
             TrainConfig(**minimal_config)
 
 

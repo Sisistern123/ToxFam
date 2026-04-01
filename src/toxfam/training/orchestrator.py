@@ -20,11 +20,9 @@ from toxfam.data.dataset import ToxDataset, analyze_data_splits
 from toxfam.model.calibration import ModelWithTemperature
 from toxfam.training.strategies import (
     DataSelector,
-    MultiTaskJointWrapper,
     evaluate_label_on_dataset,
     run_binary_strategy,
     run_combined_strategy,
-    run_multitask_strategy,
     run_standard_strategy,
 )
 from toxfam.training.trainer import _forward_model, get_class_weights, get_device, set_seed
@@ -62,11 +60,9 @@ def _compute_p_toxic(
     loader = DataLoader(ds, batch_size=config.batch_size, shuffle=False)
 
     strategy = config.training_strategy
-    use_both = strategy == "combined" or (strategy == "multitask" and config.tax_h5_path)
-    if use_both:
-        selector = DataSelector(loader, "both")
-    else:
-        selector = DataSelector(loader, "emb_only")
+    selector = DataSelector(
+        loader, "both" if strategy == "combined" else "emb_only"
+    )
 
     device = get_device()
     model = model.to(device)
@@ -238,7 +234,7 @@ def run_training(config: TrainConfig) -> None:
     )
 
     # Validate taxonomy vector dimension matches config
-    if tax_h5 is not None and config.training_strategy == "combined":
+    if tax_h5 is not None:
         import h5py as _h5py
 
         with _h5py.File(tax_h5, "r") as _f:
@@ -298,44 +294,6 @@ def run_training(config: TrainConfig) -> None:
         final_model = run_binary_strategy(
             train_loader, val_loader, w_tensor, train_ds.num_classes, out_root, config
         )
-    elif strategy == "hierarchical":
-        from toxfam.training.hierarchical import run_hierarchical_strategy
-
-        final_model, _binary_le = run_hierarchical_strategy(
-            train_loader, val_loader, w_tensor, train_ds.num_classes,
-            train_df, val_df, h5_paths, out_root, config,
-        )
-        # Hierarchical produces a binary model — override label col for eval
-        effective_label_col = "binary_label"
-        if "binary_label" not in val_df.columns:
-            from toxfam.evaluation.metrics import to_binary_class
-
-            for split_df in (train_df, val_df, test_df):
-                split_df["binary_label"] = split_df[label_col].apply(to_binary_class)
-        # Rebuild datasets with binary labels for evaluation
-        train_ds.close()
-        val_ds.close()
-        train_ds = ToxDataset(
-            train_df, h5_paths, is_train=True,
-            label_col="binary_label", tax_h5_path=tax_h5, **extra_ds_kwargs,
-        )
-        val_ds = ToxDataset(
-            val_df, h5_paths, label_encoder=train_ds.le, is_train=False,
-            label_col="binary_label", tax_h5_path=tax_h5, **extra_ds_kwargs,
-        )
-    elif strategy == "multitask":
-        final_model = run_multitask_strategy(
-            train_loader, val_loader, w_tensor, train_ds.num_classes,
-            train_df, out_root, config,
-        )
-        # Wrap for joint inference: binary head controls toxic/nontoxin boundary,
-        # family head picks specific family (renormalized over toxic families).
-        from toxfam.evaluation.metrics import NONTOXIN_LABELS
-        nontoxin_indices = [
-            i for i, c in enumerate(train_ds.le.classes_)
-            if c.lower() in NONTOXIN_LABELS
-        ]
-        final_model = MultiTaskJointWrapper(final_model, nontoxin_indices)
     elif strategy == "combined":
         final_model = run_combined_strategy(
             train_loader, val_loader, w_tensor, train_ds.num_classes, out_root, config
@@ -371,11 +329,9 @@ def run_training(config: TrainConfig) -> None:
     # 5. Calibration (Temperature Scaling)
     console.print("\n[bold]Running Calibration (Temperature Scaling)...[/bold]")
 
-    use_both = strategy == "combined" or (strategy == "multitask" and config.tax_h5_path)
-    if use_both:
-        val_selector = DataSelector(val_loader, "both")
-    else:
-        val_selector = DataSelector(val_loader, "emb_only")
+    val_selector = DataSelector(
+        val_loader, "both" if strategy == "combined" else "emb_only"
+    )
 
     device = get_device()
     final_model = final_model.to(device)
