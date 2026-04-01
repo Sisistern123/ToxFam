@@ -15,6 +15,7 @@ except ImportError:
     wandb = None
 
 import torch.nn as nn
+import torch.nn.functional as F
 
 from toxfam.data.dataset import ToxDataset
 from toxfam.model.architectures import ModularMLP, MultiInputMLP, MultiTaskMLP
@@ -154,6 +155,70 @@ class _MultiTaskBinaryWrapper(nn.Module):
     def forward(self, x):
         _, bin_out = self.model(x)
         return bin_out
+
+
+class MultiTaskJointWrapper(nn.Module):
+    """Bayesian joint inference combining family and binary heads.
+
+    Computes joint class probabilities using both heads of a MultiTaskMLP:
+
+        P(nontoxin | x) = P_bin(nontoxin | x)
+        P(family_i | x) = P_bin(toxic | x) * P_fam(family_i | x) / sum_toxic P_fam
+
+    where P_bin comes from the binary head and P_fam from the family head,
+    with toxic-family probabilities renormalized to sum to 1.
+
+    Returns log(joint_probs) so that downstream F.softmax() recovers the
+    joint distribution and CrossEntropyLoss computes correct NLL.
+
+    Parameters
+    ----------
+    model : MultiTaskMLP
+        The trained multitask model (unwrapped).
+    nontoxin_indices : list[int]
+        Indices of nontoxin classes in the family head's label encoder.
+        Binary head convention: index 0 = nontoxin, index 1 = toxic.
+    """
+
+    def __init__(self, model: MultiTaskMLP, nontoxin_indices: list[int]):
+        super().__init__()
+        self.model = model
+        self.register_buffer(
+            "_nontoxin_mask",
+            torch.zeros(model.family_head.out_features, dtype=torch.bool),
+        )
+        self._nontoxin_mask[nontoxin_indices] = True
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        fam_logits, bin_logits = self.model(x)
+
+        # Binary probabilities: [batch, 2] where [:,0]=nontoxin, [:,1]=toxic
+        bin_probs = F.softmax(bin_logits, dim=1)
+        p_nontoxin = bin_probs[:, 0]  # [batch]
+        p_toxic = bin_probs[:, 1]     # [batch]
+
+        # Family probabilities: [batch, num_classes]
+        fam_probs = F.softmax(fam_logits, dim=1)
+
+        # Masks
+        nontoxin_mask = self._nontoxin_mask  # [num_classes]
+        toxic_mask = ~nontoxin_mask
+
+        # Renormalize toxic family probs to sum to 1
+        toxic_sum = fam_probs[:, toxic_mask].sum(dim=1, keepdim=True).clamp(min=1e-8)
+        # Renormalize nontoxin probs to sum to 1 (handles multiple nontoxin classes)
+        nontoxin_sum = fam_probs[:, nontoxin_mask].sum(dim=1, keepdim=True).clamp(min=1e-8)
+
+        # Build joint probability vector
+        joint_probs = torch.empty_like(fam_probs)
+        joint_probs[:, toxic_mask] = (
+            p_toxic.unsqueeze(1) * fam_probs[:, toxic_mask] / toxic_sum
+        )
+        joint_probs[:, nontoxin_mask] = (
+            p_nontoxin.unsqueeze(1) * fam_probs[:, nontoxin_mask] / nontoxin_sum
+        )
+
+        return torch.log(joint_probs.clamp(min=1e-8))
 
 
 def run_multitask_strategy(
