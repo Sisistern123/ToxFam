@@ -57,6 +57,7 @@ def _compute_p_toxic(
         is_train=False,
         label_col=label_col,
         tax_h5_path=str(config.tax_h5_path) if config.tax_h5_path else None,
+        **_extra_dataset_kwargs(config),
     )
     loader = DataLoader(ds, batch_size=config.batch_size, shuffle=False)
 
@@ -315,10 +316,6 @@ def run_training(config: TrainConfig) -> None:
         )
     else:
         raise ValueError(f"Unknown training strategy: {strategy}")
-
-    # Watch model gradients in wandb
-    if _use_wandb:
-        wandb.watch(final_model, log="gradients", log_freq=50)
 
     loss_fn = torch.nn.CrossEntropyLoss()
 

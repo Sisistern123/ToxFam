@@ -11,6 +11,15 @@ from sklearn.preprocessing import LabelEncoder
 from torch.utils.data import Dataset
 
 
+# Organism (taxon) IDs for known venomous lineages.
+# Covers major venomous clades: snakes (Serpentes 8570), spiders (Araneae 6893),
+# scorpions (Scorpiones 6855), cone snails (Conidae 6490), jellyfish (Cubozoa 6082),
+# bees/wasps (Aculeata 7434), centipedes (Chilopoda 7537).
+_VENOMOUS_TAXA_IDS: frozenset[int] = frozenset({
+    8570, 6893, 6855, 6490, 6082, 7434, 7537,
+})
+
+
 class ToxDataset(Dataset):
     """PyTorch Dataset for toxin-classification tasks that reads embeddings
     from multiple HDF5 files with LRU caching.
@@ -130,10 +139,10 @@ class ToxDataset(Dataset):
             )
 
         if self.include_venom_indicator:
-            # Binary indicator: 1.0 if organism is in a known venomous taxon
-            # This is a simplified heuristic; refined version could check
-            # against a set of known venomous taxon IDs
-            aux_parts.append(torch.tensor([1.0], dtype=torch.float32))
+            # Check if organism belongs to a known venomous taxon
+            org_id = int(row.get("Organism (ID)", 0))
+            is_venomous = 1.0 if org_id in _VENOMOUS_TAXA_IDS else 0.0
+            aux_parts.append(torch.tensor([is_venomous], dtype=torch.float32))
 
         if aux_parts:
             emb_tensor = torch.cat([emb_tensor] + aux_parts, dim=0)

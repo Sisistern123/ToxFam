@@ -431,10 +431,10 @@ def cpp(
     between toxic and non-toxic sequences. Outputs an HDF5 file with one
     feature vector per protein.
     """
-    from toxfam.data.cpp_features import generate_cpp_features
+    from toxfam.data.cpp_features import run_cpp_pipeline
 
     output.parent.mkdir(parents=True, exist_ok=True)
-    generate_cpp_features(
+    run_cpp_pipeline(
         training_csv=str(training_csv),
         output_h5=str(output),
         n_filter=n_filter,

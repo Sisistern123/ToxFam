@@ -32,7 +32,11 @@ def profile_training_data(
 
     # 1. Class distribution
     if "is_toxic" not in df.columns:
-        df["is_toxic"] = df["Protein families"] != "nontox"
+        from toxfam.evaluation.metrics import to_binary_class
+
+        df["is_toxic"] = df["Protein families"].apply(
+            lambda x: to_binary_class(x) == "toxin"
+        )
 
     tox_count = df["is_toxic"].sum()
     nontox_count = (~df["is_toxic"]).sum()

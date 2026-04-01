@@ -75,12 +75,25 @@ def _train_stage2(
     val_df["binary_label"] = val_df["Protein families"].apply(to_binary_class)
 
     tax_h5 = str(config.tax_h5_path) if config.tax_h5_path else None
+
+    # Build auxiliary feature kwargs
+    extra_kwargs: dict = {}
+    if config.cpp_h5_path:
+        extra_kwargs["cpp_h5_path"] = str(config.cpp_h5_path)
+    if config.hbi_h5_path:
+        extra_kwargs["hbi_h5_path"] = str(config.hbi_h5_path)
+    if config.include_length:
+        extra_kwargs["include_length"] = True
+    if config.include_venom_indicator:
+        extra_kwargs["include_venom_indicator"] = True
+
     train_ds = ToxDataset(
-        train_df, h5_paths, is_train=True, label_col="binary_label", tax_h5_path=tax_h5
+        train_df, h5_paths, is_train=True, label_col="binary_label",
+        tax_h5_path=tax_h5, **extra_kwargs,
     )
     val_ds = ToxDataset(
         val_df, h5_paths, label_encoder=train_ds.le, is_train=False,
-        label_col="binary_label", tax_h5_path=tax_h5,
+        label_col="binary_label", tax_h5_path=tax_h5, **extra_kwargs,
     )
 
     train_loader = DataLoader(train_ds, batch_size=config.batch_size, shuffle=True)

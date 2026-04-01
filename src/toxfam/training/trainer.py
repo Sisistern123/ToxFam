@@ -366,7 +366,9 @@ def train_model(model, train_loader, val_loader, weights_tensor, config: TrainCo
             break
 
     if best_model_path.exists():
-        model.load_state_dict(torch.load(best_model_path, map_location=device))
+        model.load_state_dict(
+            torch.load(best_model_path, map_location=device, weights_only=True)
+        )
 
     history = {"train_losses": train_losses, "val_losses": val_losses}
     return model, history

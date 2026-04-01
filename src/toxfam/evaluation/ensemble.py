@@ -65,7 +65,11 @@ def evaluate_ensemble(
 
     # Prepare binary ground truth from family labels
     if "is_toxic" not in test_df.columns:
-        test_df["is_toxic"] = test_df["Protein families"] != "nontox"
+        from toxfam.evaluation.metrics import to_binary_class
+
+        test_df["is_toxic"] = test_df["Protein families"].apply(
+            lambda x: to_binary_class(x) == "toxin"
+        )
     y_true_binary = test_df["is_toxic"].astype(int).to_numpy()
 
     from sklearn.preprocessing import LabelEncoder

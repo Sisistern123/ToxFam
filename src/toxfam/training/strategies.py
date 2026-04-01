@@ -304,6 +304,17 @@ def evaluate_label_on_dataset(
     """Evaluate the model on a dataframe. Returns the metrics dict."""
     strategy = config.training_strategy
 
+    # Build auxiliary feature kwargs from config
+    extra_kwargs: dict = {}
+    if config.cpp_h5_path:
+        extra_kwargs["cpp_h5_path"] = str(config.cpp_h5_path)
+    if config.hbi_h5_path:
+        extra_kwargs["hbi_h5_path"] = str(config.hbi_h5_path)
+    if config.include_length:
+        extra_kwargs["include_length"] = True
+    if config.include_venom_indicator:
+        extra_kwargs["include_venom_indicator"] = True
+
     ds = ToxDataset(
         dataset_df,
         [str(p) for p in config.h5_paths],
@@ -311,6 +322,7 @@ def evaluate_label_on_dataset(
         is_train=False,
         label_col=label_col,
         tax_h5_path=str(config.tax_h5_path) if config.tax_h5_path else None,
+        **extra_kwargs,
     )
     loader = DataLoader(ds, batch_size=config.batch_size, shuffle=False)
 
