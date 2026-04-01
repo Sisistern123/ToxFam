@@ -11,17 +11,54 @@ from pathlib import Path
 import h5py
 import pandas as pd
 import torch
-from rich.console import Console
+from pymmseqs.commands import createdb, search
 
-from toxfam._paths import benchmark_dir, evaluation_data_dir, processed_dir
-from toxfam.evaluation.hbi import NO_HIT_LABEL, run_hbi_search, write_fasta_from_df
-from toxfam.evaluation.metrics import (
-    calculate_binary_metrics,
-    print_metrics_table,
-    to_binary_class,
-)
+from toxfam._paths import get_project_root
+from toxfam.data._fasta import write_fasta
+from toxfam.device import get_device
+from toxfam.evaluation.metrics import calculate_binary_metrics, to_binary_class
 
-console = Console()
+
+def run_hbi_evaluation(
+    query_df: pd.DataFrame,
+    train_df: pd.DataFrame,
+    query_fasta: Path,
+    train_fasta: Path,
+    results_dir: Path,
+) -> pd.DataFrame:
+    write_fasta(query_df, query_fasta, id_col="Entry")
+    tmp_dir = results_dir / "tmp"
+    tmp_dir.mkdir(parents=True, exist_ok=True)
+
+    query_db = createdb(str(query_fasta), str(tmp_dir / "queryDB"))
+    target_db = createdb(str(train_fasta), str(tmp_dir / "targetDB"))
+
+    search_res = search(
+        query_db.to_path(),
+        target_db.to_path(),
+        str(tmp_dir / "resultDB"),
+        str(tmp_dir / "search_tmp"),
+        s=9,
+        e="inf",
+    )
+    df_search = search_res.to_pandas()
+
+    if df_search.empty:
+        query_df["hbi_prediction"] = "no hit"
+    else:
+        best_hits = df_search.loc[df_search.groupby("query")["evalue"].idxmin()].copy()
+        train_map = dict(zip(train_df["identifier"], train_df["Protein families"]))
+        best_hits["hbi_prediction"] = best_hits["target"].map(train_map)
+        query_df = query_df.merge(
+            best_hits[["query", "hbi_prediction"]],
+            left_on="Entry",
+            right_on="query",
+            how="left",
+        )
+        query_df.drop(columns="query", inplace=True)
+        query_df["hbi_prediction"] = query_df["hbi_prediction"].fillna("no hit")
+
+    return query_df
 
 
 def load_calibrated_model(
@@ -38,24 +75,30 @@ def load_calibrated_model(
         first_key = list(f.keys())[0]
         embedding_dim = f[first_key][:].shape[0]
 
-    state_dict = torch.load(model_path, map_location=torch.device(device))
+    state_dict = torch.load(
+        model_path, map_location=torch.device(device), weights_only=True
+    )
 
+    # Detect model architecture from state dict keys
     is_multi_input = any(k.startswith("model.tax_net.") for k in state_dict)
 
     if is_multi_input:
+        # Infer tax_dim from the first tax_net layer weight shape
         tax_dim = state_dict["model.tax_net.0.weight"].shape[1]
         tax_hidden_dim = state_dict["model.tax_net.0.weight"].shape[0]
 
+        # Infer hidden_dims from joint layer weights
         hidden_dims = []
         i = 0
         while f"model.joint.{i}.weight" in state_dict:
             hidden_dims.append(state_dict[f"model.joint.{i}.weight"].shape[0])
-            i += 3
+            i += 3  # Linear + ReLU + Dropout
+        # Last entry is the output layer, not a hidden dim
         if hidden_dims:
             hidden_dims.pop()
 
-        console.print(
-            f"   Reconstructing MultiInputMLP: embedding_dim={embedding_dim}, "
+        print(
+            f"Reconstructing MultiInputMLP: embedding_dim={embedding_dim}, "
             f"tax_dim={tax_dim}, hidden_dims={hidden_dims}, num_classes={num_classes}"
         )
         base_model = MultiInputMLP(
@@ -66,16 +109,17 @@ def load_calibrated_model(
             tax_hidden_dim=tax_hidden_dim,
         )
     else:
+        # Infer hidden_dims from projector + backbone weights
         hidden_dims = [state_dict["model.projector.0.weight"].shape[0]]
         i = 0
         while f"model.backbone.{i}.weight" in state_dict:
             hidden_dims.append(state_dict[f"model.backbone.{i}.weight"].shape[0])
             i += 3
         if hidden_dims and len(hidden_dims) > 1:
-            hidden_dims.pop()
+            hidden_dims.pop()  # last is output layer
 
-        console.print(
-            f"   Reconstructing ModularMLP: embedding_dim={embedding_dim}, "
+        print(
+            f"Reconstructing ModularMLP: embedding_dim={embedding_dim}, "
             f"hidden_dims={hidden_dims}, num_classes={num_classes}"
         )
         base_model = ModularMLP(
@@ -86,10 +130,10 @@ def load_calibrated_model(
 
     scaled_model = ModelWithTemperature(base_model, torch.device(device))
     scaled_model.load_state_dict(state_dict)
-    scaled_model.eval()
 
-    console.print(
-        f"   Loaded calibrated model with temperature: "
+    scaled_model.eval()
+    print(
+        f"Loaded calibrated model with temperature: "
         f"{scaled_model.temperature.item():.3f}"
     )
 
@@ -102,18 +146,15 @@ def run_model_inference(
     model_path: Path,
     class_map_path: Path,
 ) -> pd.DataFrame:
-    device = (
-        "mps"
-        if torch.backends.mps.is_available()
-        else ("cuda" if torch.cuda.is_available() else "cpu")
-    )
+    device = get_device()
     model, is_multi_input = load_calibrated_model(
-        model_path, class_map_path, h5_path, device=device
+        model_path, class_map_path, h5_path, device=str(device)
     )
 
     with open(class_map_path, "r") as f:
         idx_to_label = {int(k): v for k, v in json.load(f).items()}
 
+    # Infer tax_dim from the model if it's a MultiInputMLP
     if is_multi_input:
         tax_dim = model.model.tax_net[0].in_features
     else:
@@ -121,7 +162,7 @@ def run_model_inference(
 
     preds = []
     with h5py.File(h5_path, "r") as f:
-        for ident in df["identifier"]:
+        for ident in df["Entry"]:
             emb = torch.tensor(f[ident][:]).unsqueeze(0).to(device)
 
             with torch.no_grad():
@@ -133,7 +174,6 @@ def run_model_inference(
                 pred_idx = torch.argmax(outputs, dim=1).item()
             preds.append(idx_to_label.get(pred_idx, "other"))
 
-    df = df.copy()
     df["model_prediction"] = preds
     return df
 
@@ -144,70 +184,57 @@ def run_eval_nonmetazoan(
     class_map_path: Path,
 ) -> None:
     """Run non-metazoan evaluation."""
-    eval_data = evaluation_data_dir() / "non_metazoan"
-    proc = processed_dir()
+    root = get_project_root()
+    base_dir = root / "benchmark" / "new"
 
-    nonmetazoa_tsv = eval_data / "non_metazoan.tsv"
-    train_data = proc / "hbi_train_all.csv"
-    train_fasta = proc / "hbi_train_all.fasta"
-    results_dir = benchmark_dir() / "non_metazoan"
+    nonmetazoa_tsv = base_dir / "evaluation" / "non-metazoa" / "non-metazoa.tsv"
+    nonmetazoa_fasta = (
+        base_dir / "evaluation" / "non-metazoa" / "non-metazoa_finalfilter.fasta"
+    )
+    train_data = root / "benchmark" / "HBI" / "train_all_df.csv"
+    train_fasta = root / "benchmark" / "HBI" / "train_all_members.fasta"
+    results_dir = base_dir / "evaluation" / "non-metazoa" / "results"
     results_dir.mkdir(parents=True, exist_ok=True)
 
-    # 1. Load and normalize column names
+    # 1. Load Data
     df_all = pd.read_csv(nonmetazoa_tsv, sep="\t")
-    if "Entry" in df_all.columns and "identifier" not in df_all.columns:
-        df_all = df_all.rename(columns={"Entry": "identifier"})
 
     # 2. Filter by H5 presence
     with h5py.File(h5_path, "r") as f:
         h5_keys = set(f.keys())
-    df = df_all[df_all["identifier"].isin(h5_keys)].copy()
-    console.print(f"Synced {len(df)} records with H5 embeddings.")
+    df = df_all[df_all["Entry"].isin(h5_keys)].copy()
+    print(f"Synced {len(df)} records with H5 embeddings.")
 
-    # 3. HBI search
-    console.print("Running HBI Evaluation...")
+    df_eval = df.copy()
+
+    # 4. HBI Baseline
+    print("Running HBI Evaluation...")
     train_df = pd.read_csv(train_data)
-
-    query_fasta = results_dir / "hbi" / "query.fasta"
-    write_fasta_from_df(df, query_fasta)
-
-    hbi_result = run_hbi_search(
-        query_fasta=query_fasta,
-        target_fasta=train_fasta,
-        target_labels_df=train_df,
-        work_dir=results_dir / "hbi" / "tmp",
-    )
-    console.print(
-        f"   HBI Coverage: {hbi_result.coverage:.1%} "
-        f"({hbi_result.n_with_hits}/{hbi_result.n_queries})"
+    df_eval = run_hbi_evaluation(
+        df_eval, train_df, nonmetazoa_fasta, train_fasta, results_dir / "hbi"
     )
 
-    df_eval = df.merge(hbi_result.predictions, on="identifier", how="left")
-    df_eval["hbi_prediction"] = df_eval["hbi_prediction"].fillna(NO_HIT_LABEL)
-
-    # 4. Model inference
-    console.print("Running Model Inference...")
+    # 5. Model Inference
+    print("Running Model Inference...")
     df_eval = run_model_inference(df_eval, h5_path, model_path, class_map_path)
 
-    # 5. Binary metrics
-    console.print("Calculating Binary Metrics (Toxin vs Nontoxin)...")
-    hbi_m = calculate_binary_metrics(
-        df_eval["Protein families"], df_eval["hbi_prediction"]
-    )
-    mod_m = calculate_binary_metrics(
-        df_eval["Protein families"], df_eval["model_prediction"]
-    )
+    # 6. Binary Metrics & Save
+    print("Calculating Binary Metrics (Toxin vs Nontoxin)...")
 
-    # 6. Save results
+    hbi_m = calculate_binary_metrics(df_eval, "Protein families", "hbi_prediction")
+    mod_m = calculate_binary_metrics(df_eval, "Protein families", "model_prediction")
+
     with open(results_dir / "final_metrics.json", "w") as f:
-        json.dump(
-            {"HBI": hbi_m.to_json_dict(), "Model": mod_m.to_json_dict()}, f, indent=4
-        )
+        json.dump({"HBI": hbi_m, "Model": mod_m}, f, indent=4)
 
     df_eval["binary_ground_truth"] = df_eval["Protein families"].apply(to_binary_class)
     df_eval["binary_hbi"] = df_eval["hbi_prediction"].apply(to_binary_class)
     df_eval["binary_model"] = df_eval["model_prediction"].apply(to_binary_class)
+
     df_eval.to_csv(results_dir / "final_results.csv", index=False)
 
-    # 7. Print summary
-    print_metrics_table({"HBI": hbi_m, "Model": mod_m})
+    print("-" * 30)
+    print("Success! (Binary Toxin/Nontoxin)")
+    print(f"HBI   -> Acc: {hbi_m['acc']:.4f} | MCC: {hbi_m['mcc']:.4f}")
+    print(f"Model -> Acc: {mod_m['acc']:.4f} | MCC: {mod_m['mcc']:.4f}")
+    print("-" * 30)

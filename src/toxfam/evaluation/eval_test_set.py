@@ -4,51 +4,43 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any
+from typing import Any, Dict
 
+import numpy as np
 import pandas as pd
-from rich.console import Console
+from pymmseqs.commands import createdb, search
 
-from toxfam._paths import benchmark_dir, get_project_root, processed_dir
-from toxfam.evaluation.hbi import NO_HIT_LABEL, run_hbi_search, write_fasta_from_df
-from toxfam.evaluation.metrics import (
-    MetricsResult,
-    calculate_metrics,
-    print_metrics_table,
-)
+from toxfam._paths import get_project_root
+from toxfam.evaluation.metrics import calculate_multiclass_metrics
 from toxfam.visualization.plots import plot_confusion_matrix
-
-console = Console()
 
 
 def _default_paths():
-    proc = processed_dir()
+    root = get_project_root()
+    bench_dir = root / "benchmark"
+    new_dir = bench_dir / "new"
     return {
-        "results_dir": benchmark_dir() / "test_set",
-        "training_data": proc / "training_data.csv",
-        "train_hbi_data": proc / "hbi_train_all.csv",
-        "train_hbi_fasta": proc / "hbi_train_all.fasta",
+        "eval_dir": new_dir / "evaluation" / "test_set",
+        "results_dir": new_dir / "evaluation" / "test_set" / "results",
+        "test_data": bench_dir / "test_data.csv",
+        "test_fasta": bench_dir / "test_data.fasta",
+        "train_data": bench_dir / "HBI" / "train_all_df.csv",
+        "train_fasta": bench_dir / "HBI" / "train_all_members.fasta",
     }
 
 
-def _load_split(training_data_path: Path, split: str) -> pd.DataFrame:
-    """Load a specific split from training_data.csv."""
-    df = pd.read_csv(training_data_path)
-    return df[df["Split"] == split].reset_index(drop=True)
-
-
-def load_data(training_data_path: Path, train_hbi_path: Path):
-    console.print("Loading data...")
-    test_df = _load_split(training_data_path, "test")
-    train_df = pd.read_csv(train_hbi_path)
+def load_data(test_data_path: Path, train_data_path: Path):
+    print("Loading data...")
+    test_df = pd.read_csv(test_data_path)
+    train_df = pd.read_csv(train_data_path)
 
     q_labels = set(train_df["Protein families"].unique())
     t_labels = set(test_df["Protein families"].unique())
     only_in_train = q_labels - t_labels
 
     if only_in_train:
-        console.print(
-            f"   Found {len(only_in_train)} labels in train not in test. "
+        print(
+            f"Found {len(only_in_train)} labels in train not in test. "
             f"Mapping to 'other'..."
         )
         repl_map = {lbl: "other" for lbl in only_in_train}
@@ -57,15 +49,60 @@ def load_data(training_data_path: Path, train_hbi_path: Path):
     return test_df, train_df
 
 
-def load_nn_precomputed(nn_preds_path: Path, nn_metrics_path: Path) -> dict[str, Any]:
+def run_hbi_search(
+    test_df, train_df, test_fasta: Path, train_fasta: Path, results_dir: Path
+):
+    print("Running HBI evaluation...")
+    tmp_dir = results_dir / "tmp"
+    tmp_dir.mkdir(parents=True, exist_ok=True)
+
+    query_db = createdb(str(test_fasta), str(tmp_dir / "query_db"))
+    target_db = createdb(str(train_fasta), str(tmp_dir / "train_db"))
+
+    search_res = search(
+        query_db.to_path(),
+        target_db.to_path(),
+        str(tmp_dir / "search_res"),
+        str(tmp_dir / "tmp"),
+        s=9,
+        e="inf",
+        min_seq_id=0.0,
+        max_seqs=100_000,
+    )
+
+    res = search_res.to_pandas()
+    if res.empty:
+        print("No hits found.")
+        return pd.DataFrame(columns=["identifier", "hbi_prediction", "hbi_confidence"])
+
+    best_hits = res.loc[res.groupby("query")["evalue"].idxmin()].reset_index(drop=True)
+
+    train_labels = train_df[["identifier", "Protein families"]].rename(
+        columns={"identifier": "target", "Protein families": "hbi_prediction"}
+    )
+    hbi_results = best_hits.merge(train_labels, on="target", how="left")
+
+    hbi_results = hbi_results.rename(columns={"query": "identifier"})
+    hbi_results["hbi_confidence"] = hbi_results["fident"]
+
+    return hbi_results[["identifier", "hbi_prediction", "hbi_confidence"]]
+
+
+def load_nn_precomputed(nn_preds_path: Path, nn_metrics_path: Path) -> Dict[str, Any]:
     if not (nn_metrics_path.exists() and nn_preds_path.exists()):
-        console.print("[yellow]Warning: NN pre-calculated files missing![/]")
+        print("Warning: NN pre-calculated files missing!")
         return {"has_nn": False}
 
-    console.print("Loading pre-calculated NN results...")
+    print("Loading pre-calculated NN results...")
 
     with open(nn_metrics_path, "r") as f:
         nn_json = json.load(f)
+
+    numeric = nn_json.get("numeric_metrics", {})
+    nn_acc = numeric.get("accuracy", numeric.get("Test_Accuracy", None))
+
+    report = nn_json.get("classification_report", {})
+    nn_mcc_proxy = report.get("macro avg", {}).get("f1-score", 0.0)
 
     nn_preds = pd.read_csv(nn_preds_path)
 
@@ -78,12 +115,14 @@ def load_nn_precomputed(nn_preds_path: Path, nn_metrics_path: Path) -> dict[str,
         pred_col = candidates[0] if candidates else None
 
     if pred_col is None:
-        console.print("[yellow]Warning: Could not find prediction column in NN CSV![/]")
+        print("Warning: Could not find prediction column in NN predictions CSV!")
         return {"has_nn": False}
 
     return {
         "has_nn": True,
         "nn_json": nn_json,
+        "nn_acc": nn_acc if nn_acc is not None else 0.0,
+        "nn_mcc_proxy": nn_mcc_proxy,
         "nn_preds_df": nn_preds,
         "nn_pred_col": pred_col,
     }
@@ -103,127 +142,167 @@ def run_eval_test_set(model_dir: Path | None = None) -> None:
     nn_preds_path = model_dir / "predictions" / "test_calibrated_predictions.csv"
     nn_metrics_path = model_dir / "metrics" / "test_calibrated_metrics.json"
 
+    summary_metrics = []
+
     # 1) Load data
-    test_df, train_df = load_data(paths["training_data"], paths["train_hbi_data"])
+    test_df, train_df = load_data(paths["test_data"], paths["train_data"])
 
-    # 2) Generate test FASTA and run HBI search
-    test_fasta = results_dir / "tmp" / "test_query.fasta"
-    test_fasta.parent.mkdir(parents=True, exist_ok=True)
-    write_fasta_from_df(test_df, test_fasta)
-
-    hbi_result = run_hbi_search(
-        query_fasta=test_fasta,
-        target_fasta=paths["train_hbi_fasta"],
-        target_labels_df=train_df,
-        work_dir=results_dir / "tmp",
-    )
-    console.print(
-        f"   HBI Coverage: {hbi_result.coverage:.1%} "
-        f"({hbi_result.n_with_hits}/{hbi_result.n_queries})"
+    # 2) HBI search
+    hbi_results = run_hbi_search(
+        test_df, train_df, paths["test_fasta"], paths["train_fasta"], results_dir
     )
 
-    # 3) Combine with ground truth
+    # 3) Combine + align
     combined = test_df[["identifier", "Sequence", "Protein families"]].copy()
     combined.rename(columns={"Protein families": "ground_truth"}, inplace=True)
-    combined = combined.merge(hbi_result.predictions, on="identifier", how="left")
-    combined["hbi_prediction"] = combined["hbi_prediction"].fillna(NO_HIT_LABEL)
 
-    # Handle HBI labels not in ground truth
+    combined = combined.merge(hbi_results, on="identifier", how="left")
+    combined["hbi_prediction"] = combined["hbi_prediction"].fillna("no hit")
+
     valid_labels = set(combined["ground_truth"].unique())
     hbi_labels = set(combined["hbi_prediction"].unique())
-    unknown_labels = hbi_labels - valid_labels - {NO_HIT_LABEL}
-    if unknown_labels:
-        console.print(
-            f"   Mapping {len(unknown_labels)} HBI labels not in ground truth "
-            f"to 'other'"
-        )
-        combined["hbi_prediction"] = combined["hbi_prediction"].replace(
-            {lbl: "other" for lbl in unknown_labels}
-        )
+    labels_not_in_ground_truth = hbi_labels - valid_labels - {"no hit"}
 
-    # 4) Compute HBI metrics (class_list from ground truth only)
-    class_list = sorted(combined["ground_truth"].unique())
-    hbi_metrics = calculate_metrics(
-        combined["ground_truth"],
-        combined["hbi_prediction"],
-        class_list=class_list,
-    )
+    if labels_not_in_ground_truth:
+        print(
+            f"Found {len(labels_not_in_ground_truth)} HBI labels not in ground truth. "
+            f"Mapping to 'other'..."
+        )
+        repl_map = {lbl: "other" for lbl in labels_not_in_ground_truth}
+        combined["hbi_prediction"] = combined["hbi_prediction"].replace(repl_map)
 
-    # 5) Load NN precomputed results
+    # 4) NN
     nn_bundle = load_nn_precomputed(nn_preds_path, nn_metrics_path)
     has_model = nn_bundle.get("has_nn", False)
-    nn_metrics: MetricsResult | None = None
 
     if has_model:
         nn_preds = nn_bundle["nn_preds_df"]
         pred_col = nn_bundle["nn_pred_col"]
-        console.print(f"   Using '{pred_col}' column for NN predictions")
+        print(f"Using '{pred_col}' column for NN predictions")
 
         model_subset = nn_preds[["identifier", pred_col]].rename(
             columns={pred_col: "model_prediction"}
         )
         combined = combined.merge(model_subset, on="identifier", how="left")
-        combined["model_prediction"] = combined["model_prediction"].fillna(NO_HIT_LABEL)
+        combined["model_prediction"] = combined["model_prediction"].fillna("no hit")
 
-        # Handle model labels not in ground truth
         model_labels = set(combined["model_prediction"].unique())
-        unknown_model = model_labels - valid_labels - {NO_HIT_LABEL}
-        if unknown_model:
-            console.print(
-                f"   Mapping {len(unknown_model)} model labels not in ground "
-                f"truth to 'other'"
+        labels_not_in_ground_truth_model = model_labels - valid_labels - {"no hit"}
+
+        if labels_not_in_ground_truth_model:
+            print(
+                f"Found {len(labels_not_in_ground_truth_model)} model labels "
+                f"not in ground truth. Mapping to 'other'..."
             )
+            repl_map_model = {lbl: "other" for lbl in labels_not_in_ground_truth_model}
             combined["model_prediction"] = combined["model_prediction"].replace(
-                {lbl: "other" for lbl in unknown_model}
+                repl_map_model
             )
 
-        nn_metrics = calculate_metrics(
-            combined["ground_truth"],
-            combined["model_prediction"],
-            class_list=class_list,
-        )
+    # 5) Shared class list
+    shared_class_list = sorted(list(combined["ground_truth"].unique()))
+    if "no hit" in set(combined["hbi_prediction"].unique()) or (
+        "model_prediction" in combined
+        and "no hit" in set(combined["model_prediction"].unique())
+    ):
+        shared_class_list = shared_class_list + ["no hit"]
+    print(f"\nShared class list created: {len(shared_class_list)} classes")
 
-    # 6) Print summary
-    summary = {"HBI": hbi_metrics}
-    if nn_metrics is not None:
-        summary["Neural Network"] = nn_metrics
-    print_metrics_table(summary)
-
-    # 7) Save outputs
-    combined.to_csv(results_dir / "test_comparison_results.csv", index=False)
-
-    summary_rows = [hbi_metrics.to_summary_dict("HBI (Sequence Similarity)")]
-    if nn_metrics is not None:
-        summary_rows.append(nn_metrics.to_summary_dict("Neural Network (Calibrated)"))
-    pd.DataFrame(summary_rows).to_csv(
-        results_dir / "metric_comparison.csv", index=False
+    # 6) HBI metrics
+    print("\nCalculating HBI Metrics...")
+    hbi_m = calculate_multiclass_metrics(
+        combined, "ground_truth", "hbi_prediction", shared_class_list=shared_class_list
+    )
+    summary_metrics.append(
+        {
+            "Method": "HBI (Sequence Similarity)",
+            "Accuracy": hbi_m["acc"],
+            "MCC": hbi_m["mcc"],
+            "Micro_MCC": hbi_m["micro_mcc"],
+            "Std_Error": hbi_m["std_error"],
+            "Sample_Size": hbi_m["n_samples"],
+        }
+    )
+    print(
+        f"   -> Accuracy: {hbi_m['acc']:.4f} (+/-{hbi_m['std_error']:.4f}) "
+        f"| MCC: {hbi_m['mcc']:.4f} | Micro-MCC: {hbi_m['micro_mcc']:.4f}"
     )
 
-    report_data: dict[str, Any] = {"HBI": hbi_metrics.to_json_dict()}
-    if nn_metrics is not None:
-        report_data["Neural_Network"] = nn_metrics.to_json_dict()
-    elif has_model:
-        report_data["Neural_Network"] = nn_bundle.get("nn_json", {})
-    else:
-        report_data["Neural_Network"] = "Missing precomputed files"
+    # 7) NN metrics
+    nn_json = None
+    if has_model:
+        nn_json = nn_bundle["nn_json"]
+        nn_acc = float(nn_bundle["nn_acc"])
+        nn_mcc_proxy = float(nn_bundle["nn_mcc_proxy"])
 
+        n_samples = len(combined)
+        nn_std_error = (
+            np.sqrt((nn_acc * (1 - nn_acc)) / n_samples)
+            if n_samples > 0
+            else float("nan")
+        )
+
+        summary_metrics.append(
+            {
+                "Method": "Neural Network (Calibrated, precomputed)",
+                "Accuracy": nn_acc,
+                "MCC": nn_mcc_proxy,
+                "Micro_MCC": np.nan,
+                "Std_Error": nn_std_error,
+                "Sample_Size": n_samples,
+            }
+        )
+        print(
+            f"NN (precomputed) -> Accuracy: {nn_acc:.4f} "
+            f"(+/-{nn_std_error:.4f}) | 'MCC' (macro-F1 proxy): {nn_mcc_proxy:.4f}"
+        )
+
+    # 8) Save outputs
+    combined.to_csv(results_dir / "test_comparison_results.csv", index=False)
+
+    metrics_df = pd.DataFrame(summary_metrics)
+    metrics_path = results_dir / "metric_comparison.csv"
+    metrics_df.to_csv(metrics_path, index=False)
+
+    report_data = {
+        "HBI": {
+            "numeric_metrics": {
+                "Test_Accuracy": hbi_m["acc"],
+                "Test_MCC": hbi_m["mcc"],
+                "Test_Micro_MCC": hbi_m["micro_mcc"],
+                "Test_Std_Error": hbi_m["std_error"],
+            },
+            "classification_report": hbi_m["report"],
+        },
+        "Neural_Network": nn_json if has_model else "Missing precomputed files",
+    }
     with open(results_dir / "full_classification_report.json", "w") as f:
         json.dump(report_data, f, indent=4)
 
-    # 8) Confusion matrices
+    # 9) Visualizations
     plot_confusion_matrix(
-        hbi_metrics.y_true_encoded,
-        hbi_metrics.y_pred_encoded,
-        class_list,
-        str(results_dir / "hbi_confusion_matrix.png"),
+        all_labels=hbi_m["y_true_encoded"],
+        all_preds=hbi_m["y_pred_encoded"],
+        label_encoder=type("obj", (object,), {"classes_": hbi_m["class_list"]})(),
+        output_path=str(results_dir / "hbi_confusion_matrix.png"),
     )
 
-    if nn_metrics is not None:
-        plot_confusion_matrix(
-            nn_metrics.y_true_encoded,
-            nn_metrics.y_pred_encoded,
-            class_list,
-            str(results_dir / "model_confusion_matrix.png"),
-        )
+    if has_model:
+        cls2idx = {cls_name: i for i, cls_name in enumerate(shared_class_list)}
+        nn_y_true = combined["ground_truth"].map(cls2idx).to_numpy()
+        nn_y_pred = combined["model_prediction"].map(cls2idx).to_numpy()
 
-    console.print(f"\nResults saved to: {results_dir}")
+        if np.isnan(nn_y_true).sum() == 0 and np.isnan(nn_y_pred).sum() == 0:
+            plot_confusion_matrix(
+                all_labels=nn_y_true,
+                all_preds=nn_y_pred,
+                label_encoder=type("obj", (object,), {"classes_": shared_class_list})(),
+                output_path=str(results_dir / "model_confusion_matrix.png"),
+            )
+        else:
+            print(
+                "Skipping NN confusion matrix due to unmapped labels after alignment."
+            )
+
+    print(f"\nDone! Summary saved to: {metrics_path}")
+    print(f"Detailed Results saved to: {results_dir}")
