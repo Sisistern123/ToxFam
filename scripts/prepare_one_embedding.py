@@ -21,7 +21,11 @@ import numpy as np
 import pandas as pd
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-OE_ROOT = PROJECT_ROOT.parent / "ProteEmbedExplorations"
+# ProteEmbedExplorations lives alongside the students/ directory
+OE_ROOT = PROJECT_ROOT.parent.parent / "ProteEmbedExplorations"
+if not OE_ROOT.exists():
+    # Fallback: try sibling directory
+    OE_ROOT = PROJECT_ROOT.parent / "ProteEmbedExplorations"
 
 # Source files from ProteEmbedExplorations
 PERRES_H5 = OE_ROOT / "data/external_validation/toxfam/residue_embeddings_prot_t5.h5"
