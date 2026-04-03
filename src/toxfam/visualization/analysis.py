@@ -55,6 +55,9 @@ def plot_multiclass_roc_from_scores(
     y_true, y_scores, classes, output_path, legend_cols=3
 ):
     y_bin = label_binarize(y_true, classes=list(range(len(classes))))
+    # sklearn returns (N, 1) for binary — expand to (N, 2)
+    if len(classes) == 2 and y_bin.ndim == 2 and y_bin.shape[1] == 1:
+        y_bin = np.hstack([1 - y_bin, y_bin])
     n_classes = y_bin.shape[1]
     fpr, tpr, roc_auc = {}, {}, {}
 
@@ -86,4 +89,33 @@ def plot_multiclass_roc_from_scores(
         frameon=False,
     )
     fig.savefig(output_path, bbox_inches="tight")
+    plt.close(fig)
+
+
+def plot_binary_roc(fpr, tpr, roc_auc, output_path, title="Binary ROC Curve"):
+    """Plot ROC curve for binary toxic/nontoxin classification."""
+    fig, ax = plt.subplots(figsize=(6, 6))
+    ax.plot(fpr, tpr, linewidth=2, label=f"ROC-AUC = {roc_auc:.4f}")
+    ax.plot([0, 1], [0, 1], "k--", alpha=0.3)
+    ax.set_xlabel("False Positive Rate")
+    ax.set_ylabel("True Positive Rate")
+    ax.set_title(title)
+    ax.legend(loc="lower right")
+    output_path = Path(output_path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(output_path, dpi=150, bbox_inches="tight")
+    plt.close(fig)
+
+
+def plot_binary_pr(precision, recall, pr_auc, output_path, title="Binary PR Curve"):
+    """Plot Precision-Recall curve for binary classification."""
+    fig, ax = plt.subplots(figsize=(6, 6))
+    ax.plot(recall, precision, linewidth=2, label=f"PR-AUC = {pr_auc:.4f}")
+    ax.set_xlabel("Recall")
+    ax.set_ylabel("Precision")
+    ax.set_title(title)
+    ax.legend(loc="lower left")
+    output_path = Path(output_path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(output_path, dpi=150, bbox_inches="tight")
     plt.close(fig)

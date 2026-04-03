@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.optim as optim
 from rich.console import Console
 
-from toxfam.training.trainer import _forward_model
+from toxfam.training.trainer import forward_model
 
 console = Console()
 
@@ -37,7 +37,7 @@ class ModelWithTemperature(nn.Module):
         with torch.no_grad():
             for features, label in valid_loader:
                 label = label.to(self.device)
-                logits = _forward_model(self.model, features, self.device)
+                logits = forward_model(self.model, features, self.device)
                 logits_list.append(logits)
                 labels_list.append(label)
 
@@ -89,7 +89,7 @@ class _ECELoss(nn.Module):
         accuracies = predictions.eq(labels)
 
         ece = torch.zeros(1, device=logits.device)
-        bin_boundaries = torch.linspace(0, 1, self.n_bins + 1)
+        bin_boundaries = torch.linspace(0, 1, self.n_bins + 1, device=logits.device)
 
         for bin_lower, bin_upper in zip(bin_boundaries[:-1], bin_boundaries[1:]):
             in_bin = confidences.gt(bin_lower.item()) * confidences.le(bin_upper.item())

@@ -11,28 +11,22 @@ import json
 from pathlib import Path
 
 import h5py
+import numpy as np
 import pandas as pd
 import torch
 import yaml
 from rich.console import Console
 
+from toxfam.device import get_device
 from toxfam.model.model_config import ModelConfig
 
 console = Console()
 
 
-def get_device() -> str:
-    if torch.backends.mps.is_available():
-        return "mps"
-    if torch.cuda.is_available():
-        return "cuda"
-    return "cpu"
-
-
 def load_calibrated_model(
     model_dir: str | Path,
-    device: str | None = None,
-):
+    device: str | torch.device | None = None,
+) -> tuple:
     """Load a calibrated model from a training output directory.
 
     Reads ``model_config.json`` to reconstruct the architecture, then loads
@@ -88,7 +82,6 @@ def _resolve_tax_h5(model_dir: Path) -> Path | None:
         return None
     p = Path(tax_path)
     if not p.is_absolute():
-        # Resolve relative to project root (config paths are relative to project root)
         from toxfam._paths import get_project_root
 
         p = get_project_root() / p
@@ -100,7 +93,7 @@ def run_inference(
     h5_path: str | Path,
     model_dir: str | Path,
 ) -> pd.DataFrame:
-    """Run model inference on a DataFrame of proteins.
+    """Run batched model inference on a DataFrame of proteins.
 
     For MultiInputMLP models, loads real taxonomy vectors from the taxonomy H5
     specified in the model's ``config.yaml``. Falls back to zero vectors if the
@@ -113,52 +106,63 @@ def run_inference(
     model, model_config, idx_to_label = load_calibrated_model(model_dir, device=device)
 
     is_multi_input = model_config.architecture == "MultiInputMLP"
+    tax_dim = model_config.tax_dim if is_multi_input else None
+
+    identifiers = df["identifier"].tolist()
+
+    # Read all embeddings into a single tensor
+    with h5py.File(h5_path, "r") as f:
+        embeddings = torch.stack(
+            [torch.tensor(f[ident][:], dtype=torch.float32) for ident in identifiers]
+        )
 
     # Load taxonomy vectors for combined models
-    tax_h5_file = None
+    tax_vectors = None
     if is_multi_input:
         tax_h5_path = _resolve_tax_h5(model_dir)
         if tax_h5_path is not None:
-            tax_h5_file = h5py.File(tax_h5_path, "r")
             console.print(f"   Loading taxonomy vectors from {tax_h5_path.name}")
+            with h5py.File(tax_h5_path, "r") as tf:
+                tax_list = []
+                for ident in identifiers:
+                    if ident in tf:
+                        tax_list.append(torch.tensor(tf[ident][:], dtype=torch.float32))
+                    else:
+                        tax_list.append(torch.zeros(tax_dim, dtype=torch.float32))
+                tax_vectors = torch.stack(tax_list)
         else:
             console.print(
                 "   [yellow]Warning: taxonomy H5 not found, "
                 "using zero vectors (predictions may differ from training)[/]"
             )
 
-    preds = []
-    confs = []
-    try:
-        with h5py.File(h5_path, "r") as f:
-            for ident in df["identifier"]:
-                emb = torch.tensor(f[ident][:]).unsqueeze(0).to(device)
+    # Batched forward pass
+    all_preds: list[str] = []
+    all_confs: list[float] = []
+    batch_size = 512
 
-                with torch.no_grad():
-                    if is_multi_input:
-                        if tax_h5_file is not None and ident in tax_h5_file:
-                            tax = (
-                                torch.tensor(tax_h5_file[ident][:])
-                                .unsqueeze(0)
-                                .to(device)
-                            )
-                        else:
-                            tax = torch.zeros(1, model_config.tax_dim).to(device)
-                        logits = model(emb, tax)
-                    else:
-                        logits = model(emb)
-                    probs = torch.softmax(logits, dim=1)
-                    conf, pred_idx = probs.max(dim=1)
-                preds.append(idx_to_label.get(pred_idx.item(), "other"))
-                confs.append(conf.item())
-    finally:
-        if tax_h5_file is not None:
-            tax_h5_file.close()
+    with torch.no_grad():
+        for i in range(0, len(embeddings), batch_size):
+            batch = embeddings[i : i + batch_size].to(device)
+            if is_multi_input:
+                if tax_vectors is not None:
+                    tax_batch = tax_vectors[i : i + batch_size].to(device)
+                else:
+                    tax_batch = torch.zeros(batch.shape[0], tax_dim, device=device)
+                logits = model(batch, tax_batch)
+            else:
+                logits = model(batch)
+            probs = torch.softmax(logits, dim=1)
+            confs, pred_idxs = probs.max(dim=1)
+            all_preds.extend(
+                idx_to_label.get(idx.item(), "other") for idx in pred_idxs
+            )
+            all_confs.extend(confs.cpu().tolist())
 
     return pd.DataFrame(
         {
-            "identifier": df["identifier"].values,
-            "predicted_label": preds,
-            "confidence": confs,
+            "identifier": identifiers,
+            "predicted_label": all_preds,
+            "confidence": all_confs,
         }
     )

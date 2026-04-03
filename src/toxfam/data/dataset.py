@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import os
-from typing import Dict, List, Optional
 
 import h5py
 import pandas as pd
@@ -12,14 +11,18 @@ from torch.utils.data import Dataset
 
 class ToxDataset(Dataset):
     """PyTorch Dataset for toxin-classification tasks that reads embeddings
-    from multiple HDF5 files with LRU caching."""
+    from multiple HDF5 files with LRU caching.
+
+    Optionally loads taxonomy vectors from a separate HDF5 file for
+    the combined (MultiInputMLP) training strategy.
+    """
 
     def __init__(
         self,
         df: pd.DataFrame,
-        h5_paths: List[str] | str,
+        h5_paths: list[str] | str,
         *,
-        label_encoder: Optional[LabelEncoder] = None,
+        label_encoder: LabelEncoder | None = None,
         is_train: bool = True,
         label_col: str = "Protein families",
         cache_size: int = 3,
@@ -53,12 +56,11 @@ class ToxDataset(Dataset):
         if not self.h5_paths:
             raise ValueError("No HDF5 files found.")
 
-        self._open_cache: Dict[str, h5py.File] = {}
-        self._lru: List[str] = []
+        self._open_cache: dict[str, h5py.File] = {}
+        self._lru: list[str] = []
 
-        self.tax_h5 = None
-        if tax_h5_path is not None:
-            self.tax_h5 = h5py.File(tax_h5_path, "r")
+        # Taxonomy feature H5 file
+        self.tax_h5 = h5py.File(tax_h5_path, "r") if tax_h5_path else None
 
     def _get_file_handle(self, path: str) -> h5py.File:
         if path in self._open_cache:
@@ -95,15 +97,17 @@ class ToxDataset(Dataset):
         embedding = self._find_embedding(protein_id)
         label = row[f"{self.label_col}_encoded"]
 
+        emb_tensor = torch.tensor(embedding, dtype=torch.float32)
+
+        # If taxonomy vectors are provided, return as tuple for MultiInputMLP
         if self.tax_h5 is not None:
             if protein_id not in self.tax_h5:
                 raise KeyError(f"Protein '{protein_id}' not found in taxonomy H5.")
             tax_vec = self.tax_h5[protein_id][:]
-            emb_tensor = torch.tensor(embedding, dtype=torch.float32)
             tax_tensor = torch.tensor(tax_vec, dtype=torch.float32)
             return (emb_tensor, tax_tensor), label
         else:
-            return torch.tensor(embedding, dtype=torch.float32), label
+            return emb_tensor, label
 
     def close(self):
         for h5f in self._open_cache.values():

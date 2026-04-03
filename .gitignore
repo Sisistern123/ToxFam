@@ -2,6 +2,11 @@
 .idea/
 .vscode/
 
+# Claude Code
+.claude/
+!.claude/CLAUDE.md
+docs/superpowers/
+
 # macOS
 .DS_Store
 

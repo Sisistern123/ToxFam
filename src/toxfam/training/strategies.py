@@ -8,12 +8,20 @@ import pandas as pd
 import torch
 from rich.console import Console
 from sklearn.metrics import classification_report
-from torch.utils.data import DataLoader
-import wandb
+try:
+    import wandb
+except ImportError:
+    wandb = None
 
-from toxfam.data.dataset import ToxDataset
-from toxfam.model.architectures import ModularMLP, MultiInputMLP
-from toxfam.training.trainer import evaluate_model, get_device, train_model
+from toxfam.model.architectures import (
+    ModularMLP,
+    MultiInputMLP,
+)
+from toxfam.training.trainer import (
+    evaluate_model,
+    get_device,
+    train_model,
+)
 from toxfam.visualization.analysis import plot_multiclass_roc_from_scores
 from toxfam.visualization.plots import plot_confusion_matrix, plot_loss_curve
 
@@ -58,7 +66,7 @@ def run_standard_strategy(
 ):
     console.print("[bold]>>> Running Strategy: STANDARD (Embeddings Only)[/bold]")
     model = ModularMLP(
-        input_dim=config.embedding_dim,
+        input_dim=config.effective_embedding_dim,
         hidden_dims=config.hidden_dims,
         num_classes=num_classes,
         dropout=config.dropout,
@@ -79,7 +87,7 @@ def run_combined_strategy(
 ):
     console.print("[bold]>>> Running Strategy: COMBINED (Branched Architecture)[/bold]")
     model = MultiInputMLP(
-        embed_dim=config.embedding_dim,
+        embed_dim=config.effective_embedding_dim,
         tax_dim=config.tax_dim,
         hidden_dims=config.hidden_dims,
         num_classes=num_classes,
@@ -89,6 +97,32 @@ def run_combined_strategy(
         model,
         DataSelector(train_loader, "both"),
         DataSelector(val_loader, "both"),
+        w_tensor,
+        config,
+    )
+    plot_loss_curve(hist, Path(out_dir) / "plots" / "loss_curve.png")
+    return model
+
+
+def run_binary_strategy(
+    train_loader, val_loader, w_tensor, num_classes, out_dir, config: TrainConfig
+):
+    """Train a direct binary toxic/nontoxin classifier.
+
+    The dataset must already have binary labels ("toxin"/"nontoxin").
+    num_classes should be 2.
+    """
+    console.print("[bold]>>> Running Strategy: BINARY (Toxic vs Non-toxic)[/bold]")
+    model = ModularMLP(
+        input_dim=config.effective_embedding_dim,
+        hidden_dims=config.hidden_dims,
+        num_classes=num_classes,
+        dropout=config.dropout,
+    )
+    model, hist = train_model(
+        model,
+        DataSelector(train_loader, "emb_only"),
+        DataSelector(val_loader, "emb_only"),
         w_tensor,
         config,
     )
@@ -107,22 +141,9 @@ def evaluate_label_on_dataset(
     config: TrainConfig,
 ) -> dict:
     """Evaluate the model on a dataframe. Returns the metrics dict."""
-    strategy = config.training_strategy
+    from toxfam.evaluation.binary import build_eval_loader
 
-    ds = ToxDataset(
-        dataset_df,
-        [str(p) for p in config.h5_paths],
-        label_encoder=label_encoder,
-        is_train=False,
-        label_col=label_col,
-        tax_h5_path=str(config.tax_h5_path) if config.tax_h5_path else None,
-    )
-    loader = DataLoader(ds, batch_size=config.batch_size, shuffle=False)
-
-    if strategy == "combined":
-        selector = DataSelector(loader, "both")
-    else:
-        selector = DataSelector(loader, "emb_only")
+    ds, selector = build_eval_loader(dataset_df, config, label_encoder, label_col)
 
     device = get_device()
     model = model.to(device)
@@ -154,6 +175,7 @@ def evaluate_label_on_dataset(
     report = classification_report(
         y_true,
         y_pred,
+        labels=list(range(len(ds.le.classes_))),
         target_names=ds.le.classes_,
         output_dict=True,
         zero_division=0,
@@ -169,7 +191,7 @@ def evaluate_label_on_dataset(
     )
 
     # Log to wandb
-    if wandb.run is not None:
+    if wandb is not None and wandb.run is not None:
         wandb.log(metrics)
         class_names = list(label_encoder.classes_)
         wandb.log(

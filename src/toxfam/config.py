@@ -15,7 +15,7 @@ class TrainConfig(BaseModel):
     tax_h5_path: Path | None = None
     output_dir: Path
 
-    training_strategy: Literal["standard", "combined"]
+    training_strategy: Literal["standard", "combined", "binary"]
 
     # Architecture
     embedding_dim: int = 1024
@@ -51,6 +51,11 @@ class TrainConfig(BaseModel):
     wandb_run_name: str | None = None
 
     model_config = {"extra": "ignore"}
+
+    @property
+    def effective_embedding_dim(self) -> int:
+        """Total input dimension for the model."""
+        return self.embedding_dim
 
     @field_validator("dropout")
     @classmethod

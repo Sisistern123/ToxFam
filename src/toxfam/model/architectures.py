@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import torch
 import torch.nn as nn
 
@@ -45,7 +47,11 @@ class MultiInputMLP(nn.Module):
 
 
 class ModularMLP(nn.Module):
-    """MLP with separate projector and backbone."""
+    """MLP with separate projector and backbone.
+
+    The projector is the first hidden layer (Linear -> BN -> ReLU -> Dropout).
+    The backbone contains remaining hidden layers + the final output layer.
+    """
 
     def __init__(self, input_dim, hidden_dims, num_classes, dropout=0.3):
         super().__init__()

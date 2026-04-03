@@ -12,7 +12,11 @@ import torch.optim as optim
 from rich.console import Console
 from sklearn.metrics import accuracy_score, matthews_corrcoef
 from sklearn.preprocessing import label_binarize
-import wandb
+from toxfam.device import get_device  # re-export for backward compatibility
+try:
+    import wandb
+except ImportError:
+    wandb = None
 
 if TYPE_CHECKING:
     from toxfam.config import TrainConfig
@@ -23,15 +27,6 @@ console = Console()
 # ---------------------------------------------------------------------------
 # Utilities
 # ---------------------------------------------------------------------------
-
-
-def get_device() -> torch.device:
-    """Unified device selection: MPS > CUDA > CPU."""
-    if torch.backends.mps.is_available():
-        return torch.device("mps")
-    if torch.cuda.is_available():
-        return torch.device("cuda")
-    return torch.device("cpu")
 
 
 def set_seed(seed: int | None) -> None:
@@ -57,11 +52,13 @@ class FocalLoss(nn.Module):
         gamma: float = 2.0,
         weight: torch.Tensor | None = None,
         label_smoothing: float = 0.0,
+        reduction: str = "mean",
     ):
         super().__init__()
         self.gamma = gamma
         self.register_buffer("weight", weight)
         self.label_smoothing = label_smoothing
+        self.reduction = reduction
 
     def forward(self, inputs: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
         ce_loss = F.cross_entropy(
@@ -73,7 +70,11 @@ class FocalLoss(nn.Module):
         )
         pt = torch.exp(-ce_loss)
         focal_loss = ((1 - pt) ** self.gamma) * ce_loss
-        return focal_loss.mean()
+        if self.reduction == "mean":
+            return focal_loss.mean()
+        elif self.reduction == "sum":
+            return focal_loss.sum()
+        return focal_loss
 
 
 # ---------------------------------------------------------------------------
@@ -81,7 +82,7 @@ class FocalLoss(nn.Module):
 # ---------------------------------------------------------------------------
 
 
-def _forward_model(model, features, device):
+def forward_model(model, features, device):
     """Handle single-input (Tensor) or multi-input ((emb, tax)) forwarding."""
     if isinstance(features, (tuple, list)):
         features = [f.to(device) for f in features]
@@ -104,7 +105,7 @@ def evaluate_model(model, data_loader, loss_fn, device, dataset_type="Validation
     with torch.no_grad():
         for features, labels in data_loader:
             labels = labels.to(device)
-            outputs = _forward_model(model, features, device)
+            outputs = forward_model(model, features, device)
             if n_classes is None:
                 n_classes = outputs.size(1)
             probs = F.softmax(outputs, dim=1)
@@ -126,6 +127,10 @@ def evaluate_model(model, data_loader, loss_fn, device, dataset_type="Validation
     # Macro MCC: average of per-class one-vs-rest MCCs
     y_true_bin = label_binarize(all_labels, classes=list(range(n_classes)))
     y_pred_bin = label_binarize(all_preds, classes=list(range(n_classes)))
+    # sklearn returns (N, 1) for binary case — expand to (N, 2)
+    if n_classes == 2 and y_true_bin.ndim == 2 and y_true_bin.shape[1] == 1:
+        y_true_bin = np.hstack([1 - y_true_bin, y_true_bin])
+        y_pred_bin = np.hstack([1 - y_pred_bin, y_pred_bin])
     per_class_mcc = []
     for c in range(n_classes):
         mcc_c = matthews_corrcoef(y_true_bin[:, c], y_pred_bin[:, c])
@@ -274,7 +279,7 @@ def train_model(model, train_loader, val_loader, weights_tensor, config: TrainCo
         for features, labels in train_loader:
             labels = labels.to(device)
             optimizer.zero_grad()
-            outputs = _forward_model(model, features, device)
+            outputs = forward_model(model, features, device)
 
             loss = loss_fn(outputs, labels)
 
@@ -310,7 +315,7 @@ def train_model(model, train_loader, val_loader, weights_tensor, config: TrainCo
             f"Val Loss: {val_loss:.4f}, Val MCC: {val_mcc:.4f}, LR: {current_lr:.2e}"
         )
 
-        if wandb.run is not None:
+        if wandb is not None and wandb.run is not None:
             wandb.log(
                 {
                     "epoch": epoch + 1,
@@ -334,7 +339,7 @@ def train_model(model, train_loader, val_loader, weights_tensor, config: TrainCo
             epochs_no_improve = 0
             torch.save(model.state_dict(), best_model_path)
 
-            if wandb.run is not None:
+            if wandb is not None and wandb.run is not None:
                 artifact = wandb.Artifact(
                     name="toxfam-best-model",
                     type="model",
@@ -359,7 +364,9 @@ def train_model(model, train_loader, val_loader, weights_tensor, config: TrainCo
             break
 
     if best_model_path.exists():
-        model.load_state_dict(torch.load(best_model_path, map_location=device))
+        model.load_state_dict(
+            torch.load(best_model_path, map_location=device, weights_only=True)
+        )
 
     history = {"train_losses": train_losses, "val_losses": val_losses}
     return model, history

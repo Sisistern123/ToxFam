@@ -344,6 +344,49 @@ def eval_compare(
     compare_methods(dataset)
 
 
+@eval_app.command("binary")
+def eval_binary(
+    model_dir: Annotated[
+        Path,
+        typer.Argument(
+            help="Model output directory containing config.yaml and models/",
+            exists=True,
+        ),
+    ],
+) -> None:
+    """Re-compute binary toxic/nontoxin metrics from a trained model.
+
+    Loads the calibrated model and config from the model output directory,
+    computes P(toxic) for val and test sets, optimizes the threshold on val
+    (Youden's J), and evaluates on test with both default and optimized
+    thresholds. Saves binary_metrics.json and ROC/PR plots.
+    """
+    import pandas as pd
+
+    from toxfam.config import TrainConfig
+    from toxfam.data.dataset import ToxDataset, analyze_data_splits
+    from toxfam.evaluation.binary import run_binary_evaluation
+    from toxfam.model.inference import load_calibrated_model
+
+    config = TrainConfig.from_yaml(model_dir / "config.yaml")
+    config = config.model_copy(update={"output_dir": model_dir})
+
+    df = pd.read_csv(config.input_csv)
+    train_df, val_df, test_df = analyze_data_splits(df)
+
+    h5_paths = [str(p) for p in config.h5_paths]
+    train_ds = ToxDataset(train_df, h5_paths, is_train=True)
+
+    scaled_model, _, _ = load_calibrated_model(model_dir)
+
+    run_binary_evaluation(
+        scaled_model, train_ds.le, val_df, test_df, config, model_dir,
+    )
+
+    train_ds.close()
+    typer.echo("Binary metrics saved.")
+
+
 # ---------- toxfam plot ----------
 
 plot_app = typer.Typer(

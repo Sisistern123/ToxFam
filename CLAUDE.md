@@ -47,7 +47,8 @@ uv run toxfam train configs/standard.yaml
 uv run toxfam train configs/combined.yaml
 ```
 The config YAML selects the training strategy. Available configs in `configs/`:
-- `standard.yaml` — embeddings-only MLP
+- `standard.yaml` — embeddings-only MLP (38-class family prediction)
+- `binary.yaml` — direct binary toxic/non-toxic MLP
 - `combined.yaml` — two-branch MLP (embeddings + taxonomy)
 - `example.yaml` — annotated reference config
 
@@ -64,6 +65,9 @@ uv run toxfam eval model test_set --model-dir model/model_output/combined_run
 
 # Compare all methods that have been run
 uv run toxfam eval compare test_set
+
+# Re-compute binary toxic/nontoxin metrics from a trained model
+uv run toxfam eval binary model/model_output/standard_run
 ```
 
 Available datasets: `test_set`, `val_set`, `non_metazoan`, `unreviewed`. Results go to `benchmark/{dataset}/{method}/`.
@@ -76,40 +80,52 @@ Available datasets: `test_set`, `val_set`, `non_metazoan`, `unreviewed`. Results
 src/toxfam/
 ├── cli.py                    # Typer app: unified CLI entry point
 ├── config.py                 # Pydantic TrainConfig model
-├── _paths.py                 # get_project_root() utility
+├── device.py                 # Canonical get_device() (cuda > mps > cpu)
+├── _paths.py                 # get_project_root() and directory helpers
 ├── data/                     # Data loading, preprocessing, feature generation
-│   ├── dataset.py            # ToxDataset, analyze_data_splits
-│   ├── preprocessing.py      # Full preprocessing pipeline
+│   ├── _fasta.py             # parse_fasta, read_fasta_as_dict, write_fasta
+│   ├── dataset.py            # ToxDataset (embeddings + optional taxonomy)
+│   ├── preprocessing.py      # Full pipeline: normalize, SignalP6, cluster, stratified splits
 │   ├── embedding.py          # ProtT5 embedding generation
 │   ├── taxonomy.py           # Taxonomy retrieval + multi-hot vector generation
-│   └── signalp.py            # SignalP6 signal peptide removal
+│   └── normalization.py      # normalize_protein_families (shared)
 ├── model/                    # Neural network architectures
 │   ├── architectures.py      # ModularMLP, MultiInputMLP
 │   ├── calibration.py        # ModelWithTemperature
+│   ├── model_config.py       # ModelConfig for deterministic architecture reconstruction
 │   └── inference.py          # Model loading + inference for evaluation
 ├── training/                 # Training loop, strategies, orchestration
-│   ├── trainer.py            # train_model, evaluate_model, get_class_weights
-│   ├── strategies.py         # DataSelector, run_*_strategy, evaluate_label_on_dataset
-│   └── orchestrator.py       # run_training(config) — main pipeline
-├── evaluation/               # Benchmark evaluation (run → store → compare)
+│   ├── trainer.py            # train_model, evaluate_model, FocalLoss, get_class_weights
+│   ├── strategies.py         # DataSelector, run_{standard,binary,combined}_strategy
+│   └── orchestrator.py       # run_training(config) + binary metrics pipeline
+├── evaluation/               # Benchmark evaluation
 │   ├── runner.py             # run_hbi_evaluation, run_model_evaluation, compare_methods
 │   ├── hbi.py                # MMseqs2 HBI search (run_hbi_search, HBIResult)
-│   └── metrics.py            # MetricsResult, calculate_metrics, print_metrics_table
+│   ├── metrics.py            # MetricsResult + binary score metrics + threshold optimization
+│   └── binary.py             # Score-based binary evaluation (P(toxic), ROC-AUC, threshold opt)
 └── visualization/            # Plotting utilities
     ├── plots.py              # plot_loss_curve, plot_confusion_matrix
-    └── analysis.py           # label distribution, ROC curves
+    └── analysis.py           # label distribution, ROC curves, binary ROC/PR
 ```
 
 ### Training Strategies (the central design axis)
 
-The system supports two training strategies, selected via `training_strategy` in the YAML config:
+The system supports three training strategies, selected via `training_strategy` in the YAML config:
 
-1. **`standard`** — `ModularMLP` fed with ProtT5 embeddings only (1024-dim)
-2. **`combined`** — `MultiInputMLP` with two branches: one for embeddings, one for multi-hot taxonomy vectors (50-dim), concatenated before a joint head
+1. **`standard`** — `ModularMLP` fed with ProtT5 embeddings only (1024-dim), 38-class family prediction
+2. **`binary`** — `ModularMLP` with 2 output classes, direct toxic/non-toxic prediction (recommended for binary task)
+3. **`combined`** — `MultiInputMLP` with two branches: one for embeddings, one for multi-hot taxonomy vectors, concatenated before a joint head
+
+All strategies automatically compute **binary toxic/non-toxic metrics** (ROC-AUC, PR-AUC, F1, MCC) on the test set with both default and optimized thresholds.
 
 ### Config
 
-Training config is a Pydantic `TrainConfig` model (`src/toxfam/config.py`) loaded from YAML. It replaces the old global `CONFIG` dict. Every function that needs config receives it as a `config: TrainConfig` parameter.
+Training config is a Pydantic `TrainConfig` model (`src/toxfam/config.py`) loaded from YAML. Every function that needs config receives it as a `config: TrainConfig` parameter. Extra fields in YAML are silently ignored (`model_config = {"extra": "ignore"}`).
+
+Key config fields:
+- `use_focal_loss` / `focal_loss_gamma`: focal loss for class imbalance
+- `lr_scheduler` / `warmup_epochs`: cosine annealing with warmup
+- `early_stopping_metric`: `"loss"` or `"mcc"`
 
 ### Data Directory Layout
 

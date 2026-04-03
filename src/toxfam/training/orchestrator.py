@@ -8,7 +8,10 @@ import torch
 import yaml
 from rich.console import Console
 from torch.utils.data import DataLoader
-import wandb
+try:
+    import wandb
+except ImportError:
+    wandb = None
 
 from toxfam.config import TrainConfig
 from toxfam.data.dataset import ToxDataset, analyze_data_splits
@@ -16,6 +19,7 @@ from toxfam.model.calibration import ModelWithTemperature
 from toxfam.training.strategies import (
     DataSelector,
     evaluate_label_on_dataset,
+    run_binary_strategy,
     run_combined_strategy,
     run_standard_strategy,
 )
@@ -36,14 +40,20 @@ def run_training(config: TrainConfig) -> None:
     config_copy = out_root / "config.yaml"
     config_copy.write_text(yaml.dump(config.model_dump(mode="json"), sort_keys=False))
 
-    # wandb setup (required)
-    wandb.login()
-    wandb.init(
-        project=config.wandb_project,
-        entity=config.wandb_entity,
-        name=config.wandb_run_name,
-        config=config.model_dump(mode="json"),
-    )
+    # wandb setup (optional — gracefully degrade if not logged in)
+    _use_wandb = False
+    if wandb is not None:
+        try:
+            wandb.login()
+            wandb.init(
+                project=config.wandb_project,
+                entity=config.wandb_entity,
+                name=config.wandb_run_name,
+                config=config.model_dump(mode="json"),
+            )
+            _use_wandb = True
+        except Exception:
+            console.print("[yellow]wandb login failed — continuing without wandb[/yellow]")
 
     device = get_device()
     console.print(f"Using device: [bold]{device}[/bold]")
@@ -56,22 +66,56 @@ def run_training(config: TrainConfig) -> None:
     for d in (models_dir, plots_dir, metrics_dir, predictions_dir):
         d.mkdir(exist_ok=True)
 
+    # Save run environment for reproducibility
+    import platform
+    import sys
+    from datetime import datetime
+
+    from toxfam.evaluation.runner import git_commit_short
+
+    env_info = {
+        "timestamp": datetime.now().isoformat(),
+        "git_commit": git_commit_short(),
+        "python_version": sys.version,
+        "torch_version": torch.__version__,
+        "device": str(device),
+        "platform": platform.platform(),
+    }
+    (out_root / "run_environment.json").write_text(json.dumps(env_info, indent=2))
+
     # 1. Load Data
     console.print("Loading data...")
+    strategy = config.training_strategy
     df = pd.read_csv(config.input_csv)
     train_df, val_df, test_df = analyze_data_splits(df)
 
     label_col = "Protein families"
-    analyze_label_distribution_for_split(train_df, val_df, test_df, label_col, out_root)
+    is_binary = strategy == "binary"
+
+    if is_binary:
+        from toxfam.evaluation.metrics import to_binary_class
+
+        for split_df in (train_df, val_df, test_df):
+            split_df["binary_label"] = split_df[label_col].apply(to_binary_class)
+        effective_label_col = "binary_label"
+    else:
+        effective_label_col = label_col
+
+    analyze_label_distribution_for_split(
+        train_df, val_df, test_df, effective_label_col, out_root
+    )
 
     # 2. Init Datasets
     h5_paths = [str(p) for p in config.h5_paths]
     tax_h5 = str(config.tax_h5_path) if config.tax_h5_path else None
 
-    train_ds = ToxDataset(train_df, h5_paths, is_train=True, tax_h5_path=tax_h5)
+    train_ds = ToxDataset(
+        train_df, h5_paths, is_train=True, label_col=effective_label_col,
+        tax_h5_path=tax_h5,
+    )
 
     # Validate taxonomy vector dimension matches config
-    if tax_h5 is not None and config.training_strategy == "combined":
+    if tax_h5 is not None:
         import h5py as _h5py
 
         with _h5py.File(tax_h5, "r") as _f:
@@ -97,7 +141,7 @@ def run_training(config: TrainConfig) -> None:
         architecture="MultiInputMLP"
         if config.training_strategy == "combined"
         else "ModularMLP",
-        embedding_dim=config.embedding_dim,
+        embedding_dim=config.effective_embedding_dim,
         hidden_dims=config.hidden_dims,
         num_classes=num_classes,
         dropout=config.dropout,
@@ -110,6 +154,7 @@ def run_training(config: TrainConfig) -> None:
         h5_paths,
         label_encoder=train_ds.le,
         is_train=False,
+        label_col=effective_label_col,
         tax_h5_path=tax_h5,
     )
 
@@ -119,11 +164,14 @@ def run_training(config: TrainConfig) -> None:
     _, w_tensor, _ = get_class_weights(train_ds)
 
     # 3. Dispatch Strategy
-    strategy = config.training_strategy
     final_model = None
 
     if strategy == "standard":
         final_model = run_standard_strategy(
+            train_loader, val_loader, w_tensor, train_ds.num_classes, out_root, config
+        )
+    elif strategy == "binary":
+        final_model = run_binary_strategy(
             train_loader, val_loader, w_tensor, train_ds.num_classes, out_root, config
         )
     elif strategy == "combined":
@@ -133,10 +181,6 @@ def run_training(config: TrainConfig) -> None:
     else:
         raise ValueError(f"Unknown training strategy: {strategy}")
 
-    # Watch model gradients in wandb
-    if wandb.run is not None:
-        wandb.watch(final_model, log="gradients", log_freq=50)
-
     loss_fn = torch.nn.CrossEntropyLoss()
 
     # 4. Evaluation: Uncalibrated
@@ -144,7 +188,7 @@ def run_training(config: TrainConfig) -> None:
     val_metrics = evaluate_label_on_dataset(
         final_model,
         val_df,
-        label_col,
+        effective_label_col,
         train_ds.le,
         loss_fn,
         "val",
@@ -154,7 +198,7 @@ def run_training(config: TrainConfig) -> None:
     test_metrics = evaluate_label_on_dataset(
         final_model,
         test_df,
-        label_col,
+        effective_label_col,
         train_ds.le,
         loss_fn,
         "test",
@@ -165,10 +209,9 @@ def run_training(config: TrainConfig) -> None:
     # 5. Calibration (Temperature Scaling)
     console.print("\n[bold]Running Calibration (Temperature Scaling)...[/bold]")
 
-    if strategy == "combined":
-        val_selector = DataSelector(val_loader, "both")
-    else:
-        val_selector = DataSelector(val_loader, "emb_only")
+    val_selector = DataSelector(
+        val_loader, "both" if strategy == "combined" else "emb_only"
+    )
 
     device = get_device()
     final_model = final_model.to(device)
@@ -180,7 +223,7 @@ def run_training(config: TrainConfig) -> None:
     console.print(f"Saved calibrated model to {calibrated_path}")
 
     # Log calibrated model as a wandb artifact
-    if wandb.run is not None:
+    if _use_wandb:
         calibrated_artifact = wandb.Artifact(
             name="toxfam-best-model-calibrated",
             type="model",
@@ -194,7 +237,7 @@ def run_training(config: TrainConfig) -> None:
     val_cal_metrics = evaluate_label_on_dataset(
         scaled_model,
         val_df,
-        label_col,
+        effective_label_col,
         train_ds.le,
         loss_fn,
         "val_calibrated",
@@ -204,7 +247,7 @@ def run_training(config: TrainConfig) -> None:
     test_cal_metrics = evaluate_label_on_dataset(
         scaled_model,
         test_df,
-        label_col,
+        effective_label_col,
         train_ds.le,
         loss_fn,
         "test_calibrated",
@@ -213,7 +256,7 @@ def run_training(config: TrainConfig) -> None:
     )
 
     # wandb summary
-    if wandb.run is not None:
+    if _use_wandb:
         for tag, m in [
             ("val", val_metrics),
             ("test", test_metrics),
@@ -223,7 +266,18 @@ def run_training(config: TrainConfig) -> None:
             for k, v in m.items():
                 wandb.run.summary[k] = v
 
+    # 7. Binary Metrics Pipeline
+    # For binary strategy, the model directly outputs binary classes,
+    # so we pass the effective label col. For other strategies, we derive
+    # binary from the original family labels.
+    from toxfam.evaluation.binary import run_binary_evaluation
+
+    run_binary_evaluation(
+        scaled_model, train_ds.le, val_df, test_df, config, out_root, effective_label_col
+    )
+
     train_ds.close()
     val_ds.close()
 
-    wandb.finish()
+    if _use_wandb:
+        wandb.finish()

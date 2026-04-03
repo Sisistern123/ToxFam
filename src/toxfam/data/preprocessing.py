@@ -11,11 +11,10 @@ import shutil
 import subprocess
 from contextlib import redirect_stdout
 from pathlib import Path
-from typing import Dict, List, Set, Tuple
 
 import numpy as np
 import pandas as pd
-from toxfam.data._fasta import parse_fasta
+from toxfam.data._fasta import parse_fasta, write_fasta
 from iterstrat.ml_stratifiers import MultilabelStratifiedShuffleSplit
 from pymmseqs.commands import easy_cluster
 from rich.console import Console
@@ -30,26 +29,13 @@ from rich.table import Table
 from sklearn.preprocessing import MultiLabelBinarizer
 
 from toxfam._paths import get_project_root, raw_dir, intermediate_dir, processed_dir
+from toxfam.data.normalization import normalize_protein_families
 
 console = Console()
 
 
 # ---------- Utilities ----------
 
-
-def write_fasta(df: pd.DataFrame, filename: os.PathLike | str) -> None:
-    """Write a FASTA file from a DataFrame. Skips writing if content is unchanged."""
-    new_content = "".join(
-        f">{row['identifier']}\n{row['Sequence']}\n" for _, row in df.iterrows()
-    )
-    path = Path(filename)
-    if path.exists():
-        new_hash = hashlib.md5(new_content.encode()).hexdigest()
-        old_hash = hashlib.md5(path.read_bytes()).hexdigest()
-        if new_hash == old_hash:
-            return
-    with open(path, "w") as f:
-        f.write(new_content)
 
 
 def fasta_to_dataframe(fasta_file: os.PathLike | str) -> pd.DataFrame:
@@ -66,66 +52,10 @@ def sanitize_filename(name: str) -> str:
     return re.sub(r"[^a-zA-Z0-9_-]", "_", name)
 
 
-# ---------- Family normalization ----------
-
-_CONOTOXIN_REPLACEMENTS = {
-    "I1 superfamily": "Conotoxin I1 superfamily",
-    "O1 superfamily": "Conotoxin O1 superfamily",
-    "O2 superfamily": "Conotoxin O2 superfamily",
-    "E superfamily": "Conotoxin E superfamily",
-    "F superfamily": "Conotoxin F superfamily",
-}
-
-_FAMILY_REGEX_MAPPING = {
-    r"Conotoxin.*": "Conotoxin family",
-    r"Neurotoxin.*": "Neurotoxin family",
-    r"Scoloptoxin.*|Scolopendra.*": "Scoloptoxin family",
-    r"Caterpillar.*": "Caterpillar family",
-    r"Teretoxin.*": "Teretoxin family",
-    r"Limacoditoxin.*": "Limacoditoxin family",
-    r"Scutigerotoxin.*": "Scutigerotoxin family",
-    r"Cationic peptide.*": "Cationic peptide family",
-    r"Formicidae venom.*": "Formicidae venom family",
-    r"Bradykinin-potentiating peptide family|Natriuretic peptide family|Natriuretic": "Natriuretic, Bradykinin potentiating peptide family",
-    r".*phospholipase.*|.*Phospholipase.*": "Phospholipase family",
-}
-
-
-def normalize_protein_families(
-    df: pd.DataFrame,
-    column: str = "Protein families",
-    min_count: int = 10,
-) -> pd.DataFrame:
-    """Normalize protein family labels.
-
-    Splits multi-annotation strings, applies conotoxin renaming and regex
-    mappings, and collapses families with fewer than *min_count* members to
-    ``"other"``.
-    """
-    df = df.copy()
-
-    df[column] = df[column].str.split(";").str[0]
-    df[column] = df[column].str.split(",").str[0]
-
-    df[column] = df[column].replace(_CONOTOXIN_REPLACEMENTS)
-
-    for pattern, replacement in _FAMILY_REGEX_MAPPING.items():
-        df[column] = df[column].str.replace(pattern, replacement, regex=True)
-
-    known_families = set(_FAMILY_REGEX_MAPPING.values())
-    counts = df[column].value_counts()
-    df[column] = df[column].where(
-        df[column].isin(known_families) | (df[column].map(counts) >= min_count),
-        "other",
-    )
-
-    return df
-
-
 # ---------- Preprocessing ----------
 
 
-def load_and_prepare_raw() -> Tuple[pd.DataFrame, pd.DataFrame]:
+def load_and_prepare_raw() -> tuple[pd.DataFrame, pd.DataFrame]:
     raw = raw_dir()
 
     tox = (
@@ -159,7 +89,7 @@ def _sp6_cache_path() -> Path:
     return intermediate_dir() / "sp6" / "sp6_cache.json"
 
 
-def _load_sp6_cache() -> Dict[str, str | None]:
+def _load_sp6_cache() -> dict[str, str | None]:
     """Load per-sequence SP6 cache. Returns {seq_hash: mature_seq or None}."""
     path = _sp6_cache_path()
     if not path.exists():
@@ -171,7 +101,7 @@ def _load_sp6_cache() -> Dict[str, str | None]:
         return {}
 
 
-def _save_sp6_cache(cache: Dict[str, str | None]) -> None:
+def _save_sp6_cache(cache: dict[str, str | None]) -> None:
     path = _sp6_cache_path()
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_suffix(".tmp")
@@ -180,7 +110,7 @@ def _save_sp6_cache(cache: Dict[str, str | None]) -> None:
     tmp.rename(path)
 
 
-def _parse_sp6_output(sp6_dir: Path) -> Dict[str, str]:
+def _parse_sp6_output(sp6_dir: Path) -> dict[str, str]:
     """Parse SP6 output → {identifier: mature_sequence} for high-confidence hits."""
     proc_fasta = sp6_dir / "processed_entries.fasta"
     gff_path = sp6_dir / "output.gff3"
@@ -211,9 +141,9 @@ def _parse_sp6_output(sp6_dir: Path) -> Dict[str, str]:
 def _bootstrap_sp6_cache(
     tox: pd.DataFrame,
     nontox: pd.DataFrame,
-) -> Dict[str, str | None]:
+) -> dict[str, str | None]:
     """Build cache from existing monolithic SP6 output files."""
-    cache: Dict[str, str | None] = {}
+    cache: dict[str, str | None] = {}
     sp6_base = intermediate_dir() / "sp6"
 
     for label, df in [("tox", tox), ("nontox", nontox)]:
@@ -227,7 +157,7 @@ def _bootstrap_sp6_cache(
 def _run_signalp6_batch(
     df: pd.DataFrame,
     extra_args: str,
-) -> Dict[str, str | None]:
+) -> dict[str, str | None]:
     """Run SP6 on a batch of sequences → {seq_hash: mature_seq or None}."""
     if df.empty:
         return {}
@@ -280,7 +210,7 @@ def _run_signalp6_batch(
         return {}
 
     sp_hits = _parse_sp6_output(batch_dir)
-    result: Dict[str, str | None] = {}
+    result: dict[str, str | None] = {}
     for _, row in df.iterrows():
         h = _seq_hash(row["Sequence"])
         result[h] = sp_hits.get(row["identifier"])
@@ -293,7 +223,7 @@ def run_signalp6_step(
     tox: pd.DataFrame,
     nontox: pd.DataFrame,
     extra_args: str = "--organism euk",
-) -> Tuple[pd.DataFrame, pd.DataFrame]:
+) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Apply SignalP6 signal peptide removal with per-sequence caching.
 
     Each sequence is cached by its MD5 hash. Only sequences not in the cache
@@ -348,10 +278,10 @@ def run_signalp6_step(
 
 def cluster_per_family_and_collect(
     data: pd.DataFrame, min_seq_id: float = 0.9
-) -> Tuple[pd.DataFrame, pd.DataFrame]:
+) -> tuple[pd.DataFrame, pd.DataFrame]:
     mmseqs_dir = intermediate_dir() / "mmseqs"
     mmseqs_dir.mkdir(parents=True, exist_ok=True)
-    failures: List[Tuple[str, str, str]] = []
+    failures: list[tuple[str, str, str]] = []
 
     grouped = list(data.groupby("Protein families"))
 
@@ -399,7 +329,7 @@ def cluster_per_family_and_collect(
                         tmp_dir=str(tmp_dir),
                         min_seq_id=min_seq_id,
                     )
-            except Exception as e:
+            except (OSError, RuntimeError, subprocess.CalledProcessError) as e:
                 console.print(f"[red]MMseqs easy-cluster failed for {safe}: {e}[/]")
                 failures.append((str(family_fa), str(cluster_prefix), str(tmp_dir)))
 
@@ -476,7 +406,7 @@ def multilabel_stratified_splits(rep_df_all: pd.DataFrame):
 def build_train_all_members(data: pd.DataFrame, train_df: pd.DataFrame) -> pd.DataFrame:
     mmseqs_dir = intermediate_dir() / "mmseqs"
     train_reps = set(train_df["identifier"])
-    rep2members: Dict[str, Set[str]] = {}
+    rep2members: dict[str, set[str]] = {}
     for family in os.listdir(mmseqs_dir):
         fam_dir = mmseqs_dir / family
         tsv_path = fam_dir / "cluster_cluster.tsv"
