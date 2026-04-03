@@ -22,9 +22,8 @@ import pandas as pd
 from rich.console import Console
 
 from toxfam._paths import benchmark_dir, evaluation_data_dir, processed_dir
-from toxfam.data.preprocessing import normalize_protein_families
-from toxfam.data._fasta import write_fasta
-from toxfam.evaluation.hbi import NO_HIT_LABEL, run_hbi_search
+from toxfam.data.normalization import normalize_protein_families
+from toxfam.evaluation.hbi import NO_HIT_LABEL, run_hbi_search, write_fasta_from_df
 from toxfam.evaluation.metrics import (
     MetricsResult,
     calculate_binary_metrics,
@@ -200,7 +199,7 @@ def run_hbi_evaluation(dataset: str) -> MetricsResult:
     tmp_dir = output_dir / "tmp"
     tmp_dir.mkdir(parents=True, exist_ok=True)
     query_fasta = tmp_dir / "query.fasta"
-    write_fasta(df, query_fasta)
+    write_fasta_from_df(df, query_fasta)
 
     # Load HBI reference and harmonize labels
     train_df = pd.read_csv(proc / "hbi_train_all.csv")

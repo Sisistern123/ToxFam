@@ -47,8 +47,11 @@ class TestMultiInputMLP:
 
     def test_custom_tax_hidden(self):
         model = MultiInputMLP(
-            embed_dim=1024, tax_dim=56, hidden_dims=[128],
-            num_classes=20, tax_hidden_dim=16,
+            embed_dim=1024,
+            tax_dim=56,
+            hidden_dims=[128],
+            num_classes=20,
+            tax_hidden_dim=16,
         )
         out = model(torch.randn(4, 1024), torch.randn(4, 56))
         assert out.shape == (4, 20)

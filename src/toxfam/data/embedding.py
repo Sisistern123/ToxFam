@@ -18,12 +18,15 @@ from rich.progress import (
 )
 from transformers import T5EncoderModel, T5Tokenizer
 
-from toxfam.device import get_device  # re-export for backward compat
+from toxfam.data._fasta import read_fasta_as_dict
+from toxfam.device import get_device
 
 console = Console()
 
 
-def get_T5_model(model_dir, transformer_link, device):
+def get_T5_model(
+    model_dir: str | None, transformer_link: str, device: torch.device
+) -> tuple[T5EncoderModel, T5Tokenizer]:
     model = T5EncoderModel.from_pretrained(transformer_link, cache_dir=model_dir)
 
     if device.type == "cuda":
@@ -55,22 +58,8 @@ def _load_model_quietly(model_dir, model_name, device):
         os.close(devnull)
 
 
-def read_fasta(fasta_path: str | Path) -> dict[str, str]:
-    sequences = dict()
-    current_id = None
-    with open(fasta_path, "r") as fasta_f:
-        for line in fasta_f:
-            if line.startswith(">"):
-                current_id = line.replace(">", "").strip()
-                current_id = current_id.replace("/", "_").replace(".", "_")
-                sequences[current_id] = ""
-            elif current_id is not None:
-                sequences[current_id] += "".join(line.split()).upper().replace("-", "")
-    return sequences
-
-
 def _process_batch(batch, hf_file, model, tokenizer, device, duplicates, use_amp):
-    pdb_ids, seqs, seq_lens = zip(*batch)
+    protein_ids, seqs, seq_lens = zip(*batch)
 
     token_encoding = tokenizer(
         list(seqs),
@@ -85,7 +74,7 @@ def _process_batch(batch, hf_file, model, tokenizer, device, duplicates, use_amp
     with torch.no_grad(), torch.amp.autocast(device.type, enabled=use_amp):
         embedding_repr = model(input_ids, attention_mask=attention_mask)
 
-    for batch_idx, identifier in enumerate(pdb_ids):
+    for batch_idx, identifier in enumerate(protein_ids):
         s_len = seq_lens[batch_idx]
         emb = embedding_repr.last_hidden_state[batch_idx, :s_len]
         emb = emb.mean(dim=0)
@@ -115,7 +104,7 @@ def generate_embeddings(
 
     # -- Step 2: Read FASTA --
     console.print(f"\n[bold]2.[/] Reading [cyan]{input_fasta}[/]")
-    seq_dict = read_fasta(input_fasta)
+    seq_dict = read_fasta_as_dict(input_fasta)
     sorted_seqs = sorted(seq_dict.items(), key=lambda kv: len(kv[1]), reverse=True)
     max_len = len(sorted_seqs[0][1]) if sorted_seqs else 0
     console.print(f"   {len(seq_dict)} sequences (longest: {max_len} residues)")
@@ -168,7 +157,7 @@ def generate_embeddings(
         ) as progress:
             task = progress.add_task("Embedding", total=len(sorted_seqs))
 
-            for pdb_id, seq in sorted_seqs:
+            for protein_id, seq in sorted_seqs:
                 seq = seq.replace("U", "X").replace("Z", "X").replace("O", "X")
                 seq_len = len(seq)
                 seq_spaced = " ".join(list(seq))
@@ -185,7 +174,7 @@ def generate_embeddings(
                     batch = []
                     batch_res_count = 0
 
-                batch.append((pdb_id, seq_spaced, seq_len))
+                batch.append((protein_id, seq_spaced, seq_len))
                 batch_res_count += seq_len
 
             # Final batch

@@ -5,6 +5,7 @@ from __future__ import annotations
 import h5py
 import numpy as np
 import pandas as pd
+import pytest
 import torch
 
 from toxfam.data.dataset import ToxDataset, analyze_data_splits
@@ -47,6 +48,18 @@ class TestToxDataset:
         assert ds.num_classes == 3
         ds.close()
 
+    def test_missing_protein_id_raises(self, sample_h5):
+        df = pd.DataFrame(
+            {
+                "identifier": ["P001", "MISSING"],
+                "Protein families": ["famA", "famB"],
+            }
+        )
+        ds = ToxDataset(df, [str(sample_h5)], is_train=True)
+        with pytest.raises(KeyError):
+            ds[1]  # "MISSING" is not in the H5 file
+        ds.close()
+
     def test_with_taxonomy(self, sample_h5, tmp_path):
         tax_h5 = tmp_path / "tax.h5"
         with h5py.File(tax_h5, "w") as f:
@@ -59,16 +72,13 @@ class TestToxDataset:
                 "Protein families": ["famA", "famB"],
             }
         )
-        ds = ToxDataset(
-            df, [str(sample_h5)], is_train=True, tax_h5_path=str(tax_h5)
-        )
+        ds = ToxDataset(df, [str(sample_h5)], is_train=True, tax_h5_path=str(tax_h5))
         features, label = ds[0]
         assert isinstance(features, (tuple, list))
         emb, tax = features
         assert emb.shape == (1024,)
         assert tax.shape == (56,)
         ds.close()
-
 
 
 class TestAnalyzeDataSplits:
@@ -86,7 +96,5 @@ class TestAnalyzeDataSplits:
 
     def test_invalid_split_raises(self):
         df = pd.DataFrame({"identifier": ["A"], "Split": ["unknown"]})
-        import pytest
-
         with pytest.raises(ValueError):
             analyze_data_splits(df)

@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Literal
 
 import torch.nn as nn
-from pydantic import BaseModel
+from pydantic import BaseModel, model_validator
 
 
 class ModelConfig(BaseModel):
@@ -27,6 +27,12 @@ class ModelConfig(BaseModel):
     # MultiInputMLP-specific
     tax_dim: int | None = None
     tax_hidden_dim: int = 8
+
+    @model_validator(mode="after")
+    def _check_tax_dim_for_multi_input(self) -> ModelConfig:
+        if self.architecture == "MultiInputMLP" and self.tax_dim is None:
+            raise ValueError("tax_dim is required when architecture is 'MultiInputMLP'")
+        return self
 
     def save(self, path: str | Path) -> None:
         """Write config to JSON file."""

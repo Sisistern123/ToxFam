@@ -12,8 +12,12 @@ from sklearn.preprocessing import label_binarize
 
 
 def analyze_label_distribution_for_split(
-    train_df, val_df, test_df, label_col, output_dir
-):
+    train_df: pd.DataFrame,
+    val_df: pd.DataFrame,
+    test_df: pd.DataFrame,
+    label_col: str,
+    output_dir: str | Path,
+) -> None:
     """Save counts + plot + chi-square for *label_col* across the three splits."""
     train_counts = train_df[label_col].value_counts().sort_index()
     val_counts = val_df[label_col].value_counts().sort_index()
@@ -30,6 +34,8 @@ def analyze_label_distribution_for_split(
     out = Path(output_dir)
     metrics_dir = out / "metrics"
     plots_dir = out / "plots"
+    metrics_dir.mkdir(parents=True, exist_ok=True)
+    plots_dir.mkdir(parents=True, exist_ok=True)
 
     dist_json = metrics_dir / f"{label_col.replace(' ', '_')}_distribution.json"
     dist_df.to_json(dist_json, orient="index")
@@ -52,8 +58,12 @@ def analyze_label_distribution_for_split(
 
 
 def plot_multiclass_roc_from_scores(
-    y_true, y_scores, classes, output_path, legend_cols=3
-):
+    y_true: np.ndarray,
+    y_scores: np.ndarray,
+    classes: list[str],
+    output_path: str | Path,
+    legend_cols: int = 3,
+) -> None:
     y_bin = label_binarize(y_true, classes=list(range(len(classes))))
     # sklearn returns (N, 1) for binary — expand to (N, 2)
     if len(classes) == 2 and y_bin.ndim == 2 and y_bin.shape[1] == 1:
@@ -65,7 +75,7 @@ def plot_multiclass_roc_from_scores(
         fpr[i], tpr[i], _ = roc_curve(y_bin[:, i], y_scores[:, i])
         roc_auc[i] = auc(fpr[i], tpr[i])
 
-    cmap = plt.cm.get_cmap("rainbow", n_classes)
+    cmap = plt.colormaps["rainbow"].resampled(n_classes)
     colors = [
         (0.8 * r, 0.8 * g, 0.8 * b) for (r, g, b, a) in cmap(np.arange(n_classes))
     ]

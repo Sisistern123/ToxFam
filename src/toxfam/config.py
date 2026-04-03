@@ -8,6 +8,8 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 class TrainConfig(BaseModel):
+    """Pydantic model for all training hyperparameters and paths."""
+
     input_csv: Path
     h5_paths: list[Path] = Field(default_factory=list)
     h5_paths_glob: str | None = None
@@ -40,6 +42,9 @@ class TrainConfig(BaseModel):
     lr_scheduler: Literal["none", "cosine"] = "cosine"
     warmup_epochs: int = 5
 
+    # Splitting
+    split_seq_id: float = 0.3
+
     # Loss
     use_focal_loss: bool = False
     focal_loss_gamma: float = 2.0
@@ -50,7 +55,7 @@ class TrainConfig(BaseModel):
     wandb_entity: str | None = None
     wandb_run_name: str | None = None
 
-    model_config = {"extra": "ignore"}
+    model_config = {"extra": "ignore"}  # Pydantic's model config, not ML model config
 
     @property
     def effective_embedding_dim(self) -> int:
@@ -90,6 +95,27 @@ class TrainConfig(BaseModel):
     def _check_patience(cls, v: int) -> int:
         if v <= 0:
             raise ValueError(f"early_stopping_patience must be > 0, got {v}")
+        return v
+
+    @field_validator("label_smoothing")
+    @classmethod
+    def _check_label_smoothing(cls, v: float) -> float:
+        if not 0 <= v < 1:
+            raise ValueError(f"label_smoothing must be in [0, 1), got {v}")
+        return v
+
+    @field_validator("split_seq_id")
+    @classmethod
+    def _check_split_seq_id(cls, v: float) -> float:
+        if not 0 < v <= 1:
+            raise ValueError(f"split_seq_id must be in (0, 1], got {v}")
+        return v
+
+    @field_validator("weight_decay")
+    @classmethod
+    def _check_weight_decay(cls, v: float) -> float:
+        if v < 0:
+            raise ValueError(f"weight_decay must be >= 0, got {v}")
         return v
 
     @model_validator(mode="after")

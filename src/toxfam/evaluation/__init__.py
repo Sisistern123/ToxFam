@@ -6,6 +6,7 @@ from toxfam.evaluation.metrics import (
     calculate_binary_metrics_with_scores,
     calculate_metrics,
     find_optimal_threshold,
+    print_metrics_table,
     to_binary_class,
 )
 from toxfam.evaluation.runner import (
@@ -23,6 +24,7 @@ __all__ = [
     "calculate_metrics",
     "compare_methods",
     "find_optimal_threshold",
+    "print_metrics_table",
     "run_hbi_evaluation",
     "run_hbi_search",
     "run_model_evaluation",

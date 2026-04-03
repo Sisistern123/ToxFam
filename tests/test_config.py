@@ -62,7 +62,6 @@ class TestEffectiveEmbeddingDim:
         assert cfg.effective_embedding_dim == 1024
 
 
-
 class TestFromYaml:
     def test_loads_correctly(self, minimal_config, tmp_path):
         yaml_path = tmp_path / "config.yaml"
@@ -96,4 +95,19 @@ class TestFieldValidation:
     def test_patience_positive(self, minimal_config):
         minimal_config["early_stopping_patience"] = 0
         with pytest.raises(ValueError, match="early_stopping_patience"):
+            TrainConfig(**minimal_config)
+
+    def test_label_smoothing_out_of_range(self, minimal_config):
+        minimal_config["label_smoothing"] = 1.0
+        with pytest.raises(ValueError, match="label_smoothing"):
+            TrainConfig(**minimal_config)
+
+    def test_split_seq_id_zero(self, minimal_config):
+        minimal_config["split_seq_id"] = 0.0
+        with pytest.raises(ValueError, match="split_seq_id"):
+            TrainConfig(**minimal_config)
+
+    def test_weight_decay_negative(self, minimal_config):
+        minimal_config["weight_decay"] = -0.1
+        with pytest.raises(ValueError, match="weight_decay"):
             TrainConfig(**minimal_config)

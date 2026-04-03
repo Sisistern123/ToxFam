@@ -1,3 +1,5 @@
+"""Project root detection and standard directory helpers."""
+
 from functools import lru_cache
 from pathlib import Path
 

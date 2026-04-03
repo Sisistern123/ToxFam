@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import pytest
 import torch
 
 from toxfam.model.architectures import ModularMLP
@@ -46,3 +47,51 @@ def test_temperature_scaling_effect():
         scaled_logits = scaled(x)
 
     assert torch.allclose(scaled_logits, base_logits / 2.0, atol=1e-5)
+
+
+def test_set_temperature_with_data():
+    base = ModularMLP(input_dim=16, hidden_dims=[8], num_classes=3)
+    device = torch.device("cpu")
+    scaled = ModelWithTemperature(base, device)
+
+    # Verify initial temperature
+    assert scaled.temperature.item() == pytest.approx(1.5)
+
+    # Create a small DataLoader with random data
+    xs = torch.randn(10, 16)
+    ys = torch.randint(0, 3, (10,))
+    loader = torch.utils.data.DataLoader(
+        torch.utils.data.TensorDataset(xs, ys), batch_size=5
+    )
+
+    scaled.set_temperature(loader)
+
+    # Temperature should have changed from its initial value
+    assert scaled.temperature.item() != pytest.approx(1.5)
+
+
+def test_set_temperature_empty_loader_raises():
+    base = ModularMLP(input_dim=16, hidden_dims=[8], num_classes=3)
+    device = torch.device("cpu")
+    scaled = ModelWithTemperature(base, device)
+
+    empty_loader = torch.utils.data.DataLoader(
+        torch.utils.data.TensorDataset(
+            torch.empty(0, 16), torch.empty(0, dtype=torch.long)
+        ),
+        batch_size=1,
+    )
+
+    with pytest.raises(ValueError, match="empty"):
+        scaled.set_temperature(empty_loader)
+
+
+def test_ece_loss_returns_scalar():
+    from toxfam.model.calibration import _ECELoss
+
+    ece = _ECELoss(n_bins=10)
+    logits = torch.randn(20, 3)
+    labels = torch.randint(0, 3, (20,))
+    result = ece(logits, labels)
+
+    assert result.ndim <= 1 and result.numel() == 1  # scalar-like tensor

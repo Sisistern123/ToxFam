@@ -33,9 +33,7 @@ def test_read_fasta_as_dict_cleans_identifiers(tmp_path):
 
 
 def test_write_fasta_creates_file(tmp_path):
-    df = pd.DataFrame(
-        {"identifier": ["X1", "X2"], "Sequence": ["ACDE", "FGHI"]}
-    )
+    df = pd.DataFrame({"identifier": ["X1", "X2"], "Sequence": ["ACDE", "FGHI"]})
     out = tmp_path / "out.fasta"
     write_fasta(df, out)
     assert out.exists()
