@@ -361,22 +361,12 @@ def eval_binary(
     (Youden's J), and evaluates on test with both default and optimized
     thresholds. Saves binary_metrics.json and ROC/PR plots.
     """
-    import json as _json
-
     import pandas as pd
 
     from toxfam.config import TrainConfig
     from toxfam.data.dataset import ToxDataset, analyze_data_splits
-    from toxfam.evaluation.metrics import (
-        calculate_binary_metrics_with_scores,
-        find_optimal_threshold,
-    )
+    from toxfam.evaluation.binary import run_binary_evaluation
     from toxfam.model.inference import load_calibrated_model
-    from toxfam.training.orchestrator import (
-        compute_binary_labels,
-        compute_p_toxic,
-    )
-    from toxfam.visualization.analysis import plot_binary_pr, plot_binary_roc
 
     config = TrainConfig.from_yaml(model_dir / "config.yaml")
     config = config.model_copy(update={"output_dir": model_dir})
@@ -389,57 +379,8 @@ def eval_binary(
 
     scaled_model, _, _ = load_calibrated_model(model_dir)
 
-    label_col = "Protein families"
-    val_y_true = compute_binary_labels(val_df, label_col)
-    val_p_toxic = compute_p_toxic(scaled_model, val_df, config, train_ds.le, label_col)
-    thresh_result = find_optimal_threshold(val_y_true, val_p_toxic)
-    opt_threshold = thresh_result["optimal_threshold"]
-
-    test_y_true = compute_binary_labels(test_df, label_col)
-    test_p_toxic = compute_p_toxic(
-        scaled_model, test_df, config, train_ds.le, label_col
-    )
-
-    test_default = calculate_binary_metrics_with_scores(
-        test_y_true, test_p_toxic, threshold=0.5
-    )
-    test_opt = calculate_binary_metrics_with_scores(
-        test_y_true, test_p_toxic, threshold=opt_threshold
-    )
-
-    typer.echo(f"Threshold (Youden): {opt_threshold:.4f}")
-    typer.echo(
-        f"Test (t=0.5):   ROC-AUC={test_default['roc_auc']:.4f} "
-        f"PR-AUC={test_default['pr_auc']:.4f} MCC={test_default['mcc']:.4f}"
-    )
-    typer.echo(
-        f"Test (t={opt_threshold:.3f}): ROC-AUC={test_opt['roc_auc']:.4f} "
-        f"PR-AUC={test_opt['pr_auc']:.4f} MCC={test_opt['mcc']:.4f}"
-    )
-
-    metrics_dir = model_dir / "metrics"
-    metrics_dir.mkdir(exist_ok=True)
-    _curve_keys = {"fpr", "tpr", "precision_curve", "recall_curve", "roc_thresholds", "pr_thresholds"}
-    results = {
-        "optimized_threshold": opt_threshold,
-        "test_default": {k: v for k, v in test_default.items() if k not in _curve_keys},
-        "test_optimized": {k: v for k, v in test_opt.items() if k not in _curve_keys},
-    }
-    (metrics_dir / "binary_metrics.json").write_text(_json.dumps(results, indent=4))
-
-    plots_dir = model_dir / "plots"
-    plots_dir.mkdir(exist_ok=True)
-    plot_binary_roc(
-        test_default["fpr"],
-        test_default["tpr"],
-        test_default["roc_auc"],
-        plots_dir / "binary_roc.png",
-    )
-    plot_binary_pr(
-        test_default["precision_curve"],
-        test_default["recall_curve"],
-        test_default["pr_auc"],
-        plots_dir / "binary_pr.png",
+    run_binary_evaluation(
+        scaled_model, train_ds.le, val_df, test_df, config, model_dir,
     )
 
     train_ds.close()

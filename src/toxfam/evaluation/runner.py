@@ -129,7 +129,7 @@ def _get_task(dataset: str) -> str:
 # ---------------------------------------------------------------------------
 
 
-def _git_commit_short() -> str:
+def git_commit_short() -> str:
     try:
         return (
             subprocess.check_output(
@@ -167,7 +167,7 @@ def _save_run(
         "dataset": dataset,
         "task": _get_task(dataset),
         "timestamp": datetime.now(timezone.utc).isoformat(),
-        "git_commit": _git_commit_short(),
+        "git_commit": git_commit_short(),
         "n_samples": metrics.n_samples,
         "parameters": params,
     }

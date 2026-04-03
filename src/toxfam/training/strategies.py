@@ -141,7 +141,7 @@ def evaluate_label_on_dataset(
     config: TrainConfig,
 ) -> dict:
     """Evaluate the model on a dataframe. Returns the metrics dict."""
-    from toxfam.training.orchestrator import build_eval_loader
+    from toxfam.evaluation.binary import build_eval_loader
 
     ds, selector = build_eval_loader(dataset_df, config, label_encoder, label_col)
 

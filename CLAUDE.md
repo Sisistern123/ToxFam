@@ -101,7 +101,8 @@ src/toxfam/
 ├── evaluation/               # Benchmark evaluation
 │   ├── runner.py             # run_hbi_evaluation, run_model_evaluation, compare_methods
 │   ├── hbi.py                # MMseqs2 HBI search (run_hbi_search, HBIResult)
-│   └── metrics.py            # MetricsResult + binary score metrics + threshold optimization
+│   ├── metrics.py            # MetricsResult + binary score metrics + threshold optimization
+│   └── binary.py             # Score-based binary evaluation (P(toxic), ROC-AUC, threshold opt)
 └── visualization/            # Plotting utilities
     ├── plots.py              # plot_loss_curve, plot_confusion_matrix
     └── analysis.py           # label distribution, ROC curves, binary ROC/PR

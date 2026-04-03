@@ -1,3 +1,4 @@
+from toxfam.evaluation.binary import run_binary_evaluation
 from toxfam.evaluation.hbi import HBIResult, run_hbi_search
 from toxfam.evaluation.metrics import (
     MetricsResult,
@@ -14,6 +15,7 @@ from toxfam.evaluation.runner import (
 )
 
 __all__ = [
+    "run_binary_evaluation",
     "HBIResult",
     "MetricsResult",
     "calculate_binary_metrics",
