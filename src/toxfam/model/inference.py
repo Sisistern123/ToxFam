@@ -11,8 +11,10 @@ import json
 from pathlib import Path
 
 import h5py
+import numpy as np
 import pandas as pd
 import torch
+import yaml
 from rich.console import Console
 
 from toxfam.device import get_device
@@ -69,20 +71,38 @@ def load_calibrated_model(
     return scaled_model, model_config, idx_to_label
 
 
+def _resolve_tax_h5(model_dir: Path) -> Path | None:
+    """Read tax_h5_path from the saved config.yaml in the model directory."""
+    config_yaml = model_dir / "config.yaml"
+    if not config_yaml.exists():
+        return None
+    cfg = yaml.safe_load(config_yaml.read_text())
+    tax_path = cfg.get("tax_h5_path")
+    if tax_path is None:
+        return None
+    p = Path(tax_path)
+    if not p.is_absolute():
+        from toxfam._paths import get_project_root
+
+        p = get_project_root() / p
+    return p if p.exists() else None
+
+
 def run_inference(
     df: pd.DataFrame,
     h5_path: str | Path,
     model_dir: str | Path,
 ) -> pd.DataFrame:
-    """Run model inference on a DataFrame of proteins.
+    """Run batched model inference on a DataFrame of proteins.
+
+    For MultiInputMLP models, loads real taxonomy vectors from the taxonomy H5
+    specified in the model's ``config.yaml``. Falls back to zero vectors if the
+    taxonomy H5 is unavailable.
 
     Returns DataFrame with columns: identifier, predicted_label, confidence.
-
-    Note: For MultiInputMLP models, taxonomy vectors are set to zero.
-    For models trained with auxiliary features (CPP, HBI), use the
-    evaluation runner (``toxfam eval model``) which loads full feature sets.
     """
     device = get_device()
+    model_dir = Path(model_dir)
     model, model_config, idx_to_label = load_calibrated_model(model_dir, device=device)
 
     is_multi_input = model_config.architecture == "MultiInputMLP"
@@ -96,6 +116,26 @@ def run_inference(
             [torch.tensor(f[ident][:], dtype=torch.float32) for ident in identifiers]
         )
 
+    # Load taxonomy vectors for combined models
+    tax_vectors = None
+    if is_multi_input:
+        tax_h5_path = _resolve_tax_h5(model_dir)
+        if tax_h5_path is not None:
+            console.print(f"   Loading taxonomy vectors from {tax_h5_path.name}")
+            with h5py.File(tax_h5_path, "r") as tf:
+                tax_list = []
+                for ident in identifiers:
+                    if ident in tf:
+                        tax_list.append(torch.tensor(tf[ident][:], dtype=torch.float32))
+                    else:
+                        tax_list.append(torch.zeros(tax_dim, dtype=torch.float32))
+                tax_vectors = torch.stack(tax_list)
+        else:
+            console.print(
+                "   [yellow]Warning: taxonomy H5 not found, "
+                "using zero vectors (predictions may differ from training)[/]"
+            )
+
     # Batched forward pass
     all_preds: list[str] = []
     all_confs: list[float] = []
@@ -105,8 +145,11 @@ def run_inference(
         for i in range(0, len(embeddings), batch_size):
             batch = embeddings[i : i + batch_size].to(device)
             if is_multi_input:
-                dummy_tax = torch.zeros(batch.shape[0], tax_dim, device=device)
-                logits = model(batch, dummy_tax)
+                if tax_vectors is not None:
+                    tax_batch = tax_vectors[i : i + batch_size].to(device)
+                else:
+                    tax_batch = torch.zeros(batch.shape[0], tax_dim, device=device)
+                logits = model(batch, tax_batch)
             else:
                 logits = model(batch)
             probs = torch.softmax(logits, dim=1)
