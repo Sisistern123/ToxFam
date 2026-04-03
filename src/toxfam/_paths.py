@@ -35,7 +35,3 @@ def evaluation_data_dir() -> Path:
 
 def benchmark_dir() -> Path:
     return get_project_root() / "benchmark"
-
-
-def configs_dir() -> Path:
-    return get_project_root() / "configs"

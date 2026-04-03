@@ -72,6 +72,12 @@ uv run toxfam eval binary model/model_output/standard_run
 
 Available datasets: `test_set`, `val_set`, `non_metazoan`, `unreviewed`. Results go to `benchmark/{dataset}/{method}/`.
 
+### Visualization
+```bash
+uv run toxfam plot taxonomy
+```
+Generates interactive sunburst plots of taxonomic distribution for toxin and non-toxin proteins.
+
 ## Architecture
 
 ### Package Structure
@@ -105,7 +111,8 @@ src/toxfam/
 │   └── binary.py             # Score-based binary evaluation (P(toxic), ROC-AUC, threshold opt)
 └── visualization/            # Plotting utilities
     ├── plots.py              # plot_loss_curve, plot_confusion_matrix
-    └── analysis.py           # label distribution, ROC curves, binary ROC/PR
+    ├── analysis.py           # label distribution, ROC curves, binary ROC/PR
+    └── taxonomy_sunburst.py  # Plotly sunburst plots for taxonomic distribution
 ```
 
 ### Training Strategies (the central design axis)

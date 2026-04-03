@@ -102,11 +102,6 @@ class TestFieldValidation:
         with pytest.raises(ValueError, match="label_smoothing"):
             TrainConfig(**minimal_config)
 
-    def test_split_seq_id_zero(self, minimal_config):
-        minimal_config["split_seq_id"] = 0.0
-        with pytest.raises(ValueError, match="split_seq_id"):
-            TrainConfig(**minimal_config)
-
     def test_weight_decay_negative(self, minimal_config):
         minimal_config["weight_decay"] = -0.1
         with pytest.raises(ValueError, match="weight_decay"):

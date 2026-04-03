@@ -42,9 +42,6 @@ class TrainConfig(BaseModel):
     lr_scheduler: Literal["none", "cosine"] = "cosine"
     warmup_epochs: int = 5
 
-    # Splitting
-    split_seq_id: float = 0.3
-
     # Loss
     use_focal_loss: bool = False
     focal_loss_gamma: float = 2.0
@@ -102,13 +99,6 @@ class TrainConfig(BaseModel):
     def _check_label_smoothing(cls, v: float) -> float:
         if not 0 <= v < 1:
             raise ValueError(f"label_smoothing must be in [0, 1), got {v}")
-        return v
-
-    @field_validator("split_seq_id")
-    @classmethod
-    def _check_split_seq_id(cls, v: float) -> float:
-        if not 0 < v <= 1:
-            raise ValueError(f"split_seq_id must be in (0, 1], got {v}")
         return v
 
     @field_validator("weight_decay")
