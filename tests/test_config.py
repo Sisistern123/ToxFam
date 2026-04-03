@@ -61,35 +61,6 @@ class TestEffectiveEmbeddingDim:
         cfg = TrainConfig(**minimal_config)
         assert cfg.effective_embedding_dim == 1024
 
-    def test_with_cpp(self, minimal_config, tmp_path):
-        cpp = tmp_path / "cpp.h5"
-        cpp.touch()
-        minimal_config["cpp_h5_path"] = str(cpp)
-        minimal_config["cpp_dim"] = 100
-        cfg = TrainConfig(**minimal_config)
-        assert cfg.effective_embedding_dim == 1124
-
-    def test_with_hbi(self, minimal_config, tmp_path):
-        hbi = tmp_path / "hbi.h5"
-        hbi.touch()
-        minimal_config["hbi_h5_path"] = str(hbi)
-        minimal_config["hbi_dim"] = 4
-        cfg = TrainConfig(**minimal_config)
-        assert cfg.effective_embedding_dim == 1028
-
-    def test_with_all_features(self, minimal_config, tmp_path):
-        cpp = tmp_path / "cpp.h5"
-        cpp.touch()
-        hbi = tmp_path / "hbi.h5"
-        hbi.touch()
-        minimal_config["cpp_h5_path"] = str(cpp)
-        minimal_config["cpp_dim"] = 100
-        minimal_config["hbi_h5_path"] = str(hbi)
-        minimal_config["hbi_dim"] = 4
-        minimal_config["include_length"] = True
-        minimal_config["include_venom_indicator"] = True
-        cfg = TrainConfig(**minimal_config)
-        assert cfg.effective_embedding_dim == 1024 + 100 + 4 + 1 + 1
 
 
 class TestFromYaml:

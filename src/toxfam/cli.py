@@ -344,81 +344,7 @@ def eval_compare(
     compare_methods(dataset)
 
 
-# ---------- Step 5d: toxfam eval-binary ----------
-
-
-@app.command("eval-ensemble")
-def eval_ensemble_cmd(
-    model_dirs: Annotated[
-        list[Path],
-        typer.Argument(help="Model output directories to ensemble"),
-    ],
-) -> None:
-    """Evaluate an ensemble of trained models.
-
-    Averages softmax predictions from multiple calibrated models, then
-    computes binary metrics with threshold optimization.
-    """
-    from toxfam.evaluation.ensemble import evaluate_ensemble
-
-    evaluate_ensemble(model_dirs)
-
-
-@app.command("profile-data")
-def profile_data(
-    input_csv: Annotated[
-        Path,
-        typer.Option(help="Training CSV to profile", exists=True),
-    ] = Path("data/processed/training_data.csv"),
-    h5_path: Annotated[
-        Optional[Path],
-        typer.Option(help="Embeddings H5 for similarity analysis"),
-    ] = None,
-) -> None:
-    """Profile training data for biases and class imbalance.
-
-    Analyzes class distribution, organism diversity, sequence lengths,
-    and optionally embedding similarities. Flags potential biases.
-    """
-    from toxfam.evaluation.data_quality import profile_training_data
-
-    profile_training_data(
-        str(input_csv), h5_path=str(h5_path) if h5_path else None
-    )
-
-
-@app.command()
-def cpp(
-    training_csv: Annotated[
-        Path,
-        typer.Option(help="Training CSV with family labels", exists=True),
-    ] = Path("data/processed/training_data.csv"),
-    output: Annotated[
-        Path,
-        typer.Option(help="Output H5 for CPP features"),
-    ] = Path("data/intermediate/cpp/cpp_features.h5"),
-    n_filter: Annotated[
-        int,
-        typer.Option(help="Number of CPP features to select"),
-    ] = 100,
-) -> None:
-    """Generate CPP (Comparative Physicochemical Profiling) features.
-
-    Uses AAanalysis to compute discriminative physicochemical properties
-    between toxic and non-toxic sequences. Outputs an HDF5 file with one
-    feature vector per protein.
-    """
-    from toxfam.data.cpp_features import run_cpp_pipeline
-
-    output.parent.mkdir(parents=True, exist_ok=True)
-    run_cpp_pipeline(
-        training_csv=str(training_csv),
-        output_h5=str(output),
-        n_filter=n_filter,
-    )
-
-
-@app.command("eval-binary")
+@eval_app.command("binary")
 def eval_binary(
     model_dir: Annotated[
         Path,
@@ -447,8 +373,8 @@ def eval_binary(
     )
     from toxfam.model.inference import load_calibrated_model
     from toxfam.training.orchestrator import (
-        _compute_binary_labels,
-        _compute_p_toxic,
+        compute_binary_labels,
+        compute_p_toxic,
     )
     from toxfam.visualization.analysis import plot_binary_pr, plot_binary_roc
 
@@ -464,13 +390,13 @@ def eval_binary(
     scaled_model, _, _ = load_calibrated_model(model_dir)
 
     label_col = "Protein families"
-    val_y_true = _compute_binary_labels(val_df, label_col)
-    val_p_toxic = _compute_p_toxic(scaled_model, val_df, config, train_ds.le, label_col)
+    val_y_true = compute_binary_labels(val_df, label_col)
+    val_p_toxic = compute_p_toxic(scaled_model, val_df, config, train_ds.le, label_col)
     thresh_result = find_optimal_threshold(val_y_true, val_p_toxic)
     opt_threshold = thresh_result["optimal_threshold"]
 
-    test_y_true = _compute_binary_labels(test_df, label_col)
-    test_p_toxic = _compute_p_toxic(
+    test_y_true = compute_binary_labels(test_df, label_col)
+    test_p_toxic = compute_p_toxic(
         scaled_model, test_df, config, train_ds.le, label_col
     )
 

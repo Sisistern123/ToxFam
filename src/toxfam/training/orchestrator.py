@@ -25,7 +25,7 @@ from toxfam.training.strategies import (
     run_combined_strategy,
     run_standard_strategy,
 )
-from toxfam.training.trainer import _forward_model, get_class_weights, get_device, set_seed
+from toxfam.training.trainer import forward_model, get_class_weights, get_device, set_seed
 from toxfam.visualization.analysis import (
     analyze_label_distribution_for_split,
     plot_binary_pr,
@@ -35,14 +35,14 @@ from toxfam.visualization.analysis import (
 console = Console()
 
 
-def _compute_binary_labels(df: pd.DataFrame, label_col: str = "Protein families") -> np.ndarray:
+def compute_binary_labels(df: pd.DataFrame, label_col: str = "Protein families") -> np.ndarray:
     """Convert family labels to binary: 1 = toxic, 0 = nontoxin."""
     from toxfam.evaluation.metrics import to_binary_class
 
     return (df[label_col].apply(to_binary_class) == "toxin").astype(int).values
 
 
-def _compute_p_toxic(
+def compute_p_toxic(
     model, dataset_df, config, label_encoder, label_col="Protein families"
 ) -> np.ndarray:
     """Compute P(toxic) for each sample by summing toxic-class probabilities."""
@@ -57,7 +57,7 @@ def _compute_p_toxic(
     all_probs = []
     with torch.no_grad():
         for features, _ in selector:
-            outputs = _forward_model(model, features, device)
+            outputs = forward_model(model, features, device)
             probs = F.softmax(outputs, dim=1).cpu().numpy()
             all_probs.append(probs)
 
@@ -73,7 +73,7 @@ def _compute_p_toxic(
     return 1.0 - p_nontox
 
 
-def _run_binary_metrics_pipeline(
+def run_binary_metrics_pipeline(
     model, train_ds, val_df, test_df, config, out_root, label_col="Protein families"
 ):
     """Full binary metrics pipeline: threshold optimization on val, evaluate on test."""
@@ -85,8 +85,8 @@ def _run_binary_metrics_pipeline(
     console.print("\n[bold]Running Binary Metrics Pipeline...[/bold]")
 
     # Val set
-    val_y_true = _compute_binary_labels(val_df, label_col)
-    val_p_toxic = _compute_p_toxic(model, val_df, config, train_ds.le, label_col)
+    val_y_true = compute_binary_labels(val_df, label_col)
+    val_p_toxic = compute_p_toxic(model, val_df, config, train_ds.le, label_col)
 
     # Threshold optimization on val
     thresh_result = find_optimal_threshold(val_y_true, val_p_toxic, method="youden")
@@ -94,8 +94,8 @@ def _run_binary_metrics_pipeline(
     console.print(f"  Optimized threshold (Youden's J): {opt_threshold:.4f}")
 
     # Test set
-    test_y_true = _compute_binary_labels(test_df, label_col)
-    test_p_toxic = _compute_p_toxic(model, test_df, config, train_ds.le, label_col)
+    test_y_true = compute_binary_labels(test_df, label_col)
+    test_p_toxic = compute_p_toxic(model, test_df, config, train_ds.le, label_col)
 
     # Test with default threshold
     test_default = calculate_binary_metrics_with_scores(test_y_true, test_p_toxic, threshold=0.5)
@@ -136,20 +136,6 @@ def _run_binary_metrics_pipeline(
     )
 
 
-def _extra_dataset_kwargs(config: TrainConfig) -> dict:
-    """Build auxiliary feature kwargs for ToxDataset from config."""
-    kwargs: dict = {}
-    if config.cpp_h5_path:
-        kwargs["cpp_h5_path"] = str(config.cpp_h5_path)
-    if config.hbi_h5_path:
-        kwargs["hbi_h5_path"] = str(config.hbi_h5_path)
-    if config.include_length:
-        kwargs["include_length"] = True
-    if config.include_venom_indicator:
-        kwargs["include_venom_indicator"] = True
-    return kwargs
-
-
 def build_eval_loader(
     dataset_df, config: TrainConfig, label_encoder, label_col="Protein families",
 ):
@@ -164,7 +150,6 @@ def build_eval_loader(
         is_train=False,
         label_col=label_col,
         tax_h5_path=str(config.tax_h5_path) if config.tax_h5_path else None,
-        **_extra_dataset_kwargs(config),
     )
     loader = DataLoader(ds, batch_size=config.batch_size, shuffle=False)
     selector = DataSelector(
@@ -235,11 +220,10 @@ def run_training(config: TrainConfig) -> None:
     # 2. Init Datasets
     h5_paths = [str(p) for p in config.h5_paths]
     tax_h5 = str(config.tax_h5_path) if config.tax_h5_path else None
-    extra_ds_kwargs = _extra_dataset_kwargs(config)
 
     train_ds = ToxDataset(
         train_df, h5_paths, is_train=True, label_col=effective_label_col,
-        tax_h5_path=tax_h5, **extra_ds_kwargs,
+        tax_h5_path=tax_h5,
     )
 
     # Validate taxonomy vector dimension matches config
@@ -284,7 +268,6 @@ def run_training(config: TrainConfig) -> None:
         is_train=False,
         label_col=effective_label_col,
         tax_h5_path=tax_h5,
-        **extra_ds_kwargs,
     )
 
     train_loader = DataLoader(train_ds, batch_size=config.batch_size, shuffle=True)
@@ -399,7 +382,7 @@ def run_training(config: TrainConfig) -> None:
     # For binary strategy, the model directly outputs binary classes,
     # so we pass the effective label col. For other strategies, we derive
     # binary from the original family labels.
-    _run_binary_metrics_pipeline(
+    run_binary_metrics_pipeline(
         scaled_model, train_ds, val_df, test_df, config, out_root, effective_label_col
     )
 

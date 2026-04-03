@@ -54,19 +54,6 @@ class HBIResult:
         return self.n_with_hits / self.n_queries if self.n_queries > 0 else 0.0
 
 
-def write_fasta_from_df(
-    df: pd.DataFrame,
-    output_path: str | Path,
-    *,
-    id_column: str = "identifier",
-    seq_column: str = "Sequence",
-) -> None:
-    """Write a FASTA file from a DataFrame."""
-    output_path = Path(output_path)
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    with open(output_path, "w") as f:
-        for _, row in df.iterrows():
-            f.write(f">{row[id_column]}\n{row[seq_column]}\n")
 
 
 def run_hbi_search(

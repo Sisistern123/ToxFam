@@ -70,27 +70,6 @@ class TestToxDataset:
         ds.close()
 
 
-    def test_with_cpp_features(self, sample_h5, tmp_path):
-        cpp_h5 = tmp_path / "cpp.h5"
-        with h5py.File(cpp_h5, "w") as f:
-            for pid in ["P001", "P002"]:
-                f.create_dataset(pid, data=np.ones(100, dtype=np.float32))
-
-        df = pd.DataFrame(
-            {
-                "identifier": ["P001", "P002"],
-                "Protein families": ["famA", "famB"],
-            }
-        )
-        ds = ToxDataset(
-            df, [str(sample_h5)], is_train=True, cpp_h5_path=str(cpp_h5)
-        )
-        features, label = ds[0]
-        assert isinstance(features, torch.Tensor)
-        # 1024 (ProtT5) + 100 (CPP) = 1124
-        assert features.shape == (1124,)
-        ds.close()
-
 
 class TestAnalyzeDataSplits:
     def test_splits_correctly(self):

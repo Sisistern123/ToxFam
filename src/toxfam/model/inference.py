@@ -24,7 +24,7 @@ console = Console()
 def load_calibrated_model(
     model_dir: str | Path,
     device: str | torch.device | None = None,
-):
+) -> tuple:
     """Load a calibrated model from a training output directory.
 
     Reads ``model_config.json`` to reconstruct the architecture, then loads

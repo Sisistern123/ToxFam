@@ -13,17 +13,13 @@ def test_app_has_expected_commands():
     result = runner.invoke(app, ["--help"])
     assert result.exit_code == 0
 
-    expected = [
-        "download-data",
-        "preprocess",
-        "embed",
-        "taxonomy",
-        "train",
-        "eval",           # subcommand group (hbi, model, compare)
-        "eval-binary",
-        "eval-ensemble",
-        "profile-data",
-        "cpp",
-    ]
-    for cmd in expected:
+    # Top-level commands
+    top_level = ["download-data", "preprocess", "embed", "taxonomy", "train", "eval"]
+    for cmd in top_level:
         assert cmd in result.output, f"Command '{cmd}' not found in CLI help"
+
+    # Eval subcommands
+    eval_result = runner.invoke(app, ["eval", "--help"])
+    assert eval_result.exit_code == 0
+    for sub in ["hbi", "model", "compare", "binary"]:
+        assert sub in eval_result.output, f"Eval subcommand '{sub}' not found"

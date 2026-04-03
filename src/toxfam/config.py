@@ -45,17 +45,6 @@ class TrainConfig(BaseModel):
     focal_loss_gamma: float = 2.0
     label_smoothing: float = 0.0
 
-    # Auxiliary features
-    cpp_h5_path: Path | None = None
-    cpp_dim: int = 100
-    hbi_h5_path: Path | None = None
-    hbi_dim: int = 4
-    include_length: bool = False
-    include_venom_indicator: bool = False
-
-    # Identity-aware splitting
-    split_seq_id: float = 0.3
-
     # wandb
     wandb_project: str = "toxfam"
     wandb_entity: str | None = None
@@ -65,17 +54,8 @@ class TrainConfig(BaseModel):
 
     @property
     def effective_embedding_dim(self) -> int:
-        """Total input dimension including all auxiliary features."""
-        dim = self.embedding_dim
-        if self.cpp_h5_path is not None:
-            dim += self.cpp_dim
-        if self.hbi_h5_path is not None:
-            dim += self.hbi_dim
-        if self.include_length:
-            dim += 1
-        if self.include_venom_indicator:
-            dim += 1
-        return dim
+        """Total input dimension for the model."""
+        return self.embedding_dim
 
     @field_validator("dropout")
     @classmethod

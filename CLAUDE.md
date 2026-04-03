@@ -47,7 +47,8 @@ uv run toxfam train configs/standard.yaml
 uv run toxfam train configs/combined.yaml
 ```
 The config YAML selects the training strategy. Available configs in `configs/`:
-- `standard.yaml` — embeddings-only MLP
+- `standard.yaml` — embeddings-only MLP (38-class family prediction)
+- `binary.yaml` — direct binary toxic/non-toxic MLP
 - `combined.yaml` — two-branch MLP (embeddings + taxonomy)
 - `example.yaml` — annotated reference config
 
@@ -64,6 +65,9 @@ uv run toxfam eval model test_set --model-dir model/model_output/combined_run
 
 # Compare all methods that have been run
 uv run toxfam eval compare test_set
+
+# Re-compute binary toxic/nontoxin metrics from a trained model
+uv run toxfam eval binary model/model_output/standard_run
 ```
 
 Available datasets: `test_set`, `val_set`, `non_metazoan`, `unreviewed`. Results go to `benchmark/{dataset}/{method}/`.
@@ -75,20 +79,16 @@ Available datasets: `test_set`, `val_set`, `non_metazoan`, `unreviewed`. Results
 ```
 src/toxfam/
 ├── cli.py                    # Typer app: unified CLI entry point
-├── config.py                 # Pydantic TrainConfig model (effective_embedding_dim property)
+├── config.py                 # Pydantic TrainConfig model
 ├── device.py                 # Canonical get_device() (cuda > mps > cpu)
 ├── _paths.py                 # get_project_root() and directory helpers
 ├── data/                     # Data loading, preprocessing, feature generation
 │   ├── _fasta.py             # parse_fasta, read_fasta_as_dict, write_fasta
-│   ├── dataset.py            # ToxDataset (embeddings + optional CPP/HBI/taxonomy)
-│   ├── preprocessing.py      # Full pipeline incl. identity-aware splits
+│   ├── dataset.py            # ToxDataset (embeddings + optional taxonomy)
+│   ├── preprocessing.py      # Full pipeline: normalize, SignalP6, cluster, stratified splits
 │   ├── embedding.py          # ProtT5 embedding generation
 │   ├── taxonomy.py           # Taxonomy retrieval + multi-hot vector generation
-│   ├── signalp.py            # SignalP6 signal peptide removal
-│   ├── normalization.py      # normalize_protein_families (shared)
-│   ├── xml_parser.py         # Parse UniProt XML → DataFrame
-│   ├── cpp_features.py       # CPP physicochemical profiling via AAanalysis
-│   └── hbi_features.py       # HBI sequence similarity features via MMseqs2
+│   └── normalization.py      # normalize_protein_families (shared)
 ├── model/                    # Neural network architectures
 │   ├── architectures.py      # ModularMLP, MultiInputMLP
 │   ├── calibration.py        # ModelWithTemperature
@@ -101,9 +101,7 @@ src/toxfam/
 ├── evaluation/               # Benchmark evaluation
 │   ├── runner.py             # run_hbi_evaluation, run_model_evaluation, compare_methods
 │   ├── hbi.py                # MMseqs2 HBI search (run_hbi_search, HBIResult)
-│   ├── metrics.py            # MetricsResult + binary score metrics + threshold optimization
-│   ├── ensemble.py           # Ensemble model evaluation
-│   └── data_quality.py       # Training data profiling for bias detection
+│   └── metrics.py            # MetricsResult + binary score metrics + threshold optimization
 └── visualization/            # Plotting utilities
     ├── plots.py              # plot_loss_curve, plot_confusion_matrix
     └── analysis.py           # label distribution, ROC curves, binary ROC/PR
@@ -125,11 +123,8 @@ Training config is a Pydantic `TrainConfig` model (`src/toxfam/config.py`) loade
 
 Key config fields:
 - `use_focal_loss` / `focal_loss_gamma`: focal loss for class imbalance
-- `cpp_h5_path` / `cpp_dim` / `hbi_h5_path` / `hbi_dim`: auxiliary feature files
-- `include_length` / `include_venom_indicator`: scalar features
-- `split_seq_id`: identity threshold for identity-aware splitting
-
-Important property: `config.effective_embedding_dim` returns `embedding_dim + cpp_dim + hbi_dim + ...` when auxiliary features are enabled. All model construction uses this property.
+- `lr_scheduler` / `warmup_epochs`: cosine annealing with warmup
+- `early_stopping_metric`: `"loss"` or `"mcc"`
 
 ### Data Directory Layout
 

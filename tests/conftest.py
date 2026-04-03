@@ -27,24 +27,6 @@ def sample_fasta(tmp_path) -> Path:
 
 
 @pytest.fixture
-def sample_df() -> pd.DataFrame:
-    """DataFrame with identifier, Sequence, and Protein families columns."""
-    return pd.DataFrame(
-        {
-            "identifier": ["P001", "P002", "P003", "P004", "P005"],
-            "Sequence": ["MKTAY", "MLLPV", "ACDEF", "GHIKL", "NPRST"],
-            "Protein families": [
-                "Conotoxin A superfamily",
-                "Neurotoxin 3 family",
-                "nontox",
-                "Phospholipase A2",
-                "nontox",
-            ],
-        }
-    )
-
-
-@pytest.fixture
 def sample_h5(tmp_path) -> Path:
     """HDF5 file with fake 1024-d embeddings keyed by protein ID."""
     h5_path = tmp_path / "embeddings.h5"
@@ -55,17 +37,3 @@ def sample_h5(tmp_path) -> Path:
     return h5_path
 
 
-@pytest.fixture
-def training_csv(tmp_path, sample_h5) -> Path:
-    """A minimal training_data.csv with Split column."""
-    df = pd.DataFrame(
-        {
-            "identifier": ["P001", "P002", "P003", "P004", "P005"],
-            "Sequence": ["MKTAY", "MLLPV", "ACDEF", "GHIKL", "NPRST"],
-            "Protein families": ["famA", "famA", "famB", "famB", "famA"],
-            "Split": ["train", "train", "train", "val", "test"],
-        }
-    )
-    csv_path = tmp_path / "training_data.csv"
-    df.to_csv(csv_path, index=False)
-    return csv_path

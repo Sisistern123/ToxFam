@@ -82,7 +82,7 @@ class FocalLoss(nn.Module):
 # ---------------------------------------------------------------------------
 
 
-def _forward_model(model, features, device):
+def forward_model(model, features, device):
     """Handle single-input (Tensor) or multi-input ((emb, tax)) forwarding."""
     if isinstance(features, (tuple, list)):
         features = [f.to(device) for f in features]
@@ -105,7 +105,7 @@ def evaluate_model(model, data_loader, loss_fn, device, dataset_type="Validation
     with torch.no_grad():
         for features, labels in data_loader:
             labels = labels.to(device)
-            outputs = _forward_model(model, features, device)
+            outputs = forward_model(model, features, device)
             if n_classes is None:
                 n_classes = outputs.size(1)
             probs = F.softmax(outputs, dim=1)
@@ -279,7 +279,7 @@ def train_model(model, train_loader, val_loader, weights_tensor, config: TrainCo
         for features, labels in train_loader:
             labels = labels.to(device)
             optimizer.zero_grad()
-            outputs = _forward_model(model, features, device)
+            outputs = forward_model(model, features, device)
 
             loss = loss_fn(outputs, labels)
 

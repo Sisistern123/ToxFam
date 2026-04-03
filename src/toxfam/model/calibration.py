@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.optim as optim
 from rich.console import Console
 
-from toxfam.training.trainer import _forward_model
+from toxfam.training.trainer import forward_model
 
 console = Console()
 
@@ -37,7 +37,7 @@ class ModelWithTemperature(nn.Module):
         with torch.no_grad():
             for features, label in valid_loader:
                 label = label.to(self.device)
-                logits = _forward_model(self.model, features, self.device)
+                logits = forward_model(self.model, features, self.device)
                 logits_list.append(logits)
                 labels_list.append(label)
 

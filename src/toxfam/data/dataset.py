@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import math
 import os
 
 import h5py
@@ -10,21 +9,12 @@ from sklearn.preprocessing import LabelEncoder
 from torch.utils.data import Dataset
 
 
-# Organism (taxon) IDs for known venomous lineages.
-# Covers major venomous clades: snakes (Serpentes 8570), spiders (Araneae 6893),
-# scorpions (Scorpiones 6855), cone snails (Conidae 6490), jellyfish (Cubozoa 6082),
-# bees/wasps (Aculeata 7434), centipedes (Chilopoda 7537).
-_VENOMOUS_TAXA_IDS: frozenset[int] = frozenset({
-    8570, 6893, 6855, 6490, 6082, 7434, 7537,
-})
-
-
 class ToxDataset(Dataset):
     """PyTorch Dataset for toxin-classification tasks that reads embeddings
     from multiple HDF5 files with LRU caching.
 
-    Optionally concatenates auxiliary feature vectors (taxonomy, CPP, HBI)
-    and scalar features (sequence length, venom indicator) to the embedding.
+    Optionally loads taxonomy vectors from a separate HDF5 file for
+    the combined (MultiInputMLP) training strategy.
     """
 
     def __init__(
@@ -37,17 +27,11 @@ class ToxDataset(Dataset):
         label_col: str = "Protein families",
         cache_size: int = 3,
         tax_h5_path: str | None = None,
-        cpp_h5_path: str | None = None,
-        hbi_h5_path: str | None = None,
-        include_length: bool = False,
-        include_venom_indicator: bool = False,
     ) -> None:
         super().__init__()
         self.df = df.reset_index(drop=True)
         self.label_col = label_col
         self.cache_size = cache_size
-        self.include_length = include_length
-        self.include_venom_indicator = include_venom_indicator
 
         if is_train:
             self.le = LabelEncoder()
@@ -75,10 +59,8 @@ class ToxDataset(Dataset):
         self._open_cache: dict[str, h5py.File] = {}
         self._lru: list[str] = []
 
-        # Auxiliary feature H5 files
+        # Taxonomy feature H5 file
         self.tax_h5 = h5py.File(tax_h5_path, "r") if tax_h5_path else None
-        self.cpp_h5 = h5py.File(cpp_h5_path, "r") if cpp_h5_path else None
-        self.hbi_h5 = h5py.File(hbi_h5_path, "r") if hbi_h5_path else None
 
     def _get_file_handle(self, path: str) -> h5py.File:
         if path in self._open_cache:
@@ -117,35 +99,6 @@ class ToxDataset(Dataset):
 
         emb_tensor = torch.tensor(embedding, dtype=torch.float32)
 
-        # Concatenate auxiliary features
-        aux_parts: list[torch.Tensor] = []
-
-        if self.cpp_h5 is not None and protein_id in self.cpp_h5:
-            aux_parts.append(
-                torch.tensor(self.cpp_h5[protein_id][:], dtype=torch.float32)
-            )
-
-        if self.hbi_h5 is not None and protein_id in self.hbi_h5:
-            aux_parts.append(
-                torch.tensor(self.hbi_h5[protein_id][:], dtype=torch.float32)
-            )
-
-        if self.include_length:
-            seq = row.get("Sequence", "")
-            seq_len = len(seq) if isinstance(seq, str) else 0
-            aux_parts.append(
-                torch.tensor([math.log2(max(seq_len, 1))], dtype=torch.float32)
-            )
-
-        if self.include_venom_indicator:
-            # Check if organism belongs to a known venomous taxon
-            org_id = int(row.get("Organism (ID)", 0))
-            is_venomous = 1.0 if org_id in _VENOMOUS_TAXA_IDS else 0.0
-            aux_parts.append(torch.tensor([is_venomous], dtype=torch.float32))
-
-        if aux_parts:
-            emb_tensor = torch.cat([emb_tensor] + aux_parts, dim=0)
-
         # If taxonomy vectors are provided, return as tuple for MultiInputMLP
         if self.tax_h5 is not None:
             if protein_id not in self.tax_h5:
@@ -165,15 +118,12 @@ class ToxDataset(Dataset):
         self._open_cache.clear()
         self._lru.clear()
 
-        for h5 in (self.tax_h5, self.cpp_h5, self.hbi_h5):
-            if h5 is not None:
-                try:
-                    h5.close()
-                except Exception:
-                    pass
-        self.tax_h5 = None
-        self.cpp_h5 = None
-        self.hbi_h5 = None
+        if self.tax_h5 is not None:
+            try:
+                self.tax_h5.close()
+            except Exception:
+                pass
+            self.tax_h5 = None
 
     def __del__(self):
         try:
