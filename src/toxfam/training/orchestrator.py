@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 import pandas as pd
 import torch
@@ -17,10 +16,6 @@ except ImportError:
 
 from toxfam.config import TrainConfig
 from toxfam.data.dataset import ToxDataset, analyze_data_splits
-
-if TYPE_CHECKING:
-    from sklearn.preprocessing import LabelEncoder
-
 from toxfam.model.calibration import ModelWithTemperature
 from toxfam.training.strategies import (
     DataSelector,
