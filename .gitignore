@@ -44,7 +44,7 @@ benchmark/
 model/model_output/
 
 # Generated figures
-figures/
+figures/**/*.html
 
 # SignalP6 essentials zipped
 tools/signalp6.tar.gz
