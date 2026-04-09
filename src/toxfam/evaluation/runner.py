@@ -22,8 +22,8 @@ import pandas as pd
 from rich.console import Console
 
 from toxfam._paths import benchmark_dir, evaluation_data_dir, processed_dir
-from toxfam.data.preprocessing import normalize_protein_families
 from toxfam.data._fasta import write_fasta
+from toxfam.data.normalization import normalize_protein_families
 from toxfam.evaluation.hbi import NO_HIT_LABEL, run_hbi_search
 from toxfam.evaluation.metrics import (
     MetricsResult,

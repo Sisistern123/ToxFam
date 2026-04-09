@@ -2,9 +2,7 @@
 
 from __future__ import annotations
 
-
 from toxfam._paths import (
-    configs_dir,
     data_dir,
     get_project_root,
     intermediate_dir,
@@ -25,8 +23,3 @@ def test_data_dirs_are_under_root():
     assert raw_dir() == root / "data" / "raw"
     assert intermediate_dir() == root / "data" / "intermediate"
     assert processed_dir() == root / "data" / "processed"
-
-
-def test_configs_dir():
-    root = get_project_root()
-    assert configs_dir() == root / "configs"

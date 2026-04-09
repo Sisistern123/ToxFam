@@ -43,7 +43,7 @@ def read_fasta_as_dict(path: str | os.PathLike) -> dict[str, str]:
     with open(path) as f:
         for line in f:
             if line.startswith(">"):
-                current_id = line[1:].strip()
+                current_id = line[1:].split()[0]
                 current_id = current_id.replace("/", "_").replace(".", "_")
                 sequences[current_id] = ""
             elif current_id is not None:

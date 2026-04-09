@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 import random
 from collections import Counter
 from typing import TYPE_CHECKING
@@ -12,7 +13,8 @@ import torch.optim as optim
 from rich.console import Console
 from sklearn.metrics import accuracy_score, matthews_corrcoef
 from sklearn.preprocessing import label_binarize
-from toxfam.device import get_device  # re-export for backward compatibility
+from toxfam.device import get_device
+
 try:
     import wandb
 except ImportError:
@@ -20,6 +22,7 @@ except ImportError:
 
 if TYPE_CHECKING:
     from toxfam.config import TrainConfig
+    from toxfam.data.dataset import ToxDataset
 
 console = Console()
 
@@ -82,7 +85,11 @@ class FocalLoss(nn.Module):
 # ---------------------------------------------------------------------------
 
 
-def forward_model(model, features, device):
+def forward_model(
+    model: nn.Module,
+    features: torch.Tensor | tuple[torch.Tensor, ...],
+    device: torch.device | str,
+) -> torch.Tensor:
     """Handle single-input (Tensor) or multi-input ((emb, tax)) forwarding."""
     if isinstance(features, (tuple, list)):
         features = [f.to(device) for f in features]
@@ -96,7 +103,13 @@ def forward_model(model, features, device):
 # ---------------------------------------------------------------------------
 
 
-def evaluate_model(model, data_loader, loss_fn, device, dataset_type="Validation"):
+def evaluate_model(
+    model: nn.Module,
+    data_loader,
+    loss_fn: nn.Module,
+    device: torch.device | str,
+    dataset_type: str = "Validation",
+) -> tuple[dict[str, float], list, list, np.ndarray]:
     model.eval()
     all_labels, all_preds, all_scores = [], [], []
     total_loss = 0.0
@@ -156,12 +169,14 @@ def evaluate_model(model, data_loader, loss_fn, device, dataset_type="Validation
 # ---------------------------------------------------------------------------
 
 
-def get_class_weights(train_dataset):
+def get_class_weights(
+    train_dataset: ToxDataset,
+) -> tuple[dict[str, float], torch.Tensor, dict[int, str]]:
     encoded_col = train_dataset.label_col + "_encoded"
     class_counts = Counter(train_dataset.df[encoded_col])
     num_classes = train_dataset.num_classes
 
-    encoded_to_label = {
+    encoded_to_label: dict[int, str] = {
         enc: train_dataset.le.inverse_transform([enc])[0] for enc in range(num_classes)
     }
 
@@ -201,8 +216,6 @@ class _LinearWarmupCosineScheduler(optim.lr_scheduler.LRScheduler):
             return [base_lr * alpha for base_lr in self.base_lrs]
         else:
             # Cosine annealing
-            import math
-
             progress = (self.last_epoch - self.warmup_epochs) / max(
                 1, self.total_epochs - self.warmup_epochs
             )
@@ -274,7 +287,7 @@ def train_model(model, train_loader, val_loader, weights_tensor, config: TrainCo
 
     for epoch in range(config.num_epochs):
         model.train()
-        total_loss = 0
+        total_loss = 0.0
 
         for features, labels in train_loader:
             labels = labels.to(device)

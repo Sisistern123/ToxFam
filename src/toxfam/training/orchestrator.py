@@ -8,6 +8,7 @@ import torch
 import yaml
 from rich.console import Console
 from torch.utils.data import DataLoader
+
 try:
     import wandb
 except ImportError:
@@ -23,7 +24,8 @@ from toxfam.training.strategies import (
     run_combined_strategy,
     run_standard_strategy,
 )
-from toxfam.training.trainer import get_class_weights, get_device, set_seed
+from toxfam.device import get_device
+from toxfam.training.trainer import get_class_weights, set_seed
 from toxfam.visualization.analysis import analyze_label_distribution_for_split
 
 console = Console()
@@ -53,7 +55,9 @@ def run_training(config: TrainConfig) -> None:
             )
             _use_wandb = True
         except Exception:
-            console.print("[yellow]wandb login failed — continuing without wandb[/yellow]")
+            console.print(
+                "[yellow]wandb login failed — continuing without wandb[/yellow]"
+            )
 
     device = get_device()
     console.print(f"Using device: [bold]{device}[/bold]")
@@ -110,7 +114,10 @@ def run_training(config: TrainConfig) -> None:
     tax_h5 = str(config.tax_h5_path) if config.tax_h5_path else None
 
     train_ds = ToxDataset(
-        train_df, h5_paths, is_train=True, label_col=effective_label_col,
+        train_df,
+        h5_paths,
+        is_train=True,
+        label_col=effective_label_col,
         tax_h5_path=tax_h5,
     )
 
@@ -213,7 +220,6 @@ def run_training(config: TrainConfig) -> None:
         val_loader, "both" if strategy == "combined" else "emb_only"
     )
 
-    device = get_device()
     final_model = final_model.to(device)
 
     scaled_model = ModelWithTemperature(final_model, device)

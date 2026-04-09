@@ -6,8 +6,11 @@ from typing import TYPE_CHECKING
 
 import pandas as pd
 import torch
+import torch.nn as nn
 from rich.console import Console
+from torch.utils.data import DataLoader
 from sklearn.metrics import classification_report
+
 try:
     import wandb
 except ImportError:
@@ -17,9 +20,9 @@ from toxfam.model.architectures import (
     ModularMLP,
     MultiInputMLP,
 )
+from toxfam.device import get_device
 from toxfam.training.trainer import (
     evaluate_model,
-    get_device,
     train_model,
 )
 from toxfam.visualization.analysis import plot_multiclass_roc_from_scores
@@ -34,7 +37,7 @@ console = Console()
 class DataSelector:
     """Wraps the loader to yield only the specific input needed by the strategy."""
 
-    def __init__(self, loader, mode):
+    def __init__(self, loader: DataLoader, mode: str) -> None:
         self.loader = loader
         self.mode = mode  # 'emb_only', 'both'
 
@@ -62,8 +65,13 @@ class DataSelector:
 
 
 def run_standard_strategy(
-    train_loader, val_loader, w_tensor, num_classes, out_dir, config: TrainConfig
-):
+    train_loader: DataLoader,
+    val_loader: DataLoader,
+    w_tensor: torch.Tensor,
+    num_classes: int,
+    out_dir: str | Path,
+    config: TrainConfig,
+) -> nn.Module:
     console.print("[bold]>>> Running Strategy: STANDARD (Embeddings Only)[/bold]")
     model = ModularMLP(
         input_dim=config.effective_embedding_dim,
@@ -83,8 +91,13 @@ def run_standard_strategy(
 
 
 def run_combined_strategy(
-    train_loader, val_loader, w_tensor, num_classes, out_dir, config: TrainConfig
-):
+    train_loader: DataLoader,
+    val_loader: DataLoader,
+    w_tensor: torch.Tensor,
+    num_classes: int,
+    out_dir: str | Path,
+    config: TrainConfig,
+) -> nn.Module:
     console.print("[bold]>>> Running Strategy: COMBINED (Branched Architecture)[/bold]")
     model = MultiInputMLP(
         embed_dim=config.effective_embedding_dim,
@@ -105,8 +118,13 @@ def run_combined_strategy(
 
 
 def run_binary_strategy(
-    train_loader, val_loader, w_tensor, num_classes, out_dir, config: TrainConfig
-):
+    train_loader: DataLoader,
+    val_loader: DataLoader,
+    w_tensor: torch.Tensor,
+    num_classes: int,
+    out_dir: str | Path,
+    config: TrainConfig,
+) -> nn.Module:
     """Train a direct binary toxic/nontoxin classifier.
 
     The dataset must already have binary labels ("toxin"/"nontoxin").

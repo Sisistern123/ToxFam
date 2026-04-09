@@ -1,4 +1,7 @@
+from __future__ import annotations
+
 import math
+from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -7,7 +10,9 @@ from matplotlib.colors import BoundaryNorm, LinearSegmentedColormap
 from sklearn.metrics import confusion_matrix
 
 
-def plot_loss_curve(history, output_path):
+def plot_loss_curve(history: dict[str, list[float]], output_path: str | Path) -> None:
+    output_path = Path(output_path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
     plt.figure(figsize=(10, 5))
     plt.plot(history["train_losses"], label="Train Loss")
     plt.plot(history["val_losses"], label="Validation Loss")
@@ -19,7 +24,12 @@ def plot_loss_curve(history, output_path):
     plt.close()
 
 
-def plot_confusion_matrix(all_labels, all_preds, label_encoder_or_names, output_path):
+def plot_confusion_matrix(
+    all_labels: list[int],
+    all_preds: list[int],
+    label_encoder_or_names: object,
+    output_path: str | Path,
+) -> None:
     if hasattr(label_encoder_or_names, "classes_"):
         class_names = list(label_encoder_or_names.classes_)
     else:
@@ -89,5 +99,7 @@ def plot_confusion_matrix(all_labels, all_preds, label_encoder_or_names, output_
     plt.title("Confusion Matrix – % per class w/ absolute counts")
     plt.xlabel("Predicted")
     plt.ylabel("True")
+    output_path = Path(output_path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
     plt.savefig(output_path, bbox_inches="tight")
     plt.close()

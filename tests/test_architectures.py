@@ -1,5 +1,6 @@
 """Tests for model architectures: shapes, gradients, transfer learning."""
 
+import pytest
 import torch
 
 from toxfam.model.architectures import (
@@ -34,6 +35,10 @@ class TestModularMLP:
         proj_out = model.projector(x)
         assert proj_out.shape == (4, 256)
 
+    def test_empty_hidden_dims_raises(self):
+        with pytest.raises(ValueError, match="hidden_dims must contain"):
+            ModularMLP(input_dim=1024, hidden_dims=[], num_classes=5)
+
 
 class TestMultiInputMLP:
     def test_forward_shape(self):
@@ -47,8 +52,17 @@ class TestMultiInputMLP:
 
     def test_custom_tax_hidden(self):
         model = MultiInputMLP(
-            embed_dim=1024, tax_dim=56, hidden_dims=[128],
-            num_classes=20, tax_hidden_dim=16,
+            embed_dim=1024,
+            tax_dim=56,
+            hidden_dims=[128],
+            num_classes=20,
+            tax_hidden_dim=16,
         )
         out = model(torch.randn(4, 1024), torch.randn(4, 56))
         assert out.shape == (4, 20)
+
+    def test_empty_hidden_dims_raises(self):
+        with pytest.raises(ValueError, match="hidden_dims must contain"):
+            MultiInputMLP(
+                embed_dim=1024, tax_dim=50, hidden_dims=[], num_classes=5
+            )

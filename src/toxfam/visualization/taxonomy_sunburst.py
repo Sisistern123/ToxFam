@@ -16,48 +16,6 @@ console = Console()
 RANKS = ["kingdom", "phylum", "class", "order", "family"]
 
 
-def _build_sunburst_df(
-    df: pd.DataFrame,
-    lineages: dict[int, dict[str, str]],
-) -> pd.DataFrame:
-    """Map each protein to its lineage and count occurrences at each rank."""
-    taxid_col = pd.to_numeric(df["Organism (ID)"], errors="coerce")
-
-    rows: list[dict[str, str]] = []
-    for taxid in taxid_col:
-        if pd.isna(taxid):
-            continue
-        lin = lineages.get(int(taxid), {})
-        rows.append({r: lin.get(r, "") for r in RANKS})
-
-    lin_df = pd.DataFrame(rows)
-
-    # Build parent-child pairs for sunburst
-    sunburst_rows: list[dict[str, str | int]] = []
-    seen: set[tuple[str, str]] = set()
-
-    for _, row in lin_df.iterrows():
-        parent = ""
-        for rank in RANKS:
-            child = row[rank]
-            if not child:
-                break
-            key = (child, parent)
-            if key not in seen:
-                seen.add(key)
-                sunburst_rows.append(
-                    {"id": child, "parent": parent, "rank": rank, "count": 0}
-                )
-            # Increment count
-            for sr in sunburst_rows:
-                if sr["id"] == child and sr["parent"] == parent:
-                    sr["count"] += 1  # type: ignore[operator]
-                    break
-            parent = child
-
-    return pd.DataFrame(sunburst_rows)
-
-
 def _build_sunburst_data(
     df: pd.DataFrame,
     lineages: dict[int, dict[str, str]],

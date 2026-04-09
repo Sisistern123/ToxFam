@@ -54,8 +54,6 @@ class HBIResult:
         return self.n_with_hits / self.n_queries if self.n_queries > 0 else 0.0
 
 
-
-
 def run_hbi_search(
     query_fasta: str | Path,
     target_fasta: str | Path,

@@ -114,9 +114,20 @@ def test_load_combined_checkpoint():
     state_dict = torch.load(
         COMBINED_DIR / "models" / "best_model_calibrated.pt",
         map_location="cpu",
+        weights_only=True,
     )
     # This is the critical test — no size mismatch, no unexpected keys
     scaled.load_state_dict(state_dict)
+
+
+def test_multi_input_requires_tax_dim():
+    with pytest.raises(ValueError, match="tax_dim"):
+        ModelConfig(
+            architecture="MultiInputMLP",
+            embedding_dim=64,
+            hidden_dims=[32],
+            num_classes=5,
+        )
 
 
 @pytest.mark.skipif(
@@ -137,5 +148,6 @@ def test_load_standard_checkpoint():
     state_dict = torch.load(
         STANDARD_DIR / "models" / "best_model_calibrated.pt",
         map_location="cpu",
+        weights_only=True,
     )
     scaled.load_state_dict(state_dict)

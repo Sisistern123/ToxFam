@@ -9,9 +9,9 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import h5py
-import numpy as np
 import pandas as pd
 import torch
 import yaml
@@ -20,13 +20,16 @@ from rich.console import Console
 from toxfam.device import get_device
 from toxfam.model.model_config import ModelConfig
 
+if TYPE_CHECKING:
+    from toxfam.model.calibration import ModelWithTemperature
+
 console = Console()
 
 
 def load_calibrated_model(
     model_dir: str | Path,
     device: str | torch.device | None = None,
-) -> tuple:
+) -> tuple[ModelWithTemperature, ModelConfig, dict[int, str]]:
     """Load a calibrated model from a training output directory.
 
     Reads ``model_config.json`` to reconstruct the architecture, then loads
@@ -50,7 +53,13 @@ def load_calibrated_model(
     model_config = ModelConfig.load(config_path)
 
     # Load class mapping
-    with open(model_dir / "class_indices.json") as f:
+    class_indices_path = model_dir / "class_indices.json"
+    if not class_indices_path.exists():
+        raise FileNotFoundError(
+            f"class_indices.json not found in {model_dir}. "
+            "Re-run training to generate class index mapping."
+        )
+    with open(class_indices_path) as f:
         idx_to_label = {int(k): v for k, v in json.load(f).items()}
 
     # Build model from config and load weights
@@ -58,7 +67,14 @@ def load_calibrated_model(
     scaled_model = ModelWithTemperature(base_model, torch.device(device))
 
     checkpoint = model_dir / "models" / "best_model_calibrated.pt"
-    state_dict = torch.load(checkpoint, map_location=torch.device(device))
+    if not checkpoint.exists():
+        raise FileNotFoundError(
+            f"best_model_calibrated.pt not found at {checkpoint}. "
+            "Re-run training to generate the calibrated model checkpoint."
+        )
+    state_dict = torch.load(
+        checkpoint, map_location=torch.device(device), weights_only=True
+    )
     scaled_model.load_state_dict(state_dict)
     scaled_model.to(device)
     scaled_model.eval()

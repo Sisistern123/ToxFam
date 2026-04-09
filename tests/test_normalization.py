@@ -46,9 +46,7 @@ def test_does_not_mutate_input():
 
 
 def test_semicolon_and_comma_split():
-    df = pd.DataFrame(
-        {"Protein families": ["FamilyA;FamilyB", "FamilyC,FamilyD"]}
-    )
+    df = pd.DataFrame({"Protein families": ["FamilyA;FamilyB", "FamilyC,FamilyD"]})
     result = normalize_protein_families(df, min_count=1)
     # Should take first part only
     assert result["Protein families"].iloc[0] == "FamilyA"

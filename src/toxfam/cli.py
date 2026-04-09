@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Annotated, Optional
+from typing import (
+    Annotated,
+    Optional,
+)  # Required by Typer's runtime type resolution (cannot use X | None syntax)
 
 import typer
 
@@ -163,7 +166,7 @@ def preprocess(
 
 @app.command()
 def embed(
-    input: Annotated[
+    input_fasta: Annotated[
         Path,
         typer.Option("-i", "--input", help="Input FASTA file", exists=True),
     ] = Path("data/intermediate/mmseqs/representatives/all.fasta"),
@@ -196,7 +199,7 @@ def embed(
     from toxfam.data.embedding import generate_embeddings
 
     generate_embeddings(
-        input_fasta=input,
+        input_fasta=input_fasta,
         output_h5=output,
         model_dir=str(model_dir) if model_dir else None,
         model_name=model_name,
@@ -377,14 +380,16 @@ def eval_binary(
     h5_paths = [str(p) for p in config.h5_paths]
     train_ds = ToxDataset(train_df, h5_paths, is_train=True)
 
-    scaled_model, _, _ = load_calibrated_model(model_dir)
+    try:
+        scaled_model, _, _ = load_calibrated_model(model_dir)
 
-    run_binary_evaluation(
-        scaled_model, train_ds.le, val_df, test_df, config, model_dir,
-    )
+        run_binary_evaluation(
+            scaled_model, train_ds.le, val_df, test_df, config, model_dir,
+        )
 
-    train_ds.close()
-    typer.echo("Binary metrics saved.")
+        typer.echo("Binary metrics saved.")
+    finally:
+        train_ds.close()
 
 
 # ---------- toxfam plot ----------

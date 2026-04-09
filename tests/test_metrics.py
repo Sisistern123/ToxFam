@@ -95,6 +95,23 @@ def test_binary_metrics_returns_metrics_result():
     assert m.accuracy == 1.0
 
 
+def test_binary_metrics_imperfect():
+    y_true = pd.Series(["nontox", "famA", "famB"])
+    y_pred = pd.Series(["famA", "famA", "famB"])
+    m = calculate_binary_metrics(y_true, y_pred)
+    # One wrong: nontox predicted as toxin
+    assert 0.0 < m.accuracy < 1.0
+
+
+def test_metrics_oov_predictions():
+    """Out-of-vocabulary predictions are counted as wrong."""
+    y_true = pd.Series(["A", "B", "C"])
+    y_pred = pd.Series(["A", "no hit", "C"])
+    m = calculate_metrics(y_true, y_pred, class_list=["A", "B", "C"])
+    # "no hit" maps to oov_idx → wrong for B
+    assert m.accuracy == pytest.approx(2.0 / 3.0)
+
+
 # ---------- calculate_binary_metrics_with_scores ----------
 
 

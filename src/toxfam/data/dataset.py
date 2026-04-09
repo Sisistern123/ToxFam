@@ -1,3 +1,5 @@
+"""ToxDataset and split helpers for toxin-classification training."""
+
 from __future__ import annotations
 
 import os
@@ -132,7 +134,9 @@ class ToxDataset(Dataset):
             pass
 
 
-def analyze_data_splits(df: pd.DataFrame):
+def analyze_data_splits(
+    df: pd.DataFrame,
+) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """Return three DataFrames split by the ``Split`` column."""
     allowed = {"train", "val", "test"}
     if not set(df["Split"]).issubset(allowed):

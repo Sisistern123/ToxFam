@@ -37,7 +37,6 @@ console = Console()
 # ---------- Utilities ----------
 
 
-
 def fasta_to_dataframe(fasta_file: os.PathLike | str) -> pd.DataFrame:
     records = parse_fasta(fasta_file)
     return pd.DataFrame(

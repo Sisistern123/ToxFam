@@ -23,8 +23,9 @@ from torch.utils.data import DataLoader
 
 from toxfam.config import TrainConfig
 from toxfam.data.dataset import ToxDataset
+from toxfam.device import get_device
 from toxfam.training.strategies import DataSelector
-from toxfam.training.trainer import forward_model, get_device
+from toxfam.training.trainer import forward_model
 from toxfam.visualization.analysis import plot_binary_pr, plot_binary_roc
 
 console = Console()
