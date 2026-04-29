@@ -3,7 +3,7 @@
 The preprocessing pipeline (`uv run toxfam preprocess`) transforms raw UniProt data into clustered, split-ready datasets for model training.
 
 ```bash
-uv run toxfam preprocess [--min-seq-id 0.9]
+uv run toxfam preprocess [--min-seq-id 0.9] [--signalp6-extra "..."]
 ```
 
 ## Data Flow
@@ -79,14 +79,14 @@ Both are saved as CSV + FASTA to `data/intermediate/mmseqs/representatives/`.
 1. Binarizes family labels using `MultiLabelBinarizer`.
 2. First split: 70% train / 30% val+test using `MultilabelStratifiedShuffleSplit` (seed=42).
 3. Second split: from the 30%, splits 50/50 into 15% val / 15% test.
-4. Builds a **train-all-members** set: expands train representative sequences back to all cluster members using MMseqs2 cluster membership files. This is used for the HBI (homology-based inference) baseline benchmark.
+4. Builds a **train-all-members** set: expands train representative sequences back to all cluster members using MMseqs2 cluster membership files. This is used as the HBI (homology-based inference) target database.
 
 **Output files:**
 
-| File                                    | Description                                             |
-| --------------------------------------- | ------------------------------------------------------- |
-| `data/processed/training_data.csv`      | Combined CSV with `Split` column (`train`/`val`/`test`) |
-| `benchmark/test_data.csv` + `.fasta`    | Test split                                              |
-| `benchmark/val_data.csv` + `.fasta`     | Validation split                                        |
-| `benchmark/HBI/train_all_df.csv`        | All members of train clusters                           |
-| `benchmark/HBI/train_all_members.fasta` | FASTA for HBI baseline                                  |
+| File                               | Description                                             |
+| ---------------------------------- | ------------------------------------------------------- |
+| `data/processed/training_data.csv` | Combined CSV with `Split` column (`train`/`val`/`test`) |
+| `data/processed/hbi_train_all.csv` | All members of train clusters (HBI target table)        |
+| `data/processed/hbi_train_all.fasta` | FASTA for HBI target database                         |
+
+For evaluation on `test_set` and `val_set`, ToxFam reads from `data/processed/training_data.csv` by filtering the `Split` column (it does not write separate `benchmark/test_data.csv` or `benchmark/val_data.csv` files during preprocessing).

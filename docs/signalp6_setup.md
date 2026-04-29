@@ -96,7 +96,10 @@ SignalP6 runs automatically during preprocessing:
 uv run toxfam preprocess
 ```
 
-SignalP6 is required. If it is not installed, the pipeline will fail with an error.
+SignalP6 is only required when preprocessing encounters uncached sequences.
+If all sequences are already present in `data/intermediate/sp6/sp6_cache.json`
+(for example after `uv run toxfam download-data`), preprocessing can complete
+without a local SignalP6 installation.
 
 ### Standalone
 
@@ -135,9 +138,10 @@ SignalP6 produces these files in the output directory:
 During preprocessing (`src/toxfam/data/preprocessing.py`):
 
 1. SignalP6 runs on `tox.fasta` and `nontox.fasta` (from `data/intermediate/fasta/`)
-2. Results are cached in `data/intermediate/sp6/{tox,nontox}/`
-3. For proteins with a predicted signal peptide (confidence > 0.8), the sequence is replaced with the mature protein (signal peptide removed)
-4. Proteins without a signal peptide keep their original sequence
+2. A per-sequence MD5 cache is read from `data/intermediate/sp6/sp6_cache.json` (bootstrapped once from legacy `data/intermediate/sp6/{tox,nontox}/` outputs if present)
+3. Only uncached sequences are sent to SignalP6
+4. For proteins with a predicted signal peptide (confidence > 0.8), the sequence is replaced with the mature protein (signal peptide removed)
+5. Proteins without a signal peptide keep their original sequence
 
 ## Troubleshooting
 
