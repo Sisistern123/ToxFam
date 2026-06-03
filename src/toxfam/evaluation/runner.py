@@ -2,7 +2,8 @@
 
 Each method (HBI, NN model) writes results to a standard directory:
     benchmark/{dataset}/{method}/
-        predictions.csv       — identifier, actual_label, predicted_label, confidence
+        predictions.csv       — identifier, actual_label, predicted_label, confidence,
+                                confidence_uncalibrated (NN models only)
         metrics.json          — MetricsResult.to_json_dict()
         run_metadata.json     — method, dataset, timestamp, git commit, parameters
         confusion_matrix.png
@@ -343,14 +344,17 @@ def run_model_evaluation(
         )
 
     # Build standard predictions CSV
-    predictions_df = pd.DataFrame(
-        {
-            "identifier": df["identifier"].values,
-            "actual_label": df["Protein families"].values,
-            "predicted_label": inference_df["predicted_label"].values,
-            "confidence": inference_df["confidence"].values,
-        }
-    )
+    pred_cols: dict[str, object] = {
+        "identifier": df["identifier"].values,
+        "actual_label": df["Protein families"].values,
+        "predicted_label": inference_df["predicted_label"].values,
+        "confidence": inference_df["confidence"].values,
+    }
+    if "confidence_uncalibrated" in inference_df.columns:
+        pred_cols["confidence_uncalibrated"] = inference_df[
+            "confidence_uncalibrated"
+        ].values
+    predictions_df = pd.DataFrame(pred_cols)
 
     _save_run(
         predictions_df,

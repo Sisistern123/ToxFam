@@ -115,7 +115,8 @@ def run_inference(
     specified in the model's ``config.yaml``. Falls back to zero vectors if the
     taxonomy H5 is unavailable.
 
-    Returns DataFrame with columns: identifier, predicted_label, confidence.
+    Returns DataFrame with columns: identifier, predicted_label, confidence,
+    confidence_uncalibrated.
     """
     device = get_device()
     model_dir = Path(model_dir)
@@ -155,6 +156,7 @@ def run_inference(
     # Batched forward pass
     all_preds: list[str] = []
     all_confs: list[float] = []
+    all_uncal_confs: list[float] = []
     batch_size = 512
 
     with torch.no_grad():
@@ -165,20 +167,25 @@ def run_inference(
                     tax_batch = tax_vectors[i : i + batch_size].to(device)
                 else:
                     tax_batch = torch.zeros(batch.shape[0], tax_dim, device=device)
-                logits = model(batch, tax_batch)
+                raw_logits = model.model(batch, tax_batch)
             else:
-                logits = model(batch)
-            probs = torch.softmax(logits, dim=1)
-            confs, pred_idxs = probs.max(dim=1)
+                raw_logits = model.model(batch)
+            scaled_logits = model.temperature_scale(raw_logits)
+            cal_probs = torch.softmax(scaled_logits, dim=1)
+            uncal_probs = torch.softmax(raw_logits, dim=1)
+            confs, pred_idxs = cal_probs.max(dim=1)
+            uncal_confs, _ = uncal_probs.max(dim=1)
             all_preds.extend(
                 idx_to_label.get(idx.item(), "other") for idx in pred_idxs
             )
             all_confs.extend(confs.cpu().tolist())
+            all_uncal_confs.extend(uncal_confs.cpu().tolist())
 
     return pd.DataFrame(
         {
             "identifier": identifiers,
             "predicted_label": all_preds,
             "confidence": all_confs,
+            "confidence_uncalibrated": all_uncal_confs,
         }
     )

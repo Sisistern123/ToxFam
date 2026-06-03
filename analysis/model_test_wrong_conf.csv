@@ -1,0 +1,64 @@
+identifier,actual_label,predicted_label,confidence
+A0A6P3CW73,nontox,Short scorpion toxin superfamily,0.9999865293502808
+P31398,nontox,other,0.9037632942199708
+P34179,nontox,Venom metalloproteinase (M12B) family,0.9997240900993348
+Q4VRI5,nontox,Phospholipase family,0.9903092980384828
+O42190,nontox,Phospholipase family,0.9934631586074828
+C0HJC1,nontox,Phospholipase family,0.9927908182144164
+C0HK43,nontox,MCD family,0.9878336191177368
+I7GQA7,nontox,Phospholipase family,0.982316553592682
+P0DSK0,nontox,Formicidae venom family,0.9883397817611694
+P25033,nontox,other,0.9390760660171508
+P29006,nontox,other,0.8293600678443909
+P48650,nontox,Phospholipase family,0.9940428137779236
+P70088,nontox,Phospholipase family,0.9923642873764038
+Q1L659,nontox,Peptidase S1 family,0.9898537993431092
+Q45Z46,nontox,Phospholipase family,0.9794175028800964
+Q58T40,nontox,other,0.9655543565750122
+B2ZBB8,nontox,Venom Kunitz-type family,0.9434690475463868
+B4ESA2,nontox,Venom Kunitz-type family,0.9978964328765868
+C0HJV8,nontox,Cationic peptide family,0.9864041805267334
+C0HK47,nontox,other,0.9327582120895386
+P0C1M6,nontox,MCD family,0.9863083958625792
+P0C7R6,nontox,"Natriuretic, Bradykinin potentiating peptide family",0.9995711445808412
+P0DMJ2,nontox,Venom Kunitz-type family,0.9923341274261476
+P0DMX0,nontox,Venom Kunitz-type family,0.9960697889328004
+P0DQU7,nontox,Long (4 C-C) scorpion toxin superfamily,0.9999502897262572
+P0DX34,nontox,MCD family,0.9995673298835754
+P0DX64,nontox,Non-disulfide-bridged peptide (NDBP) superfamily,0.9387626051902772
+P10117,nontox,Phospholipase family,0.989132821559906
+P24293,nontox,Phospholipase family,0.9900168776512146
+P42994,nontox,Vasopressin/oxytocin family,0.8065136075019836
+P81548,nontox,Venom Kunitz-type family,0.9967725872993468
+P84116,nontox,MCD family,0.9994121789932252
+P84955,nontox,Bradykinin-related peptide family,0.9553267955780028
+P85123,nontox,Sea anemone type 3 (BDS) potassium channel toxin family,0.8261647820472717
+Q58T51,nontox,other,0.9495140314102172
+Q6T6T5,nontox,Venom Kunitz-type family,0.9830036163330078
+C0HJW4,nontox,Short scorpion toxin superfamily,0.9984140396118164
+B5KL30,nontox,Venom Kunitz-type family,0.9941099286079408
+Q9BL07,nontox,Phospholipase family,0.8087372183799744
+Q9BMK4,nontox,Phospholipase family,0.9418266415596008
+Q9DGK7,nontox,other,0.911072313785553
+Q9I8F8,nontox,Phospholipase family,0.9928688406944276
+P04567,nontox,Limacoditoxin family,0.8809144496917725
+P0DMZ9,nontox,other,0.9965587258338928
+P0DPL1,nontox,Conotoxin family,0.99976247549057
+P10831,nontox,Venom Kunitz-type family,0.9872400164604188
+P18144,nontox,"Natriuretic, Bradykinin potentiating peptide family",0.9968031644821168
+P56685,nontox,Short scorpion toxin superfamily,0.863537609577179
+P84947,nontox,Bradykinin-related peptide family,0.8025729656219482
+P86726,nontox,other,0.8322652578353882
+Q2ES48,nontox,Venom Kunitz-type family,0.995370090007782
+Q90WF4,nontox,other,0.884982168674469
+Q9W716,nontox,Three-finger toxin family,0.9999730587005616
+X5IFZ1,nontox,Conotoxin family,0.9666550159454346
+Q07932,nontox,Formicidae venom family,0.9836634397506714
+Q95WY7,other,nontox,0.9814662933349608
+P0DM27,FARP (FMRFamide related peptide) family,Conotoxin family,0.8022432327270508
+P0DUS2,Limacoditoxin family,FARP (FMRFamide related peptide) family,0.910977840423584
+P0DUS3,Limacoditoxin family,FARP (FMRFamide related peptide) family,0.8986750841140747
+P83055,Bradykinin-related peptide family,nontox,0.8919713497161865
+P86147,MCD family,Formicidae venom family,0.9713147282600404
+P0DN47,Teretoxin family,Conotoxin family,0.9985682964324952
+A7X3X0,other,nontox,0.9157525300979614

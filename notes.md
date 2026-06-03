@@ -1,5 +1,119 @@
 # ToxFam Notes
 ## TODO
+- side by side bars of correct vs incorrect (2 bars each) bins for 0.0-0.1, 0.1-0.2, 0.2-0.3
+  - before and after temp scaling
+
+- +-2 std errors (+- next to the number)
+
+- plot performance vs seq length by protein
+- bin by length and avg performance for those
+
+get the list of proteins for ivan: model_test.iloc[nn_wrong_conf[nn_wrong_conf >= 0.8].index] # everything above 0.8 confidence and wrongly predicted on calibrated confidences
+
+- PLMs struggle with less than 50 aas (Michael)
+
+key hypotheses:
+1. we have a classifier thats kinda better than hbi (top 3 most confident results in jupyter notebook)
+2. classifier is still right even if its confident and wrong/the toxin naming conventions are bananas
+3. ~50 aas as the PLM struggle threshold
+
+tobi: jupyter notebook
+ivan: look through confident and wrong
+selin: write results
+
+### notes HBI "no hit" handling in test-set metrics
+HBI (homology-based inference via MMseqs2) does not always return a prediction: when no homolog passes the search threshold, the query gets the label "no hit" instead of one of the 38 canonical family classes. This creates an asymmetry in how the metrics treat it:
+- Accuracy, MCC, micro-MCC — "no hit" is counted as simply wrong (it never equals a true family label), exactly as stored in metrics.json. These metrics are computed over the union of labels actually present, so the extra "no hit" label is just an always-incorrect prediction and does not need special handling.
+- Macro / weighted precision-recall-F1 — these are restricted to the canonical 38-class list. "no hit" is excluded from the averaged set, matching metrics.json. This matters specifically for macro-F1: if "no hit" is included as its own class it gets F1 = 0 (no true instances), which drags the unweighted macro mean down (HBI macro-F1 0.849 with it vs. 0.872 without). Weighted averages are unaffected, because "no hit" has zero true support and therefore zero weight.
+
+Net effect: HBI carries a 39th observed label ("no hit") that NN Combined does not. To reproduce the stored HBI numbers, restrict the report-based (macro/weighted) metrics to the 38 canonical classes, while leaving accuracy/MCC/micro-MCC to count "no hit" as a wrong prediction.
+
+
+----
+preprocessing output:
+source /Users/selin/PycharmProjects/ToxFam/.venv/bin/activate
+selin@Selins-MacBook-Pro ToxFam % source /Users/selin/PycharmProjects/ToxFam/.venv/bin/activat
+e
+(toxfam) selin@Selins-MacBook-Pro ToxFam % toxfam
+                                                                                              
+ Usage: toxfam [OPTIONS] COMMAND [ARGS]...                                                    
+                                                                                              
+ Animal toxin protein family classification using MLP on ProtT5 embeddings.                   
+                                                                                              
+╭─ Options ──────────────────────────────────────────────────────────────────────────────────╮
+│ --install-completion            Install completion for the current shell.                  │
+│ --show-completion               Show completion for the current shell, to copy it or       │
+│                                 customize the installation.                                │
+│ --help                -h        Show this message and exit.                                │
+╰────────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ Commands ─────────────────────────────────────────────────────────────────────────────────╮
+│ download-data  Download raw and processed data from GitHub Releases.                       │
+│ preprocess     Run the full data preprocessing pipeline.                                   │
+│ embed          Generate per-protein ProtT5 embeddings from a FASTA file.                   │
+│ taxonomy       Generate multi-hot taxonomy vectors for the combined training strategy.     │
+│ train          Train a toxin family classifier from a YAML config file.                    │
+│ eval           Run evaluations and compare methods.                                        │
+│ plot           Generate plots and visualizations.                                          │
+╰────────────────────────────────────────────────────────────────────────────────────────────╯
+(toxfam) selin@Selins-MacBook-Pro ToxFam % toxfam download-data  
+  0800.tsv ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.2/1.2 MB 16.5 MB/s
+  nontox.tsv ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 52.1/52.1 MB 13.2 MB/s
+  training_data.csv ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 30.4/30.4 MB 19.2 MB/s
+  embeddings.h5 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 315.8/315.8 MB 10.4 MB/s
+  hbi_train_all.csv ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 33.1/33.1 MB 12.3 MB/s
+  hbi_train_all.fasta ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 31.5/31.5 MB 12.4 MB/s
+  sp6_cache.zip ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 12.7/12.7 MB 9.2 MB/s
+  evaluation_data.zip ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 66.6/66.6 MB 14.0 MB/s
+Done.
+(toxfam) selin@Selins-MacBook-Pro ToxFam % toxfam preprocess 
+
+1. Loading raw data
+   5567 toxin sequences (45 families), 98850 non-toxin sequences
+
+2. SignalP6 signal peptide removal
+   All 104417 sequences cached
+
+3. MMseqs2 clustering (46 families, min_seq_id=0.9)
+⠸ Clustering Bradykinin-related_peptide_family ━╸━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━  2/46x
+⠧ Clustering FARP__FMRFamide_related_peptide__family ━━━━━━━━╺━━━━━━━━━━━━━━━━━━━━━━━━━━ 11/46
+   65179 representative sequences (3416 toxin, 61763 non-toxin)
+
+4. Stratified train/val/test splits
+
+┏━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━┳━━━━━━━━━━┓
+┃ Split               ┃ Sequences ┃ Families ┃
+┡━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━╇━━━━━━━━━━┩
+│ train (reps)        │     45621 │       38 │
+│ val                 │      9779 │       38 │
+│ test                │      9779 │       38 │
+│ train (all members) │     72413 │       46 │
+└─────────────────────┴───────────┴──────────┘
+
+Done.
+(toxfam) selin@Selins-MacBook-Pro ToxFam % toxfam taxonomy 
+Resolving lineage for 2583 unique taxon IDs ...
+Taxonomy cache is stale. Refreshing ...
+toxfam embed Loading taxopy database from /Users/selin/.cache/taxopy_db
+  Resolving taxonomy lineages ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 2583/2583
+Built multi-hot taxonomy vectors for 65179 identifiers (vector length: 50)
+  Writing taxonomy vectors ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 65179/65179
+
+Multi-hot taxonomy pipeline complete!
+  Total proteins: 65179
+  Matched with taxonomy: 65179
+  Unmatched (zero vector): 0
+Output: data/processed/taxonomy_vectors.h5
+(toxfam) selin@Selins-MacBook-Pro ToxFam % toxfam embed 
+
+1. Device: mps
+
+2. Reading data/intermediate/mmseqs/representatives/all.fasta
+   65179 sequences (longest: 2243 residues)
+   65179 already embedded, 0 remaining
+
+All sequences already embedded. Nothing to do.
+(toxfam) selin@Selins-MacBook-Pro ToxFam % 
+
 
 on Test Set:
 - most confident model errors are actually correct -- keyword annotation errors in SwissProt
