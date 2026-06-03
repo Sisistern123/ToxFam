@@ -48,10 +48,10 @@ KEEP_FILES = (
 )
 
 
-def build_zip(dest: Path) -> None:
+def build_zip(dest: Path, runs: tuple[str, ...] = RUNS) -> None:
     """Write a slimmed models.zip containing only inference-required files."""
     with zipfile.ZipFile(dest, "w", zipfile.ZIP_DEFLATED) as zf:
-        for run in RUNS:
+        for run in runs:
             run_dir = MODEL_OUTPUT / run
             for rel in KEEP_FILES:
                 src = run_dir / rel
@@ -109,6 +109,12 @@ def main() -> None:
         "--tag", default=DEFAULT_TAG, help="GitHub release tag (default: %(default)s)"
     )
     parser.add_argument(
+        "--runs",
+        nargs="+",
+        default=list(RUNS),
+        help="which trained runs to bundle (default: %(default)s)",
+    )
+    parser.add_argument(
         "--no-upload",
         action="store_true",
         help="only build models.zip locally, do not touch the GitHub release",
@@ -123,16 +129,18 @@ def main() -> None:
     )
     args = parser.parse_args()
 
+    runs = tuple(args.runs)
+
     if args.no_upload:
         dest = args.output or (ROOT / "models.zip")
-        build_zip(dest)
+        build_zip(dest, runs)
         print(f"models.zip written to {dest}")
         return
 
     tmp_dir = Path(tempfile.mkdtemp())
     try:
         zip_path = tmp_dir / "models.zip"
-        build_zip(zip_path)
+        build_zip(zip_path, runs)
         upload(args.tag, zip_path)
     finally:
         shutil.rmtree(tmp_dir, ignore_errors=True)

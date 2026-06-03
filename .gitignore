@@ -57,3 +57,6 @@ tools/signalp6/.venv/
 tools/signalp6/uv.lock
 tools/signalp6/bin/
 
+
+# Built by scripts/package_models.py
+models.zip
