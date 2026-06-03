@@ -4,6 +4,12 @@ ToxFam is a Python framework for classifying animal toxin protein sequences into
 
 > This project is under active development and not intended for external use or contributions.
 
+## Predict in Google Colab
+
+Run the trained models on your own sequences — no install required. Upload a FASTA file (or precomputed ProtT5 embeddings) and get the top-3 family predictions per sequence:
+
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Sisistern123/ToxFam/blob/main/notebooks/ToxFam_predict.ipynb)
+
 ## Overview
 
 ToxFam focuses on high-quality classification of protein toxins by reducing sequence redundancy, harmonizing labels, and incorporating rich sequence representations.
