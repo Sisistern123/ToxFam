@@ -22,11 +22,13 @@ ivan: look through confident and wrong
 selin: write results
 
 ### notes HBI "no hit" handling in test-set metrics
-HBI (homology-based inference via MMseqs2) does not always return a prediction: when no homolog passes the search threshold, the query gets the label "no hit" instead of one of the 38 canonical family classes. This creates an asymmetry in how the metrics treat it:
-- Accuracy, MCC, micro-MCC — "no hit" is counted as simply wrong (it never equals a true family label), exactly as stored in metrics.json. These metrics are computed over the union of labels actually present, so the extra "no hit" label is just an always-incorrect prediction and does not need special handling.
-- Macro / weighted precision-recall-F1 — these are restricted to the canonical 38-class list. "no hit" is excluded from the averaged set, matching metrics.json. This matters specifically for macro-F1: if "no hit" is included as its own class it gets F1 = 0 (no true instances), which drags the unweighted macro mean down (HBI macro-F1 0.849 with it vs. 0.872 without). Weighted averages are unaffected, because "no hit" has zero true support and therefore zero weight.
+HBI (homology-based inference via MMseqs2) does not always return a prediction: when no homolog passes the search threshold, the query gets the label "no hit" instead of one of the 38 canonical family classes.
 
-Net effect: HBI carries a 39th observed label ("no hit") that NN Combined does not. To reproduce the stored HBI numbers, restrict the report-based (macro/weighted) metrics to the 38 canonical classes, while leaving accuracy/MCC/micro-MCC to count "no hit" as a wrong prediction.
+Decision: a "no hit" is counted as a **wrong prediction in every metric**. All metrics are computed over the union of labels actually present, so the extra "no hit" label is simply an always-incorrect prediction:
+- Accuracy, MCC, micro-MCC — "no hit" never equals a true family label, so it counts as wrong (same as metrics.json).
+- Macro / weighted precision-recall-F1 — "no hit" is **included** as its own class. It has no true instances, so it gets F1 = 0 and drags the unweighted macro mean down (HBI macro-F1 0.849 with it included vs. 0.872 when excluded). Weighted averages are unaffected, because "no hit" has zero true support and therefore zero weight; the true family of each "no hit" query is still penalised on recall.
+
+Note: this differs from metrics.json, which **restricts** the report-based (macro/weighted) metrics to the 38 canonical classes and therefore reports HBI macro-F1 = 0.872. The notebook deliberately counts "no hit" as wrong, so its HBI macro numbers are slightly lower. NN Combined never emits "no hit", so its numbers are identical either way.
 
 
 ----
