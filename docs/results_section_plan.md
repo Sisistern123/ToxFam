@@ -7,6 +7,30 @@ All numbers below were verified directly from `benchmark/test_set/*/predictions.
 
 ---
 
+## 0. Execution findings (2026-06-12) — authoritative numbers + one narrative change
+
+The analysis pipeline was implemented, run, and adversarially verified (`docs/results_analysis_plan.md`;
+branch `results-analysis`; full test suite 118 passed). Use these regenerated values as canonical:
+
+- **Binary toxic/non-toxic head (now computed; was missing):** combined model ROC-AUC **0.9948**,
+  PR-AUC **0.9494**, MCC **0.8874** at t=0.5; Youden threshold **0.1955** (standard model ROC-AUC 0.9925).
+  Strong — supports M4's calibrated-readout claim.
+- **Macro-F1 no-hit conventions (HBI):** no-hit-as-wrong **0.8514**, restricted (drop no-hit queries)
+  **0.8596** — *not* 0.872. The abstract should quote 0.851 (primary) and may note 0.860.
+- **Figure 3 Panel A support-stratified macro-F1:** ToxFam **0.875** vs HBI **0.837** (support>5);
+  0.710 vs 0.856 (support≤5, n=58). Directional claim (ToxFam wins on supported families) holds; the
+  earlier 0.882/0.846 was a hand-estimate — use 0.875/0.837.
+
+**⚠ NARRATIVE CHANGE — non-metazoan is a scope boundary, NOT a generalization win.** The OOD set is
+812 (702 embedded) *non-metazoan* toxins (bacterial Delta-endotoxin/Aerolysin/RTX, fungal MSDIN, plant
+RIP, viral Rotavirus NSP4) — all labelled toxin. ToxFam recognizes only **110/702 (15.7%)** as toxic
+(592 called non-toxin). The model is **metazoan-specific** and does not generalize to non-metazoan
+toxins — confirming Ivan's "toxicity not generalizable" intuition and *validating* the bounded
+"metazoan-wide" claim. **This contradicts the originally-planned Figure 2 Panel C** ("recognizes
+toxicity at scale"). DECISION NEEDED — see Figure 2 below.
+
+---
+
 ## 1. Strategic frame (locked: *capability-first*)
 
 Reframe the paper from **"a learned method that matches MMseqs2"** to **"the first family-resolved,
@@ -63,9 +87,11 @@ Results display items and must not re-spend a slot on an approach overview.)
   and that NN is ≈flat while HBI degrades only at the short end.
 - **Panel B — No-hit coverage:** HBI 0 % vs NN 94.6 % on the 74 no-hit proteins — **split toxin (10) vs
   non-toxin (64)** so the toxin-coverage claim is clean.
-- **Panel C — Out-of-distribution recognition (regenerate OOD):** non-metazoan binary toxin recognition
-  (812 toxins from families outside the 38) — surfaces the calibrated readout in the main text. Requires
-  `toxfam eval model non_metazoan --model-dir model/model_output/combined_run`.
+- **Panel C — DECISION NEEDED (see Section 0):** regenerated, and the non-metazoan result is **negative**
+  (15.7% recognized), so it does not belong in a "where ToxFam wins" figure. Recommended: **drop Panel C**
+  (Figure 2 → clean 2-panel A+B) and report non-metazoan as a *metazoan-specific scope boundary* in
+  Discussion/Supplementary. `figure2_homology.py` currently still renders the old positive Panel C and will
+  be edited to match your choice.
 - *New work:* regenerate `test_set_accuracy_vs_seq_length_rolling.png` with an HBI line + toxin-only filter;
   regenerate `benchmark/non_metazoan/` predictions and score the binary axis only.
 
