@@ -113,5 +113,11 @@
       "X5IFZ1",
       "Q07932"
     ]
+  },
+  "non_metazoan_scope_boundary": {
+    "n": 702,
+    "recognized_as_toxic": 110,
+    "recognition_rate": 0.1567,
+    "note": "all entries are non-metazoan toxins; low rate = ToxFam is metazoan-specific."
   }
 }

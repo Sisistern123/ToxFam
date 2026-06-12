@@ -1,7 +1,11 @@
-"""Figure 2 — ToxFam's advantage is concentrated where homology breaks."""
-from __future__ import annotations
+"""Figure 2 — ToxFam's advantage is concentrated where homology breaks.
 
-import json
+Two panels, both in-Metazoa strengths: (A) toxin-only accuracy vs sequence length
+with HBI overlaid, and (B) no-hit coverage. The non-metazoan OOD result is a
+negative/scope-boundary finding (ToxFam is metazoan-specific) and is reported as a
+limitation in the Discussion/Supplementary, not here.
+"""
+from __future__ import annotations
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -10,7 +14,6 @@ from analysis.figures._common import apply_style, load_preds, save_fig, sequence
 from toxfam.evaluation.manuscript import (
     accuracy_by_length_bins, rolling_accuracy_vs_length, subset_accuracy, toxin_mask,
 )
-from toxfam._paths import benchmark_dir
 from toxfam.evaluation.hbi import NO_HIT_LABEL
 
 
@@ -20,7 +23,7 @@ def main() -> None:
     nn = load_preds("test_set", "nn_combined_run")
     lengths = sequence_lengths()
 
-    fig, axes = plt.subplots(1, 3, figsize=(13, 4.2))
+    fig, axes = plt.subplots(1, 2, figsize=(9, 4.2))
 
     # --- Panel A: toxin-only rolling accuracy vs length, HBI vs NN ---
     axA = axes[0]
@@ -52,19 +55,6 @@ def main() -> None:
     axB.bar(x + 0.2, nn_acc, 0.4, label="ToxFam", color="#c0504d")
     axB.set_xticks(x); axB.set_xticklabels(labels); axB.set_ylim(0, 1.05); axB.legend()
     axB.set_title(f"B. No-hit coverage (n={len(nn_nh)}: HBI 0% by construction)")
-
-    # --- Panel C: non-metazoan binary recognition ---
-    axC = axes[2]
-    nm_dir = benchmark_dir() / "non_metazoan" / "nn_combined_run"
-    if (nm_dir / "metrics.json").exists():
-        nm = json.load(open(nm_dir / "metrics.json"))["numeric_metrics"]
-        meta = json.load(open(nm_dir / "run_metadata.json"))
-        axC.bar(["Accuracy", "MCC"], [nm["Test_Accuracy"], nm["Test_MCC"]], color="#c0504d")
-        axC.set_ylim(0, 1.05)
-        axC.set_title(f"C. Non-metazoan binary recognition (n={meta['n_samples']})")
-    else:
-        axC.text(0.5, 0.5, "non_metazoan benchmark missing\n(run Task 2.3)", ha="center")
-        axC.axis("off")
 
     fig.tight_layout()
     save_fig(fig, "figure2_homology")

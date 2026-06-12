@@ -3,12 +3,14 @@ from __future__ import annotations
 
 import json
 
+import pandas as pd
+
 from analysis.figures._common import FIG_DIR, load_preds, test_class_list
 from toxfam.evaluation.manuscript import (
     adjudication_summary, correctness, macro_f1_by_support, macro_f1_conventions,
     mcnemar_test, paired_bootstrap_accuracy_diff, subset_accuracy, toxin_mask,
 )
-from toxfam._paths import get_project_root
+from toxfam._paths import benchmark_dir, get_project_root
 from toxfam.evaluation.hbi import NO_HIT_LABEL
 
 ADJ_CSV = get_project_root() / "analysis" / "model_test_wrong_conf_annotated.csv"
@@ -34,6 +36,20 @@ def main() -> None:
         "macro_f1_conventions_hbi": macro_f1_conventions(hbi, class_list=classes),
         "adjudication": adjudication_summary(ADJ_CSV),
     }
+
+    # Non-metazoan scope boundary — a NEGATIVE OOD result (ToxFam is metazoan-specific).
+    # benchmark/ is gitignored; include only if the regenerated predictions are present.
+    nm_path = benchmark_dir() / "non_metazoan" / "nn_combined_run" / "predictions.csv"
+    if nm_path.exists():
+        nm = pd.read_csv(nm_path)
+        recognized = int(toxin_mask(nm, "predicted_label").sum())
+        out["non_metazoan_scope_boundary"] = {
+            "n": int(len(nm)),
+            "recognized_as_toxic": recognized,
+            "recognition_rate": round(recognized / len(nm), 4) if len(nm) else 0.0,
+            "note": "all entries are non-metazoan toxins; low rate = ToxFam is metazoan-specific.",
+        }
+
     (FIG_DIR / "results_numbers.json").write_text(json.dumps(out, indent=2, default=float))
     print(json.dumps(out, indent=2, default=float))
 

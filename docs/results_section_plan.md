@@ -26,8 +26,11 @@ branch `results-analysis`; full test suite 118 passed). Use these regenerated va
 RIP, viral Rotavirus NSP4) — all labelled toxin. ToxFam recognizes only **110/702 (15.7%)** as toxic
 (592 called non-toxin). The model is **metazoan-specific** and does not generalize to non-metazoan
 toxins — confirming Ivan's "toxicity not generalizable" intuition and *validating* the bounded
-"metazoan-wide" claim. **This contradicts the originally-planned Figure 2 Panel C** ("recognizes
-toxicity at scale"). DECISION NEEDED — see Figure 2 below.
+"metazoan-wide" claim. **This contradicted the originally-planned Figure 2 Panel C** ("recognizes
+toxicity at scale"). **RESOLVED (author): Panel C dropped** — Figure 2 is now a clean 2-panel (length +
+no-hit); the non-metazoan result is reported as a *metazoan-specific scope-boundary limitation* in the
+Discussion/Supplementary. Canonical number: `results_numbers.json` → `non_metazoan_scope_boundary`
+(n=702, 110 recognized, rate 0.1567).
 
 ---
 
@@ -87,11 +90,10 @@ Results display items and must not re-spend a slot on an approach overview.)
   and that NN is ≈flat while HBI degrades only at the short end.
 - **Panel B — No-hit coverage:** HBI 0 % vs NN 94.6 % on the 74 no-hit proteins — **split toxin (10) vs
   non-toxin (64)** so the toxin-coverage claim is clean.
-- **Panel C — DECISION NEEDED (see Section 0):** regenerated, and the non-metazoan result is **negative**
-  (15.7% recognized), so it does not belong in a "where ToxFam wins" figure. Recommended: **drop Panel C**
-  (Figure 2 → clean 2-panel A+B) and report non-metazoan as a *metazoan-specific scope boundary* in
-  Discussion/Supplementary. `figure2_homology.py` currently still renders the old positive Panel C and will
-  be edited to match your choice.
+- **Panel C — DROPPED (resolved):** the regenerated non-metazoan result is **negative** (15.7% recognized),
+  so Figure 2 is now a clean 2-panel A+B. The non-metazoan finding is reported as a *metazoan-specific scope
+  boundary* in the Discussion/Supplementary (canonical number in `results_numbers.json`). `figure2_homology.py`
+  now renders only Panels A and B.
 - *New work:* regenerate `test_set_accuracy_vs_seq_length_rolling.png` with an HBI line + toxin-only filter;
   regenerate `benchmark/non_metazoan/` predictions and score the binary axis only.
 
