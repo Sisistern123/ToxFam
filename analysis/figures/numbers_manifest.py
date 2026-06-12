@@ -1,0 +1,42 @@
+"""Emit analysis/manuscript_figures/results_numbers.json — every cited number."""
+from __future__ import annotations
+
+import json
+
+from analysis.figures._common import FIG_DIR, load_preds, test_class_list
+from toxfam.evaluation.manuscript import (
+    adjudication_summary, correctness, macro_f1_by_support, macro_f1_conventions,
+    mcnemar_test, paired_bootstrap_accuracy_diff, subset_accuracy, toxin_mask,
+)
+from toxfam._paths import get_project_root
+from toxfam.evaluation.hbi import NO_HIT_LABEL
+
+ADJ_CSV = get_project_root() / "analysis" / "model_test_wrong_conf_annotated.csv"
+
+
+def main() -> None:
+    classes = test_class_list()
+    hbi = load_preds("test_set", "hbi"); nn = load_preds("test_set", "nn_combined_run")
+    nohit = hbi["predicted_label"] == NO_HIT_LABEL
+    nn_nh = nn[nn["identifier"].isin(hbi.loc[nohit, "identifier"])]
+    out = {
+        "n_test": int(len(nn)),
+        "non_toxin_prior": round(float((nn["actual_label"].str.lower() == "nontox").mean()), 4),
+        "toxin_only_n": int(toxin_mask(nn).sum()),
+        "toxin_only_acc": {"nn_combined": subset_accuracy(nn, toxin_mask(nn)),
+                            "hbi": subset_accuracy(hbi, toxin_mask(hbi))},
+        "all_class_acc": {"nn_combined": subset_accuracy(nn), "hbi": subset_accuracy(hbi)},
+        "mcnemar": mcnemar_test(correctness(nn), correctness(hbi)),
+        "paired_bootstrap": paired_bootstrap_accuracy_diff(correctness(nn), correctness(hbi)),
+        "no_hit": {"n": int(nohit.sum()), "n_toxin": int(toxin_mask(nn_nh).sum()),
+                   "nn_acc": subset_accuracy(nn_nh)},
+        "macro_f1_by_support": macro_f1_by_support(nn, hbi, class_list=classes).to_dict("records"),
+        "macro_f1_conventions_hbi": macro_f1_conventions(hbi, class_list=classes),
+        "adjudication": adjudication_summary(ADJ_CSV),
+    }
+    (FIG_DIR / "results_numbers.json").write_text(json.dumps(out, indent=2, default=float))
+    print(json.dumps(out, indent=2, default=float))
+
+
+if __name__ == "__main__":
+    main()
