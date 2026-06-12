@@ -1,0 +1,117 @@
+{
+  "n_test": 9779,
+  "non_toxin_prior": 0.9473,
+  "toxin_only_n": 515,
+  "toxin_only_acc": {
+    "nn_combined": 0.9242718446601942,
+    "hbi": 0.8543689320388349
+  },
+  "all_class_acc": {
+    "nn_combined": 0.9859903875651908,
+    "hbi": 0.981490949994887
+  },
+  "mcnemar": {
+    "b01": 127,
+    "b10": 83,
+    "n_discordant": 210,
+    "chi2": 8.804761904761905,
+    "p_value": 0.0030044534906600267
+  },
+  "paired_bootstrap": {
+    "diff": 0.004499437570303799,
+    "ci_low": 0.0016361591164740785,
+    "ci_high": 0.007464975968912935,
+    "n": 9779
+  },
+  "no_hit": {
+    "n": 74,
+    "n_toxin": 10,
+    "nn_acc": 0.9459459459459459
+  },
+  "macro_f1_by_support": [
+    {
+      "group": "support>5",
+      "macro_f1_a": 0.8751208819391665,
+      "macro_f1_b": 0.8372390761823214,
+      "n_families": 17,
+      "n_sequences": 457
+    },
+    {
+      "group": "support<=5",
+      "macro_f1_a": 0.7104906204906205,
+      "macro_f1_b": 0.856388888888889,
+      "n_families": 20,
+      "n_sequences": 58
+    }
+  ],
+  "macro_f1_conventions_hbi": {
+    "macro_f1_nohit_wrong": 0.8513689802431473,
+    "macro_f1_restricted": 0.8595585406283701,
+    "n_no_hit": 74
+  },
+  "adjudication": {
+    "n": 63,
+    "assessment": {
+      "partial": 10,
+      "incorrect": 20,
+      "correct": 33
+    },
+    "assessment_category": {
+      "family_related": 4,
+      "false_positive_nonspecific": 8,
+      "family_correct": 31,
+      "false_positive_homolog": 5,
+      "other_correct": 2,
+      "false_positive_analog": 3,
+      "false_positive_spurious": 1,
+      "family_wrong": 1,
+      "false_negative": 3,
+      "family_adjacent": 5
+    },
+    "verdict": {
+      "tox": 46,
+      "nontox": 17
+    },
+    "n_annotation_gaps": 38,
+    "annotation_gap_ids": [
+      "A0A6P3CW73",
+      "P34179",
+      "Q4VRI5",
+      "O42190",
+      "C0HJC1",
+      "C0HK43",
+      "I7GQA7",
+      "P0DSK0",
+      "P48650",
+      "P70088",
+      "Q45Z46",
+      "B2ZBB8",
+      "B4ESA2",
+      "C0HJV8",
+      "C0HK47",
+      "P0C1M6",
+      "P0C7R6",
+      "P0DMJ2",
+      "P0DMX0",
+      "P0DQU7",
+      "P0DX34",
+      "P0DX64",
+      "P10117",
+      "P24293",
+      "P81548",
+      "Q6T6T5",
+      "C0HJW4",
+      "B5KL30",
+      "Q9BMK4",
+      "Q9I8F8",
+      "P04567",
+      "P0DMZ9",
+      "P0DPL1",
+      "P56685",
+      "Q2ES48",
+      "Q9W716",
+      "X5IFZ1",
+      "Q07932"
+    ]
+  }
+}
