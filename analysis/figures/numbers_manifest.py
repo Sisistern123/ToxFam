@@ -7,8 +7,9 @@ import pandas as pd
 
 from analysis.figures._common import FIG_DIR, load_preds, test_class_list
 from toxfam.evaluation.manuscript import (
-    adjudication_summary, correctness, macro_f1_by_support, macro_f1_conventions,
-    mcnemar_test, paired_bootstrap_accuracy_diff, subset_accuracy, toxin_mask,
+    adjudication_summary, bootstrap_label_metric_ci, correctness, macro_mcc_by_support,
+    mcnemar_test, micro_mcc, overall_mcc, paired_bootstrap_accuracy_diff, subset_accuracy,
+    toxin_mask,
 )
 from toxfam._paths import benchmark_dir, get_project_root
 from toxfam.evaluation.hbi import NO_HIT_LABEL
@@ -19,6 +20,7 @@ ADJ_CSV = get_project_root() / "analysis" / "model_test_wrong_conf_annotated.csv
 def main() -> None:
     classes = test_class_list()
     hbi = load_preds("test_set", "hbi"); nn = load_preds("test_set", "nn_combined_run")
+    std = load_preds("test_set", "nn_standard_run")
     nohit = hbi["predicted_label"] == NO_HIT_LABEL
     nn_nh = nn[nn["identifier"].isin(hbi.loc[nohit, "identifier"])]
     out = {
@@ -32,8 +34,14 @@ def main() -> None:
         "paired_bootstrap": paired_bootstrap_accuracy_diff(correctness(nn), correctness(hbi)),
         "no_hit": {"n": int(nohit.sum()), "n_toxin": int(toxin_mask(nn_nh).sum()),
                    "nn_acc": subset_accuracy(nn_nh)},
-        "macro_f1_by_support": macro_f1_by_support(nn, hbi, class_list=classes).to_dict("records"),
-        "macro_f1_conventions_hbi": macro_f1_conventions(hbi, class_list=classes),
+        "mcc": {
+            m: {"overall": overall_mcc(d["actual_label"], d["predicted_label"]),
+                "micro": micro_mcc(d["actual_label"], d["predicted_label"], class_list=classes)}
+            for m, d in [("hbi", hbi), ("nn_standard", std), ("nn_combined", nn)]
+        },
+        "mcc_ci_nn_combined": bootstrap_label_metric_ci(
+            nn["actual_label"].values, nn["predicted_label"].values, overall_mcc, n_boot=2000),
+        "macro_mcc_by_support": macro_mcc_by_support(nn, hbi, class_list=classes).to_dict("records"),
         "adjudication": adjudication_summary(ADJ_CSV),
     }
 

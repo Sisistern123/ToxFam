@@ -7,12 +7,15 @@ calibration/reliability, and the confident-error adjudication summary.
 """
 from __future__ import annotations
 
+import warnings
 from collections import Counter
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 from scipy.stats import chi2 as _chi2
+from sklearn.metrics import matthews_corrcoef
+from sklearn.preprocessing import label_binarize
 
 from toxfam.evaluation.hbi import NO_HIT_LABEL
 from toxfam.evaluation.metrics import NONTOXIN_LABELS, calculate_metrics
@@ -175,6 +178,127 @@ def macro_f1_conventions(preds: pd.DataFrame, *, class_list: list[str]) -> dict:
         "macro_f1_restricted": float(m_res.classification_report["macro avg"]["f1-score"]),
         "n_no_hit": int((~keep).sum()),
     }
+
+
+# ---------------------------------------------------------------------------
+# MCC-based evaluation (primary metric) + bootstrap confidence intervals
+# ---------------------------------------------------------------------------
+
+
+def overall_mcc(y_true, y_pred) -> float:
+    """Multiclass Matthews correlation coefficient over all samples.
+
+    'no hit' is simply a label that never matches a true family, so it counts
+    as wrong — the same convention used everywhere else in the evaluation.
+    """
+    return float(matthews_corrcoef(np.asarray(y_true), np.asarray(y_pred)))
+
+
+def micro_mcc(y_true, y_pred, *, class_list: list[str]) -> float:
+    """Micro-averaged MCC on the one-vs-all binarized label matrix.
+
+    Mirrors ``toxfam.evaluation.metrics.calculate_metrics``: predictions outside
+    ``class_list`` (e.g. 'no hit') map to an out-of-vocabulary index and count
+    as wrong.
+    """
+    n = len(class_list)
+    cls2idx = {c: i for i, c in enumerate(class_list)}
+    oov = n
+    yt = pd.Series(list(y_true)).map(lambda x: cls2idx.get(x, oov)).to_numpy(int)
+    yp = pd.Series(list(y_pred)).map(lambda x: cls2idx.get(x, oov)).to_numpy(int)
+    all_labels = list(range(n)) + [oov]
+    yt_bin = label_binarize(yt, classes=all_labels)
+    yp_bin = label_binarize(yp, classes=all_labels)
+    return float(matthews_corrcoef(yt_bin.ravel(), yp_bin.ravel()))
+
+
+def bootstrap_accuracy_ci(correct, *, n_boot: int = 2000, seed: int = 42) -> dict:
+    """Percentile bootstrap 95% CI for a mean (accuracy) over a boolean vector."""
+    c = np.asarray(correct, dtype=float)
+    n = len(c)
+    if n == 0:
+        return {"point": float("nan"), "ci_low": float("nan"), "ci_high": float("nan"), "n": 0}
+    rng = np.random.default_rng(seed)
+    idx = rng.integers(0, n, size=(n_boot, n))
+    means = c[idx].mean(axis=1)
+    return {"point": float(c.mean()), "ci_low": float(np.percentile(means, 2.5)),
+            "ci_high": float(np.percentile(means, 97.5)), "n": n}
+
+
+def bootstrap_label_metric_ci(y_true, y_pred, metric_fn, *, n_boot: int = 1000, seed: int = 42) -> dict:
+    """Percentile bootstrap 95% CI for ``metric_fn(y_true, y_pred)`` (e.g. MCC).
+
+    Resamples (y_true, y_pred) pairs with replacement — used for statistics that
+    are not a per-sample mean.
+    """
+    yt = np.asarray(y_true)
+    yp = np.asarray(y_pred)
+    n = len(yt)
+    rng = np.random.default_rng(seed)
+    point = float(metric_fn(yt, yp))
+    vals = np.empty(n_boot, dtype=float)
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        for i in range(n_boot):
+            idx = rng.integers(0, n, size=n)
+            vals[i] = metric_fn(yt[idx], yp[idx])
+    return {"point": point, "ci_low": float(np.percentile(vals, 2.5)),
+            "ci_high": float(np.percentile(vals, 97.5)), "n": n}
+
+
+def _ovr_mcc(is_true: np.ndarray, is_pred: np.ndarray) -> float:
+    """One-vs-rest MCC; nan if the family has no true members."""
+    if is_true.sum() == 0:
+        return float("nan")
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        return float(matthews_corrcoef(is_true, is_pred))
+
+
+def per_family_mcc_difference(
+    preds_a: pd.DataFrame, preds_b: pd.DataFrame, *, class_list: list[str]
+) -> pd.DataFrame:
+    """Per-family one-vs-rest MCC for method a minus method b, with true support.
+
+    Non-toxin classes are excluded from the family view.
+    """
+    rows = []
+    for fam in class_list:
+        if fam.lower() in NONTOXIN_LABELS:
+            continue
+        ta = (preds_a["actual_label"].values == fam)
+        pa = (preds_a["predicted_label"].values == fam)
+        tb = (preds_b["actual_label"].values == fam)
+        pb = (preds_b["predicted_label"].values == fam)
+        rows.append({
+            "family": fam,
+            "mcc_a": _ovr_mcc(ta, pa),
+            "mcc_b": _ovr_mcc(tb, pb),
+            "support": int(ta.sum()),
+        })
+    out = pd.DataFrame(rows)
+    out["diff"] = out["mcc_a"] - out["mcc_b"]
+    return out.sort_values("diff").reset_index(drop=True)
+
+
+def macro_mcc_by_support(
+    preds_a: pd.DataFrame, preds_b: pd.DataFrame, *, class_list: list[str], support_threshold: int = 5
+) -> pd.DataFrame:
+    """Macro (mean per-family one-vs-rest) MCC of each method, split by support."""
+    fam = per_family_mcc_difference(preds_a, preds_b, class_list=class_list)
+    rows = []
+    for label, sub in (
+        (f"support>{support_threshold}", fam[fam["support"] > support_threshold]),
+        (f"support<={support_threshold}", fam[fam["support"] <= support_threshold]),
+    ):
+        rows.append({
+            "group": label,
+            "macro_mcc_a": float(sub["mcc_a"].mean()) if len(sub) else float("nan"),
+            "macro_mcc_b": float(sub["mcc_b"].mean()) if len(sub) else float("nan"),
+            "n_families": int(len(sub)),
+            "n_sequences": int(sub["support"].sum()),
+        })
+    return pd.DataFrame(rows)
 
 
 def binary_reliability(

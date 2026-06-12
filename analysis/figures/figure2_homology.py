@@ -12,7 +12,8 @@ import numpy as np
 
 from analysis.figures._common import apply_style, load_preds, save_fig, sequence_lengths
 from toxfam.evaluation.manuscript import (
-    accuracy_by_length_bins, rolling_accuracy_vs_length, subset_accuracy, toxin_mask,
+    accuracy_by_length_bins, bootstrap_accuracy_ci, correctness, rolling_accuracy_vs_length,
+    toxin_mask,
 )
 from toxfam.evaluation.hbi import NO_HIT_LABEL
 
@@ -47,12 +48,15 @@ def main() -> None:
     nn_nh = nn[nn["identifier"].isin(nohit_ids)]
     tox_m = toxin_mask(nn_nh)
     groups = [("toxin no-hit", nn_nh[tox_m]), ("non-toxin no-hit", nn_nh[~tox_m])]
-    labels, nn_acc, hbi_acc, ns = [], [], [], []
+    labels, nn_acc, hbi_acc = [], [], []
+    nn_err = [[], []]  # asymmetric [lower, upper] for ToxFam bars
     for gname, g in groups:
-        labels.append(f"{gname}\n(n={len(g)})"); nn_acc.append(subset_accuracy(g)); hbi_acc.append(0.0); ns.append(len(g))
+        ci = bootstrap_accuracy_ci(correctness(g))
+        labels.append(f"{gname}\n(n={len(g)})"); nn_acc.append(ci["point"]); hbi_acc.append(0.0)
+        nn_err[0].append(ci["point"] - ci["ci_low"]); nn_err[1].append(ci["ci_high"] - ci["point"])
     x = np.arange(len(groups))
     axB.bar(x - 0.2, hbi_acc, 0.4, label="HBI (no hit)", color="#7f7f7f")
-    axB.bar(x + 0.2, nn_acc, 0.4, label="ToxFam", color="#c0504d")
+    axB.bar(x + 0.2, nn_acc, 0.4, yerr=nn_err, capsize=3, label="ToxFam", color="#c0504d")
     axB.set_xticks(x); axB.set_xticklabels(labels); axB.set_ylim(0, 1.05); axB.legend()
     axB.set_title(f"B. No-hit coverage (n={len(nn_nh)}: HBI 0% by construction)")
 

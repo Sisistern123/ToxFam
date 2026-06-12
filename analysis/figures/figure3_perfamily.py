@@ -7,7 +7,7 @@ import numpy as np
 from analysis.figures._common import apply_style, load_preds, save_fig, test_class_list
 from toxfam._paths import get_project_root
 from toxfam.evaluation.manuscript import (
-    adjudication_summary, macro_f1_by_support, per_family_f1_difference,
+    adjudication_summary, macro_mcc_by_support, per_family_mcc_difference,
 )
 
 ADJ_CSV = get_project_root() / "analysis" / "model_test_wrong_conf_annotated.csv"
@@ -21,22 +21,22 @@ def main() -> None:
 
     fig, axes = plt.subplots(1, 2, figsize=(12, 5))
 
-    # --- Panel A: per-family F1 difference (NN - HBI), sorted, sized by support ---
-    fam = per_family_f1_difference(nn, hbi, class_list=classes)
+    # --- Panel A: per-family one-vs-rest MCC difference (NN - HBI), sorted, sized by support ---
+    fam = per_family_mcc_difference(nn, hbi, class_list=classes)
     axA = axes[0]
     colors = np.where(fam["diff"] >= 0, "#c0504d", "#7f7f7f")
     sizes = 10 + 3 * np.sqrt(fam["support"].clip(lower=1))
     axA.scatter(fam["diff"], np.arange(len(fam)), s=sizes, color=colors)
     axA.axvline(0, color="black", lw=0.6)
     axA.set_yticks(np.arange(len(fam))); axA.set_yticklabels(fam["family"], fontsize=6)
-    axA.set_xlabel("F1 difference (ToxFam - HBI)")
-    strat = macro_f1_by_support(nn, hbi, class_list=classes, support_threshold=5)
+    axA.set_xlabel("one-vs-rest MCC difference (ToxFam - HBI)")
+    strat = macro_mcc_by_support(nn, hbi, class_list=classes, support_threshold=5)
     sup = strat[strat["group"] == "support>5"].iloc[0]
     low = strat[strat["group"] == "support<=5"].iloc[0]
     axA.set_title(
-        f"A. Per-family F1 (marker∝support)\n"
-        f"support>5: ToxFam {sup['macro_f1_a']:.3f} vs HBI {sup['macro_f1_b']:.3f} | "
-        f"support≤5 (n={low['n_sequences']}): {low['macro_f1_a']:.3f} vs {low['macro_f1_b']:.3f}"
+        f"A. Per-family MCC (marker∝support)\n"
+        f"support>5: ToxFam {sup['macro_mcc_a']:.3f} vs HBI {sup['macro_mcc_b']:.3f} | "
+        f"support≤5 (n={low['n_sequences']}): {low['macro_mcc_a']:.3f} vs {low['macro_mcc_b']:.3f}"
     )
 
     # --- Panel B: confident-error adjudication stacked bar ---

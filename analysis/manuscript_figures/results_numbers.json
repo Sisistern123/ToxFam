@@ -28,27 +28,42 @@
     "n_toxin": 10,
     "nn_acc": 0.9459459459459459
   },
-  "macro_f1_by_support": [
+  "mcc": {
+    "hbi": {
+      "overall": 0.8282635300035441,
+      "micro": 0.9810038697315946
+    },
+    "nn_standard": {
+      "overall": 0.8618390141483393,
+      "micro": 0.9839424976184197
+    },
+    "nn_combined": {
+      "overall": 0.8744356366742104,
+      "micro": 0.9856217135537484
+    }
+  },
+  "mcc_ci_nn_combined": {
+    "point": 0.8744356366742104,
+    "ci_low": 0.853614481966993,
+    "ci_high": 0.8944995720941655,
+    "n": 9779
+  },
+  "macro_mcc_by_support": [
     {
       "group": "support>5",
-      "macro_f1_a": 0.8751208819391665,
-      "macro_f1_b": 0.8372390761823214,
+      "macro_mcc_a": 0.88042455234679,
+      "macro_mcc_b": 0.841576320748855,
       "n_families": 17,
       "n_sequences": 457
     },
     {
       "group": "support<=5",
-      "macro_f1_a": 0.7104906204906205,
-      "macro_f1_b": 0.856388888888889,
+      "macro_mcc_a": 0.7233552941091548,
+      "macro_mcc_b": 0.8647190634472273,
       "n_families": 20,
       "n_sequences": 58
     }
   ],
-  "macro_f1_conventions_hbi": {
-    "macro_f1_nohit_wrong": 0.8513689802431473,
-    "macro_f1_restricted": 0.8595585406283701,
-    "n_no_hit": 74
-  },
   "adjudication": {
     "n": 63,
     "assessment": {

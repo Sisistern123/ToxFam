@@ -137,3 +137,62 @@ def test_adjudication_summary_counts(tmp_path):
     assert s["assessment"]["correct"] == 1
     assert s["assessment"]["incorrect"] == 1
     assert s["n_annotation_gaps"] == 2  # nontox-labelled & verdict tox (p1,p3)
+
+
+# ---------- MCC-based evaluation + bootstrap CIs ----------
+
+from toxfam.evaluation.manuscript import (  # noqa: E402
+    bootstrap_accuracy_ci,
+    bootstrap_label_metric_ci,
+    macro_mcc_by_support,
+    micro_mcc,
+    overall_mcc,
+    per_family_mcc_difference,
+)
+
+
+def test_overall_mcc_perfect():
+    y = ["A", "B", "A", "nontox", "B"]
+    assert overall_mcc(y, y) == pytest.approx(1.0)
+
+
+def test_overall_mcc_nohit_counts_wrong():
+    yt = ["A", "B", "A", "B"]
+    yp = ["A", "no hit", "A", "B"]  # one no-hit -> imperfect
+    assert overall_mcc(yt, yp) < 1.0
+
+
+def test_micro_mcc_in_range():
+    yt = ["A", "B", "A", "nontox", "B"]
+    yp = ["A", "B", "B", "nontox", "B"]
+    v = micro_mcc(yt, yp, class_list=["A", "B", "nontox"])
+    assert -1.0 <= v <= 1.0
+
+
+def test_bootstrap_accuracy_ci_brackets_point():
+    correct = np.array([1] * 80 + [0] * 20)
+    ci = bootstrap_accuracy_ci(correct, n_boot=1000, seed=1)
+    assert ci["point"] == pytest.approx(0.8)
+    assert ci["ci_low"] < 0.8 < ci["ci_high"]
+
+
+def test_bootstrap_label_metric_ci_brackets_point():
+    yt = np.array(["A", "B"] * 50)
+    yp = yt.copy()
+    yp[:10] = "B"  # introduce errors
+    ci = bootstrap_label_metric_ci(yt, yp, overall_mcc, n_boot=300, seed=1)
+    assert ci["ci_low"] <= ci["point"] <= ci["ci_high"]
+
+
+def test_per_family_mcc_difference_columns():
+    a, b = _two_method_preds()
+    out = per_family_mcc_difference(a, b, class_list=["A", "B", "nontox"])
+    assert {"family", "mcc_a", "mcc_b", "diff", "support"}.issubset(out.columns)
+    assert (out["diff"] == (out["mcc_a"] - out["mcc_b"])).all()
+    assert "nontox" not in set(out["family"])  # non-toxin excluded
+
+
+def test_macro_mcc_by_support_columns():
+    a, b = _two_method_preds()
+    out = macro_mcc_by_support(a, b, class_list=["A", "B", "nontox"], support_threshold=4)
+    assert {"group", "macro_mcc_a", "macro_mcc_b", "n_families"}.issubset(out.columns)
