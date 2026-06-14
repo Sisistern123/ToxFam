@@ -6,6 +6,7 @@ import pandas as pd
 import pytest
 
 from toxfam.evaluation.manuscript import (
+    accuracy_by_identity_bins,
     accuracy_by_length_bins,
     adjudication_summary,
     aligned_correctness,
@@ -363,3 +364,56 @@ def test_macro_mcc_by_support_columns():
     lo = g.loc["support<=4"]
     assert int(lo["n_families"]) == 0
     assert np.isnan(lo["macro_mcc_a"]) and np.isnan(lo["macro_mcc_b"])
+
+
+def test_accuracy_by_identity_bins():
+    # HBI frame: confidence == best-hit fractional identity.
+    # x2 is a no-hit (excluded); x3 is non-toxin (excluded by toxin_only).
+    hbi = pd.DataFrame(
+        {
+            "identifier": ["x0", "x1", "x2", "x3", "x4"],
+            "actual_label": ["A", "A", "B", "nontox", "A"],
+            "predicted_label": ["A", "B", "no hit", "nontox", "A"],
+            "confidence": [0.90, 0.50, 0.00, 0.95, 0.85],
+        }
+    )
+    other = pd.DataFrame(
+        {
+            "identifier": ["x0", "x1", "x2", "x3", "x4"],
+            "actual_label": ["A", "A", "B", "nontox", "A"],
+            "predicted_label": ["A", "A", "B", "nontox", "B"],  # other wrong only on x4
+        }
+    )
+    out = accuracy_by_identity_bins(
+        hbi, other, bins=[0, 0.4, 0.6, 0.8, 1.0001],
+        labels=["<0.4", "0.4-0.6", "0.6-0.8", ">0.8"],
+    )
+    by = {r["bin_label"]: r for _, r in out.iterrows()}
+    # Only occupied bins after toxin-only + no-hit exclusion: x1->0.4-0.6, x0&x4->>0.8.
+    assert set(by) == {"0.4-0.6", ">0.8"}
+    assert by["0.4-0.6"]["n"] == 1
+    assert by["0.4-0.6"]["hbi_accuracy"] == pytest.approx(0.0)      # x1 hbi wrong
+    assert by["0.4-0.6"]["other_accuracy"] == pytest.approx(1.0)    # x1 other right
+    assert by["0.4-0.6"]["diff"] == pytest.approx(1.0)
+    assert by[">0.8"]["n"] == 2
+    assert by[">0.8"]["hbi_accuracy"] == pytest.approx(1.0)         # x0,x4 hbi right
+    assert by[">0.8"]["other_accuracy"] == pytest.approx(0.5)       # x4 other wrong
+    assert by[">0.8"]["diff"] == pytest.approx(-0.5)
+    # no-hit (x2) and non-toxin (x3) excluded -> total n is 3, not 5.
+    assert int(out["n"].sum()) == 3
+
+
+def test_accuracy_by_identity_bins_requires_full_coverage():
+    hbi = pd.DataFrame(
+        {
+            "identifier": ["x0"],
+            "actual_label": ["A"],
+            "predicted_label": ["A"],
+            "confidence": [0.9],
+        }
+    )
+    other = pd.DataFrame(
+        {"identifier": ["zzz"], "actual_label": ["A"], "predicted_label": ["A"]}
+    )
+    with pytest.raises(ValueError):
+        accuracy_by_identity_bins(hbi, other, bins=[0, 1.0001], labels=["all"])
