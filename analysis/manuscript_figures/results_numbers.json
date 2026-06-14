@@ -1,0 +1,157 @@
+{
+  "n_test": 9779,
+  "non_toxin_prior": 0.9473,
+  "toxin_only_n": 515,
+  "toxin_only_acc": {
+    "nn_combined": 0.9242718446601942,
+    "hbi": 0.8543689320388349
+  },
+  "all_class_acc": {
+    "nn_combined": 0.9859903875651908,
+    "hbi": 0.981490949994887
+  },
+  "mcnemar": {
+    "b01": 127,
+    "b10": 83,
+    "n_discordant": 210,
+    "chi2": 8.804761904761905,
+    "p_value": 0.0030044534906600267,
+    "method": "chi2_continuity"
+  },
+  "paired_bootstrap": {
+    "diff": 0.004499437570303799,
+    "ci_low": 0.0016361591164740785,
+    "ci_high": 0.007464975968912935,
+    "n": 9779
+  },
+  "no_hit": {
+    "n": 74,
+    "n_toxin": 10,
+    "nn_acc": 0.9459459459459459
+  },
+  "mcc": {
+    "hbi": {
+      "overall": 0.8282635300035441,
+      "micro": 0.9810038697315946
+    },
+    "nn_standard": {
+      "overall": 0.8618390141483393,
+      "micro": 0.9839424976184197
+    },
+    "nn_combined": {
+      "overall": 0.8744356366742104,
+      "micro": 0.9856217135537484
+    }
+  },
+  "mcc_ci_nn_combined": {
+    "point": 0.8744356366742104,
+    "ci_low": 0.853614481966993,
+    "ci_high": 0.8944995720941655,
+    "n": 9779
+  },
+  "macro_mcc_by_support": [
+    {
+      "group": "support>5",
+      "macro_mcc_a": 0.88042455234679,
+      "macro_mcc_b": 0.841576320748855,
+      "n_families": 17,
+      "n_sequences": 457
+    },
+    {
+      "group": "support<=5",
+      "macro_mcc_a": 0.7233552941091548,
+      "macro_mcc_b": 0.8647190634472273,
+      "n_families": 20,
+      "n_sequences": 58
+    }
+  ],
+  "adjudication": {
+    "n": 63,
+    "assessment": {
+      "partial": 10,
+      "incorrect": 20,
+      "correct": 33
+    },
+    "assessment_category": {
+      "family_related": 4,
+      "false_positive_nonspecific": 8,
+      "family_correct": 31,
+      "false_positive_homolog": 5,
+      "other_correct": 2,
+      "false_positive_analog": 3,
+      "false_positive_spurious": 1,
+      "family_wrong": 1,
+      "false_negative": 3,
+      "family_adjacent": 5
+    },
+    "verdict": {
+      "tox": 46,
+      "nontox": 17
+    },
+    "n_annotation_gaps": 38,
+    "annotation_gap_ids": [
+      "A0A6P3CW73",
+      "P34179",
+      "Q4VRI5",
+      "O42190",
+      "C0HJC1",
+      "C0HK43",
+      "I7GQA7",
+      "P0DSK0",
+      "P48650",
+      "P70088",
+      "Q45Z46",
+      "B2ZBB8",
+      "B4ESA2",
+      "C0HJV8",
+      "C0HK47",
+      "P0C1M6",
+      "P0C7R6",
+      "P0DMJ2",
+      "P0DMX0",
+      "P0DQU7",
+      "P0DX34",
+      "P0DX64",
+      "P10117",
+      "P24293",
+      "P81548",
+      "Q6T6T5",
+      "C0HJW4",
+      "B5KL30",
+      "Q9BMK4",
+      "Q9I8F8",
+      "P04567",
+      "P0DMZ9",
+      "P0DPL1",
+      "P56685",
+      "Q2ES48",
+      "Q9W716",
+      "X5IFZ1",
+      "Q07932"
+    ]
+  },
+  "binary_head": {
+    "nn_combined": {
+      "roc_auc": 0.9948130984120596,
+      "pr_auc": 0.9494065698143599,
+      "mcc": 0.8873994657279257,
+      "f1": 0.8908765652951699,
+      "accuracy": 0.9875242867368852,
+      "optimized_threshold": 0.19549256563186646
+    },
+    "nn_standard": {
+      "roc_auc": 0.9924573880309204,
+      "pr_auc": 0.942923851792633,
+      "mcc": 0.8777280918354345,
+      "f1": 0.8812056737588653,
+      "accuracy": 0.9862971673995296,
+      "optimized_threshold": 0.08921712636947632
+    }
+  },
+  "non_metazoan_scope_boundary": {
+    "n": 702,
+    "recognized_as_toxic": 110,
+    "recognition_rate": 0.1567,
+    "note": "all entries are non-metazoan toxins; low rate = ToxFam is metazoan-specific."
+  }
+}
