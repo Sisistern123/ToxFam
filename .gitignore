@@ -60,3 +60,11 @@ tools/signalp6/bin/
 
 # Built by scripts/package_models.py
 models.zip
+
+# Manuscript — separate git repo synced with Overleaf (git.overleaf.com)
+/manuscript/
+
+# Regenerable manuscript-figure artifacts — keep only the vector PDFs + the small
+# JSON/CSV manifests in git; rasters and the large predictions CSV are reproducible.
+/analysis/manuscript_figures/unreviewed_predictions.csv
+/analysis/manuscript_figures/*.png

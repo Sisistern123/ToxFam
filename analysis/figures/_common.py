@@ -1,22 +1,31 @@
 """Shared loaders and matplotlib style for manuscript figures."""
 from __future__ import annotations
 
-from pathlib import Path
 
 import matplotlib.pyplot as plt
 import pandas as pd
+from rich.console import Console
 
 from toxfam._paths import benchmark_dir, get_project_root, processed_dir
+
+console = Console()
 
 FIG_DIR = get_project_root() / "analysis" / "manuscript_figures"
 FIG_DIR.mkdir(parents=True, exist_ok=True)
 
 
 def load_preds(dataset: str, method: str) -> pd.DataFrame:
-    return pd.read_csv(benchmark_dir() / dataset / method / "predictions.csv")
+    path = benchmark_dir() / dataset / method / "predictions.csv"
+    if not path.exists():
+        raise FileNotFoundError(
+            f"predictions not found: {path}\n"
+            f"Regenerate it first, e.g. 'uv run toxfam eval <method> {dataset}', "
+            f"to produce benchmark/{dataset}/{method}/predictions.csv."
+        )
+    return pd.read_csv(path)
 
 
-def test_class_list() -> list[str]:
+def test_set_class_list() -> list[str]:
     """The 38-class label space = sorted unique actual labels on the test set."""
     df = load_preds("test_set", "nn_combined_run")
     return sorted(df["actual_label"].unique().tolist())
@@ -32,7 +41,7 @@ def save_fig(fig: plt.Figure, name: str) -> None:
     for ext in ("png", "pdf"):
         fig.savefig(FIG_DIR / f"{name}.{ext}", dpi=300, bbox_inches="tight")
     plt.close(fig)
-    print(f"saved {name}.png / .pdf")
+    console.print(f"saved {name}.png / .pdf")
 
 
 def apply_style() -> None:
@@ -40,6 +49,11 @@ def apply_style() -> None:
         "font.size": 9, "axes.spines.top": False, "axes.spines.right": False,
         "figure.dpi": 120, "savefig.bbox": "tight",
     })
+
+
+# Bootstrap resamples for MCC confidence intervals. Shared by figure1 Panel C and
+# numbers_manifest so the figure and the numbers manifest report matching CIs.
+MCC_CI_N_BOOT = 2000
 
 
 # Consistent method colors/labels across all figures

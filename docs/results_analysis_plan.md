@@ -27,7 +27,7 @@
 - [ ] **Step 1: Branch from main**
 
 ```bash
-cd /Users/tsenoner/Documents/projects/ToxFam
+cd <repo-root>
 git checkout -b results-analysis
 mkdir -p analysis/figures analysis/manuscript_figures
 ```

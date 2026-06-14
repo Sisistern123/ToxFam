@@ -10,7 +10,7 @@ All numbers below were verified directly from `benchmark/test_set/*/predictions.
 ## 0. Execution findings (2026-06-12) — authoritative numbers + one narrative change
 
 The analysis pipeline was implemented, run, and adversarially verified (`docs/results_analysis_plan.md`;
-branch `results-analysis`; full test suite 118 passed). Use these regenerated values as canonical:
+branch `results-analysis`; full test suite 134 passed). Use these regenerated values as canonical:
 
 - **Binary toxic/non-toxic head (now computed; was missing):** combined model ROC-AUC **0.9948**,
   PR-AUC **0.9494**, MCC **0.8874** at t=0.5; Youden threshold **0.1955** (standard model ROC-AUC 0.9925).

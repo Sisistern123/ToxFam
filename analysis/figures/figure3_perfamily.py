@@ -4,7 +4,7 @@ from __future__ import annotations
 import matplotlib.pyplot as plt
 import numpy as np
 
-from analysis.figures._common import apply_style, load_preds, save_fig, test_class_list
+from analysis.figures._common import apply_style, load_preds, save_fig, test_set_class_list
 from toxfam._paths import get_project_root
 from toxfam.evaluation.manuscript import (
     adjudication_summary, macro_mcc_by_support, per_family_mcc_difference,
@@ -15,7 +15,7 @@ ADJ_CSV = get_project_root() / "analysis" / "model_test_wrong_conf_annotated.csv
 
 def main() -> None:
     apply_style()
-    classes = test_class_list()
+    classes = test_set_class_list()
     hbi = load_preds("test_set", "hbi")
     nn = load_preds("test_set", "nn_combined_run")
 
@@ -28,7 +28,8 @@ def main() -> None:
     sizes = 10 + 3 * np.sqrt(fam["support"].clip(lower=1))
     axA.scatter(fam["diff"], np.arange(len(fam)), s=sizes, color=colors)
     axA.axvline(0, color="black", lw=0.6)
-    axA.set_yticks(np.arange(len(fam))); axA.set_yticklabels(fam["family"], fontsize=6)
+    axA.set_yticks(np.arange(len(fam)))
+    axA.set_yticklabels(fam["family"], fontsize=6)
     axA.set_xlabel("one-vs-rest MCC difference (ToxFam - HBI)")
     strat = macro_mcc_by_support(nn, hbi, class_list=classes, support_threshold=5)
     sup = strat[strat["group"] == "support>5"].iloc[0]
@@ -47,8 +48,11 @@ def main() -> None:
     colors_b = ["#4caf50", "#ffb300", "#7f7f7f"]
     bottom = 0
     for k, c, col in zip(order, counts, colors_b):
-        axB.bar(0, c, bottom=bottom, color=col, label=f"{k} ({c})"); bottom += c
-    axB.set_xlim(-1, 1); axB.set_xticks([]); axB.set_ylabel("Confident (≥0.8) errors")
+        axB.bar(0, c, bottom=bottom, color=col, label=f"{k} ({c})")
+        bottom += c
+    axB.set_xlim(-1, 1)
+    axB.set_xticks([])
+    axB.set_ylabel("Confident (≥0.8) errors")
     axB.legend(loc="upper right", fontsize=8)
     axB.set_title(
         f"B. Adjudicated confident errors (n={s['n']})\n"

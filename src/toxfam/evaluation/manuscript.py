@@ -40,7 +40,31 @@ def toxin_mask(preds: pd.DataFrame, label_col: str = "actual_label") -> np.ndarr
     return ~preds[label_col].str.lower().isin(NONTOXIN_LABELS).values
 
 
-def mcnemar_test(correct_a: np.ndarray, correct_b: np.ndarray) -> dict:
+def aligned_correctness(preds_a: pd.DataFrame, preds_b: pd.DataFrame) -> tuple[np.ndarray, np.ndarray]:
+    """Identifier-aligned correctness vectors for two methods (a, b).
+
+    Paired statistics (McNemar, paired bootstrap) require row i of both vectors to refer to the
+    same protein. Two independently-loaded prediction frames are not guaranteed to share row
+    order or count (the NN path drops rows lacking an embedding). This aligns b onto a's
+    identifier order, asserting both frames cover the same identifiers and agree on ground truth.
+    """
+    ids_a = preds_a["identifier"].to_numpy()
+    ids_b = preds_b["identifier"].to_numpy()
+    if len(ids_a) != len(ids_b) or not np.array_equal(ids_a, ids_b):
+        b_indexed = preds_b.set_index("identifier")
+        if len(b_indexed) != len(ids_a) or set(ids_a) != set(b_indexed.index):
+            raise ValueError(
+                f"prediction frames cover different identifiers "
+                f"(|a|={len(ids_a)}, |b|={len(ids_b)}, "
+                f"|a&b|={len(set(ids_a) & set(b_indexed.index))})"
+            )
+        preds_b = b_indexed.reindex(ids_a).reset_index()
+    if not np.array_equal(preds_a["actual_label"].to_numpy(), preds_b["actual_label"].to_numpy()):
+        raise ValueError("ground-truth actual_label disagrees between the two prediction frames")
+    return correctness(preds_a), correctness(preds_b)
+
+
+def mcnemar_test(correct_a: np.ndarray, correct_b: np.ndarray, *, exact: bool = False) -> dict:
     """Paired McNemar test on two boolean correctness vectors (a vs b).
 
     b01 = a-correct & b-wrong; b10 = a-wrong & b-correct. Uses the
@@ -52,8 +76,17 @@ def mcnemar_test(correct_a: np.ndarray, correct_b: np.ndarray) -> dict:
     b10 = int(np.sum(~a & b))
     n = b01 + b10
     chi2 = ((abs(b01 - b10) - 1) ** 2) / n if n > 0 else 0.0
-    p = float(_chi2.sf(chi2, df=1)) if n > 0 else 1.0
-    return {"b01": b01, "b10": b10, "n_discordant": n, "chi2": float(chi2), "p_value": p}
+    if exact:
+        from scipy.stats import binomtest
+        p = float(binomtest(min(b01, b10), n, 0.5).pvalue) if n > 0 else 1.0
+    else:
+        p = float(_chi2.sf(chi2, df=1)) if n > 0 else 1.0
+    if 0 < n < 25 and not exact:
+        warnings.warn(
+            f"McNemar chi-square approximation is unreliable for n_discordant<25 (got {n}); "
+            "consider exact=True", stacklevel=2)
+    return {"b01": b01, "b10": b10, "n_discordant": n, "chi2": float(chi2), "p_value": p,
+            "method": "exact_binomial" if exact else "chi2_continuity"}
 
 
 def paired_bootstrap_accuracy_diff(
@@ -78,7 +111,12 @@ def paired_bootstrap_accuracy_diff(
 
 
 def _lengths_for(preds: pd.DataFrame, lengths: pd.Series) -> np.ndarray:
-    return lengths.reindex(preds["identifier"].values).to_numpy(dtype=float)
+    ids = preds["identifier"].to_numpy()
+    missing = ~pd.Index(ids).isin(lengths.index)
+    if missing.any():
+        warnings.warn(f"{int(missing.sum())} identifier(s) absent from lengths; their length is NaN "
+                      "and they may be dropped from length-binned stats", stacklevel=2)
+    return lengths.reindex(ids).to_numpy(dtype=float)
 
 
 def accuracy_by_length_bins(
@@ -306,27 +344,31 @@ def binary_reliability(
 ) -> dict:
     """Reliability-diagram data + Expected Calibration Error for the binary head.
 
-    Equal-width confidence bins on max(p, 1-p); accuracy = P(predicted class correct).
+    Equal-width confidence bins on max(p, 1-p) over [0.5, 1]; accuracy = P(predicted class correct).
     """
     y = np.asarray(y_true, dtype=int)
     p = np.asarray(p_toxic, dtype=float)
     pred = (p >= 0.5).astype(int)
     conf = np.where(pred == 1, p, 1 - p)
     correct = (pred == y).astype(float)
-    edges = np.linspace(0.0, 1.0, n_bins + 1)
+    edges = np.linspace(0.5, 1.0, n_bins + 1)
     centers, accs, confs, props = [], [], [], []
     ece = 0.0
-    for lo, hi in zip(edges[:-1], edges[1:]):
-        in_bin = (conf > lo) & (conf <= hi)
+    for i, (lo, hi) in enumerate(zip(edges[:-1], edges[1:])):
+        in_bin = (conf >= lo) & (conf <= hi) if i == 0 else (conf > lo) & (conf <= hi)
         prop = in_bin.mean()
         centers.append((lo + hi) / 2)
         if prop > 0:
             acc_bin = correct[in_bin].mean()
             conf_bin = conf[in_bin].mean()
             ece += abs(conf_bin - acc_bin) * prop
-            accs.append(acc_bin); confs.append(conf_bin); props.append(prop)
+            accs.append(acc_bin)
+            confs.append(conf_bin)
+            props.append(prop)
         else:
-            accs.append(np.nan); confs.append(np.nan); props.append(0.0)
+            accs.append(np.nan)
+            confs.append(np.nan)
+            props.append(0.0)
     return {"bin_center": centers, "bin_accuracy": accs, "bin_confidence": confs,
             "bin_proportion": props, "ece": float(ece)}
 
@@ -334,12 +376,17 @@ def binary_reliability(
 def adjudication_summary(csv_path: str | Path) -> dict:
     """Summarize Ivan's confident-error adjudication CSV for Figure 3 Panel B."""
     df = pd.read_csv(csv_path)
-    gaps = df[(df["actual_label"].str.lower().isin(NONTOXIN_LABELS)) & (df["verdict"].str.lower() == "tox")]
+    required = {"identifier", "verdict", "actual_label", "assessment", "assessment_category"}
+    missing = required - set(df.columns)
+    if missing:
+        raise ValueError(f"adjudication CSV missing required columns: {sorted(missing)}")
+    gaps = df[(df["actual_label"].fillna("").str.lower().isin(NONTOXIN_LABELS))
+              & (df["verdict"].fillna("").str.lower() == "tox")]
     return {
         "n": int(len(df)),
-        "assessment": dict(Counter(df["assessment"].str.strip())),
-        "assessment_category": dict(Counter(df["assessment_category"].str.strip())),
-        "verdict": dict(Counter(df["verdict"].str.strip())),
+        "assessment": dict(Counter(df["assessment"].fillna("unknown").str.strip())),
+        "assessment_category": dict(Counter(df["assessment_category"].fillna("unknown").str.strip())),
+        "verdict": dict(Counter(df["verdict"].fillna("unknown").str.strip())),
         "n_annotation_gaps": int(len(gaps)),
         "annotation_gap_ids": gaps["identifier"].tolist(),
     }

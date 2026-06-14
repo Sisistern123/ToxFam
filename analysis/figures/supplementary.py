@@ -6,23 +6,28 @@ artifacts that did not previously exist.)
 """
 from __future__ import annotations
 
-import json
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-from analysis.figures._common import apply_style, load_preds, save_fig, test_class_list
-from toxfam.evaluation.manuscript import binary_reliability, macro_f1_conventions
-from toxfam.evaluation.metrics import to_binary_class
+from rich.console import Console
+
+from analysis.figures._common import apply_style, load_preds, save_fig, test_set_class_list
+from toxfam.evaluation.manuscript import macro_f1_conventions
+
+console = Console()
 
 
 def reliability_panel() -> None:
-    """Binary reliability diagram + ECE from non-metazoan/test p_toxic.
+    """Multiclass top-class reliability proxy on the test-set NN predictions.
 
-    Uses the test-set NN predictions' calibrated 'confidence' as a multiclass
-    reliability proxy; for the binary head, recompute p_toxic via eval binary
-    (model_output/.../metrics/binary_metrics.json holds AUROC/AUPRC).
+    Bins the calibrated vs uncalibrated max-confidence ('confidence' and
+    'confidence_uncalibrated') against top-1 correctness and reports the
+    resulting ECE for each. This is the top-class reliability of the 38-class
+    head, not a binary reliability diagram; the binary-head calibration
+    (AUROC/AUPRC) is reported separately from the model_output
+    binary_metrics.json produced by `eval binary`.
     """
     apply_style()
     nn = load_preds("test_set", "nn_combined_run")
@@ -39,18 +44,21 @@ def reliability_panel() -> None:
         for lo, hi in zip(edges[:-1], edges[1:]):
             m = (conf > lo) & (conf <= hi)
             if m.mean() > 0:
-                xs.append(conf[m].mean()); ys.append(correct[m].mean())
+                xs.append(conf[m].mean())
+                ys.append(correct[m].mean())
                 ece += abs(conf[m].mean() - correct[m].mean()) * m.mean()
         ax.plot(xs, ys, "o-", color=color, label=f"{name} (ECE={ece:.3f})", ms=3)
     ax.plot([0, 1], [0, 1], "k--", lw=0.6)
-    ax.set_xlabel("Confidence"); ax.set_ylabel("Accuracy"); ax.legend()
+    ax.set_xlabel("Confidence")
+    ax.set_ylabel("Accuracy")
+    ax.legend()
     ax.set_title("Reliability (multiclass top-class)")
     save_fig(fig, "supp_reliability")
 
 
 def convention_table() -> None:
     """Write the macro-F1 no-hit convention values to a CSV for the manuscript."""
-    classes = test_class_list()
+    classes = test_set_class_list()
     hbi = load_preds("test_set", "hbi")
     conv = macro_f1_conventions(hbi, class_list=classes)
     out = pd.DataFrame([
@@ -58,7 +66,7 @@ def convention_table() -> None:
     ])
     from analysis.figures._common import FIG_DIR
     out.to_csv(FIG_DIR / "supp_macro_f1_conventions.csv", index=False)
-    print(out.to_string(index=False))
+    console.print(out.to_string(index=False))
 
 
 def main() -> None:
