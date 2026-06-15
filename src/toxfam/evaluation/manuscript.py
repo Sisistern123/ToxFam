@@ -146,6 +146,69 @@ def rolling_accuracy_vs_length(
     return pd.DataFrame({"length": ln[order], "accuracy": roll.to_numpy()})
 
 
+def accuracy_by_identity_bins(
+    hbi: pd.DataFrame,
+    other: pd.DataFrame,
+    *,
+    bins: list[float],
+    labels: list[str] | None = None,
+    identity_col: str = "confidence",
+    toxin_only: bool = True,
+    n_boot: int | None = None,
+    seed: int = 42,
+) -> pd.DataFrame:
+    """Accuracy of HBI and a second method within HBI best-hit sequence-identity bins.
+
+    The HBI ``confidence`` column is the fractional identity (``fident``) of the best
+    MMseqs2 hit, so binning queries by it shows whether the learned model overtakes
+    homology *within* an identity stratum. Queries with no hit (``NO_HIT_LABEL``,
+    identity 0) carry no real identity and are excluded -- they are the separate no-hit
+    coverage result. ``other`` is aligned to ``hbi`` by identifier and must cover every
+    HBI identifier. Returns one row per occupied bin with columns
+    ``bin_label, n, hbi_accuracy, other_accuracy, diff`` (``diff = other - hbi``).
+
+    When ``n_boot`` is a positive int, two further columns ``diff_ci_low, diff_ci_high`` carry the
+    per-bin paired-bootstrap 95% CI of ``diff`` (resampling proteins within the bin, with
+    ``seed``), so callers get point estimates and CIs from a single source of truth rather
+    than re-deriving the binning.
+    """
+    h = hbi[toxin_mask(hbi)] if toxin_only else hbi
+    h = h[h["predicted_label"] != NO_HIT_LABEL].copy()
+    other_correct = pd.Series(correctness(other), index=other["identifier"].to_numpy())
+    if not pd.Index(h["identifier"]).isin(other_correct.index).all():
+        raise ValueError("`other` must cover every HBI identifier to align correctness")
+    ident = pd.to_numeric(h[identity_col], errors="coerce").to_numpy(dtype=float)
+    if labels is None:
+        labels = [f"{bins[i]}-{bins[i + 1]}" for i in range(len(bins) - 1)]
+    cat = pd.cut(ident, bins=bins, labels=labels, include_lowest=True, right=False)
+    df = pd.DataFrame({
+        "bin_label": cat,
+        "hbi_correct": correctness(h).astype(float),
+        "other_correct": h["identifier"].map(other_correct).to_numpy(dtype=float),
+    })
+    g = df.groupby("bin_label", observed=True)
+    out = g.agg(
+        n=("hbi_correct", "size"),
+        hbi_accuracy=("hbi_correct", "mean"),
+        other_accuracy=("other_correct", "mean"),
+    ).reset_index()
+    out["diff"] = out["other_accuracy"] - out["hbi_accuracy"]
+    if n_boot:  # positive int attaches CIs; None/0 skips (0 would empty the bootstrap)
+        # Iterate observed groups only (observed=True); key by label and re-attach by row
+        # value -- not via Series.map, which on a categorical maps over *all* categories
+        # (including empty bins absent from `ci`).
+        ci = {
+            label: paired_bootstrap_accuracy_diff(
+                grp["other_correct"].to_numpy(), grp["hbi_correct"].to_numpy(),
+                n_boot=n_boot, seed=seed,
+            )
+            for label, grp in g
+        }
+        out["diff_ci_low"] = [ci[lbl]["ci_low"] for lbl in out["bin_label"]]
+        out["diff_ci_high"] = [ci[lbl]["ci_high"] for lbl in out["bin_label"]]
+    return out
+
+
 def _per_class_f1(preds: pd.DataFrame, class_list: list[str]) -> dict[str, dict]:
     m = calculate_metrics(preds["actual_label"], preds["predicted_label"], class_list=class_list)
     return m.classification_report

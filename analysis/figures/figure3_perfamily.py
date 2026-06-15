@@ -60,7 +60,7 @@ def main() -> None:
         f"{s['n_annotation_gaps']} candidate ToxProt gaps"
     )
     # worked examples annotation
-    axB.text(0.0, -0.12, "e.g. P00601 (PLA2), F8J2F6 (Kunitz) — labelled nontox, absent from ToxProt",
+    axB.text(0.0, -0.12, "e.g. Q4VRI5 (PLA2), B2ZBB8 (Kunitz) — labelled nontox, expert verdict toxin",
              transform=axB.transAxes, ha="center", fontsize=7, color="gray")
 
     fig.tight_layout()
