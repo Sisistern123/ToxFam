@@ -417,3 +417,42 @@ def test_accuracy_by_identity_bins_requires_full_coverage():
     )
     with pytest.raises(ValueError):
         accuracy_by_identity_bins(hbi, other, bins=[0, 1.0001], labels=["all"])
+
+
+def test_accuracy_by_identity_bins_with_ci():
+    # Same toy frame as test_accuracy_by_identity_bins; n_boot attaches per-bin CIs.
+    hbi = pd.DataFrame(
+        {
+            "identifier": ["x0", "x1", "x2", "x3", "x4"],
+            "actual_label": ["A", "A", "B", "nontox", "A"],
+            "predicted_label": ["A", "B", "no hit", "nontox", "A"],
+            "confidence": [0.90, 0.50, 0.00, 0.95, 0.85],
+        }
+    )
+    other = pd.DataFrame(
+        {
+            "identifier": ["x0", "x1", "x2", "x3", "x4"],
+            "actual_label": ["A", "A", "B", "nontox", "A"],
+            "predicted_label": ["A", "A", "B", "nontox", "B"],  # other wrong only on x4
+        }
+    )
+    out = accuracy_by_identity_bins(
+        hbi, other, bins=[0, 0.4, 0.6, 0.8, 1.0001],
+        labels=["<0.4", "0.4-0.6", "0.6-0.8", ">0.8"], n_boot=500,
+    )
+    assert {"diff_ci_low", "diff_ci_high"}.issubset(out.columns)
+    by = {r["bin_label"]: r for _, r in out.iterrows()}
+    # Single-sample bin (x1) -> the paired bootstrap is degenerate: the CI collapses to
+    # the point estimate (every resample draws the same lone protein).
+    assert by["0.4-0.6"]["diff_ci_low"] == pytest.approx(1.0)
+    assert by["0.4-0.6"]["diff_ci_high"] == pytest.approx(1.0)
+    # In every bin the CI is ordered and brackets the point estimate.
+    for _, r in out.iterrows():
+        assert r["diff_ci_low"] <= r["diff_ci_high"]
+        assert r["diff_ci_low"] <= r["diff"] <= r["diff_ci_high"]
+    # Without n_boot the CI columns are absent (backward-compatible default).
+    plain = accuracy_by_identity_bins(
+        hbi, other, bins=[0, 0.4, 0.6, 0.8, 1.0001],
+        labels=["<0.4", "0.4-0.6", "0.6-0.8", ">0.8"],
+    )
+    assert "diff_ci_low" not in plain.columns

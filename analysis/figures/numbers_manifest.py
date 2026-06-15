@@ -12,7 +12,7 @@ from analysis.figures._common import (
 )
 from toxfam.evaluation.manuscript import (
     accuracy_by_identity_bins, accuracy_by_length_bins, adjudication_summary, aligned_correctness,
-    bootstrap_label_metric_ci, correctness, macro_mcc_by_support, mcnemar_test, micro_mcc,
+    bootstrap_label_metric_ci, macro_mcc_by_support, mcnemar_test, micro_mcc,
     overall_mcc, paired_bootstrap_accuracy_diff, subset_accuracy, toxin_mask,
 )
 from toxfam._paths import benchmark_dir, get_project_root
@@ -71,28 +71,25 @@ def main() -> None:
 
     # Toxin-only accuracy stratified by HBI best-hit sequence identity (the honest
     # "twilight-zone" view). HBI confidence == best-hit fractional identity; no-hit
-    # queries (identity 0) are excluded. Each bin carries a paired-bootstrap CI of
-    # (ToxFam - HBI) so it is visible which strata are individually significant.
+    # queries (identity 0) are excluded. n_boot=2000 attaches a per-bin paired-bootstrap
+    # CI of (ToxFam - HBI) so it is visible which strata are individually significant.
+    # accuracy_by_identity_bins is the single source of truth for both the point estimates
+    # and the CIs -- the binning is not re-derived here.
     id_bins = [0, 0.3, 0.4, 0.6, 0.8, 1.0001]
     id_labels = ["<0.3", "0.3-0.4", "0.4-0.6", "0.6-0.8", ">0.8"]
-    id_tbl = accuracy_by_identity_bins(hbi, nn, bins=id_bins, labels=id_labels)
-    h_tox = hbi[toxin_mask(hbi)]
-    h_tox = h_tox[h_tox["predicted_label"] != NO_HIT_LABEL].copy()
-    nn_corr_by_id = pd.Series(correctness(nn), index=nn["identifier"].to_numpy())
-    h_tox["_hbi_c"] = correctness(h_tox).astype(float)
-    h_tox["_nn_c"] = h_tox["identifier"].map(nn_corr_by_id).to_numpy(dtype=float)
-    h_tox["_bin"] = pd.cut(pd.to_numeric(h_tox["confidence"]), bins=id_bins, labels=id_labels,
-                           include_lowest=True, right=False)
-    id_records = []
-    for _, r in id_tbl.iterrows():
-        g = h_tox[h_tox["_bin"] == r["bin_label"]]
-        ci = paired_bootstrap_accuracy_diff(g["_nn_c"].to_numpy(), g["_hbi_c"].to_numpy(), n_boot=2000)
-        id_records.append({
-            "bin": r["bin_label"], "n": int(r["n"]),
-            "hbi_acc": float(r["hbi_accuracy"]), "toxfam_acc": float(r["other_accuracy"]),
-            "diff": float(r["diff"]), "diff_ci_low": ci["ci_low"], "diff_ci_high": ci["ci_high"],
-        })
-    out["identity_bins_toxin_only"] = {"bins": id_bins, "records": id_records}
+    id_tbl = accuracy_by_identity_bins(hbi, nn, bins=id_bins, labels=id_labels, n_boot=2000)
+    out["identity_bins_toxin_only"] = {
+        "bins": id_bins,
+        "records": [
+            {
+                "bin": r["bin_label"], "n": int(r["n"]),
+                "hbi_acc": float(r["hbi_accuracy"]), "toxfam_acc": float(r["other_accuracy"]),
+                "diff": float(r["diff"]),
+                "diff_ci_low": float(r["diff_ci_low"]), "diff_ci_high": float(r["diff_ci_high"]),
+            }
+            for _, r in id_tbl.iterrows()
+        ],
+    }
 
     # Binary toxic/non-toxic head metrics (gitignored artifact; include if present).
     binary = {}

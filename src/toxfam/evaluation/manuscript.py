@@ -154,6 +154,8 @@ def accuracy_by_identity_bins(
     labels: list[str] | None = None,
     identity_col: str = "confidence",
     toxin_only: bool = True,
+    n_boot: int | None = None,
+    seed: int = 42,
 ) -> pd.DataFrame:
     """Accuracy of HBI and a second method within HBI best-hit sequence-identity bins.
 
@@ -164,6 +166,11 @@ def accuracy_by_identity_bins(
     coverage result. ``other`` is aligned to ``hbi`` by identifier and must cover every
     HBI identifier. Returns one row per occupied bin with columns
     ``bin_label, n, hbi_accuracy, other_accuracy, diff`` (``diff = other - hbi``).
+
+    When ``n_boot`` is a positive int, two further columns ``diff_ci_low, diff_ci_high`` carry the
+    per-bin paired-bootstrap 95% CI of ``diff`` (resampling proteins within the bin, with
+    ``seed``), so callers get point estimates and CIs from a single source of truth rather
+    than re-deriving the binning.
     """
     h = hbi[toxin_mask(hbi)] if toxin_only else hbi
     h = h[h["predicted_label"] != NO_HIT_LABEL].copy()
@@ -186,6 +193,19 @@ def accuracy_by_identity_bins(
         other_accuracy=("other_correct", "mean"),
     ).reset_index()
     out["diff"] = out["other_accuracy"] - out["hbi_accuracy"]
+    if n_boot:  # positive int attaches CIs; None/0 skips (0 would empty the bootstrap)
+        # Iterate observed groups only (observed=True); key by label and re-attach by row
+        # value -- not via Series.map, which on a categorical maps over *all* categories
+        # (including empty bins absent from `ci`).
+        ci = {
+            label: paired_bootstrap_accuracy_diff(
+                grp["other_correct"].to_numpy(), grp["hbi_correct"].to_numpy(),
+                n_boot=n_boot, seed=seed,
+            )
+            for label, grp in g
+        }
+        out["diff_ci_low"] = [ci[lbl]["ci_low"] for lbl in out["bin_label"]]
+        out["diff_ci_high"] = [ci[lbl]["ci_high"] for lbl in out["bin_label"]]
     return out
 
 
