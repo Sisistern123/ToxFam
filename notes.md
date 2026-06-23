@@ -1,4 +1,105 @@
 # ToxFam Notes
+## 17th June Meeting Notes
+0. npj review?
+1. explain whats been done, plots etc.
+  - Ivans overview in new plots?
+2. see if 3 key hypotheses are covered
+  1. we have a classifier thats better than hbi (top 3 most confident results in jupyter notebook)
+    - notebook link in paper
+  2. classifier is still right even if its confident and wrong/the toxin naming conventions are bananas
+  3. ~50 aas as the PLM struggle threshold
+  despite plms being known to perform badly for short seqs, we still perform well
+3. should we still focus on the other datasets, currently it's only the test/val set
+discussion:
+  - unreviewed
+  - non-metazoa
+  - proteome
+
+
+#### hbi run
+Running HBI evaluation on 'non_metazoan'
+f   Loaded 702 sequences from non_metazoan.tsv
+   Mapping 45 train-only labels to 'other'
+a   Creating MMseqs2 databases (702 queries)...
+
+-------------------- Running a mmseqs2 command --------------------
+✓ Detailed execution log has been saved
+✓ Database creation completed successfully
+  Results saved to: /Users/selin/PycharmProjects/ToxFam/benchmark/non_metazoan/hbi/tmp/queryDB
+
+-------------------- Running a mmseqs2 command --------------------
+m✓ Detailed execution log has been saved
+✓ Database creation completed successfully
+  Results saved to: /Users/selin/PycharmProjects/ToxFam/benchmark/non_metazoan/hbi/tmp/targetDB
+
+-------------------- Running a mmseqs2 command --------------------
+✓ Detailed execution log has been saved
+✓ Search completed successfully
+  Results saved to: /Users/selin/PycharmProjects/ToxFam/benchmark/non_metazoan/hbi/tmp/resultDB
+Output is not readable. Executing convertalis command to convert the alignment database to a readable format.
+
+-------------------- Running a mmseqs2 command --------------------
+✓ Detailed execution log has been saved
+✓ ConvertAlis completed successfully
+  Results saved to: /Users/selin/PycharmProjects/ToxFam/benchmark/non_metazoan/hbi/tmp/resultDB.tsv
+   Extracted best hits for 699/702 queries
+   Coverage: 99.6% (699/702)
+/Users/selin/PycharmProjects/ToxFam/.venv/lib/python3.11/site-packages/sklearn/metrics/_classification.py:534: UserWarning: A single label was found in 'y_true' and 'y_pred'. For the confusion matrix to have the correct shape, use the 'labels' parameter to pass all known labels.
+  warnings.warn(
+/Users/selin/PycharmProjects/ToxFam/.venv/lib/python3.11/site-packages/sklearn/metrics/_classification.py:534: UserWarning: A single label was found in 'y_true' and 'y_pred'. For the confusion matrix to have the correct shape, use the 'labels' parameter to pass all known labels.
+  warnings.warn(
+┏━━━━━━━━┳━━━━━━━━━━┳━━━━━━━━┳━━━━━━━━━━━┳━━━━━━━━━━━┳━━━━━━━━━┓
+┃ Method ┃ Accuracy ┃    MCC ┃ Micro-MCC ┃ Std Error ┃ Samples ┃
+┡━━━━━━━━╇━━━━━━━━━━╇━━━━━━━━╇━━━━━━━━━━━╇━━━━━━━━━━━╇━━━━━━━━━┩
+│ HBI    │   1.0000 │ 0.0000 │    1.0000 │    0.0000 │     702 │
+└────────┴──────────┴────────┴───────────┴───────────┴─────────┘
+   Results saved to: /Users/selin/PycharmProjects/ToxFam/benchmark/non_metazoan/hbi
+
+## previous notes:
+### Test Set:
+- most confident model errors are actually correct -- keyword annotation errors in SwissProt
+  - TODO: find confidence threshold
+- TODO: find out why less confident errors are happening
+  - maybe shorter sequence --> less confidence? limitation of PLMs?
+- TODO: specifically evaluate similar protein families but different toxicity (specifically PLA2, Peptidase S1, Insulin Family)
+  - improvement in one sentence
+  - compare correctness to overall score (significant difference in scores?)
+- TODO: specifically evaluate "other" category
+  - write down which protein families that were too small were bundled up together in "other" and why wrongful predictions make sense because of its diversity
+
+### Non Metazoan:
+- outlook: potential to expand to non-metazoan
+- TODO: find out how to use this, cant find a proper use case of the predictions yet
+- paragraph on how generalizable is toxicity in principle? (Ivan thinks not generalizable)
+  - protein can be toxic or nontoxic in different contexts
+
+### Unreviewed
+- TODO: manually look through the predictions
+
+### Proteome
+- use predicted proteome without KW-0800 to make suggestions for KW-0800 candidates
+  - snake/scorpio/newly added species
+
+### Outlook
+- outlook: expand this by making more fine-grained predictions (3FTX Ancestral, Long, Short or different Conotoxins)
+  - limitations: incorrect annotations in SwissProt + limited data availability for specific subfamilies
+
+
+
+
+
+
+------------
+
+
+
+
+
+
+
+
+
+
 ## TODO
 - side by side bars of correct vs incorrect (2 bars each) bins for 0.0-0.1, 0.1-0.2, 0.2-0.3
   - before and after temp scaling
@@ -13,7 +114,7 @@ get the list of proteins for ivan: model_test.iloc[nn_wrong_conf[nn_wrong_conf >
 - PLMs struggle with less than 50 aas (Michael)
 
 key hypotheses:
-1. we have a classifier thats kinda better than hbi (top 3 most confident results in jupyter notebook)
+1. we have a classifier thats better than hbi (top 3 most confident results in jupyter notebook)
 2. classifier is still right even if its confident and wrong/the toxin naming conventions are bananas
 3. ~50 aas as the PLM struggle threshold
 
@@ -117,31 +218,6 @@ All sequences already embedded. Nothing to do.
 (toxfam) selin@Selins-MacBook-Pro ToxFam % 
 
 
-on Test Set:
-- most confident model errors are actually correct -- keyword annotation errors in SwissProt
-  - TODO: find confidence threshold
-- TODO: find out why less confident errors are happening
-  - maybe shorter sequence --> less confidence? limitation of PLMs?
-- TODO: specifically evaluate similar protein families but different toxicity (specifically PLA2, Peptidase S1, Insulin Family)
-  - improvement in one sentence
-  - compare correctness to overall score (significant difference in scores?)
-- TODO: specifically evaluate "other" category
-  - write down which protein families that were too small were bundled up together in "other" and why wrongful predictions make sense because of its diversity
-
-on Non Metazoan:
-- outlook: potential to expand to non-metazoan
-- TODO: find out how to use this, cant find a proper use case of the predictions yet
-- paragraph on how generalizable is toxicity in principle? (Ivan thinks not generalizable)
-  - protein can be toxic or nontoxic in different contexts
-
-on Unreviewed
-- TODO: manually look through the predictions
-
-- use predicted proteome without KW-0800 to make suggestions for KW-0800 candidates
-  - snake/scorpio/newly added species
-
-- outlook: expand this by making more fine-grained predictions (3FTX Ancestral, Long, Short or different Conotoxins)
-  - limitations: incorrect annotations in SwissProt + limited data availability for specific subfamilies
 
 
 Manuscript TODO:
