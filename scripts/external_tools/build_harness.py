@@ -8,7 +8,7 @@ Builds a single, internally consistent evaluation substrate that every method
   benchmark/test_set/toxfam_embtax/{test,val}_scores.csv   identifier, score (= P(toxic))
   benchmark/test_set/toxfam_embtax/metrics.json            sanity binary metrics
 
-ToxFam baseline = the combined (emb+tax) model = model/model_output/combined_augmented
+ToxFam baseline = the combined (emb+tax) model = model/model_output/combined_run
 (MultiInputMLP, tax_dim=50, 38 classes). Binary score = 1 - sum P(nontox classes),
 exactly as toxfam.evaluation.binary.compute_p_toxic.
 

@@ -92,8 +92,8 @@ externally, by design:
   published model, and the only existing emb+tax run had a stale `model_config.json`
   plus 1128-d *augmented* inputs (not the plain 1024-d embeddings), so it could not
   be loaded against `embeddings.h5`. Training the committed config is the cleanest,
-  fully reproducible baseline (local test: ROC 0.993, PR 0.922 — close to the
-  paper's 0.995 / 0.949).
+  fully reproducible baseline (full 10,407 test set: ROC 0.993, PR-AUC 0.922; 0.934
+  on the common 10,157 subset), close to the paper's 0.995 / 0.949.
 - **Contamination asymmetry (the important one).** ToxDL 2.0 trains on
   ToxProt-provenance positives that overlap our UniProt KW-0800 test positives (its
   bundled data even contains test accessions, e.g. P01546), so its 0.990 / 0.770 is
@@ -102,9 +102,11 @@ externally, by design:
   beats it by a wide margin.
 - **ToxinPred 3.0 domain shift.** Peptide-oriented tool applied to full-length
   proteins; it over-calls (precision 0.34), which depresses its PR-AUC.
-- **250 proteins (45 toxic) had no AlphaFold structure** → unscorable by ToxDL 2.0,
-  recorded NA and excluded from the common subset so all three are compared on the
-  same 10,157.
+- **250 proteins (45 toxic) had no AlphaFold structure**, so they are unscorable by
+  ToxDL 2.0; recorded NA and excluded from the common subset so all three compare on
+  the same 10,157. Those 45 excluded toxins are not a random sample (they merely lack
+  an AlphaFold model), so every method's common-subset score is lifted slightly and
+  equally versus the full set (compare `metrics_full.csv` vs `metrics_common.csv`).
 - **AlphaFold DB is now v6, not v4** (the v4 URL in older recipes is stale); the
   ToxDL 2.0 downloader tries v6→v5→v4. Flagged for any future structure-based tool.
 
@@ -112,7 +114,9 @@ externally, by design:
 
 `results/comparison/`:
 - `metrics_full.csv` — per method on its own scored subset (with coverage).
-- `metrics_common.csv` — all methods on the common 10,157 subset.
+- `metrics_common.csv` — all methods on the common 10,157 subset. Carries `mcc` (at
+  each method's operating threshold) and `mcc_at_0.5` (matched 0.5 threshold; the
+  headline MCC: ToxFam 0.834 / ToxDL2 0.781 / ToxinPred3 0.637).
 - `paired_vs_toxfam.csv` — paired-bootstrap ΔROC / ΔPR vs ToxFam, with 95% CIs.
 - `roc_pr.png` — ROC + Precision-Recall overlay on the common subset.
 - `summary.txt` — the console report.
@@ -123,21 +127,19 @@ without re-running any tool.
 
 ## Reproduce
 
-Prereqs: `uv sync`; `uv run toxfam download-data` (fetches `training_data.csv`,
-embeddings, taxonomy — *not* in git).
-
-**A. Verify the headline table from the committed scores (cheap, no tool installs):**
+**A. Verify the headline table from the committed artifacts (cheap, fully
+self-contained: only needs `uv sync`; no `download-data`, no tool installs):**
 ```bash
-# regenerate ground-truth labels only (needs training_data.csv, not the model)
-uv run python scripts/external_tools/build_harness.py --shared-only
-# score the committed predictions through the shared metric code
 uv run python scripts/external_tools/compare.py \
   --scores-base scripts/external_tools/results/scores \
-  --labels-dir  benchmark/test_set/_shared \
+  --labels-dir  scripts/external_tools/results/ground_truth \
   --out /tmp/toxfam_extcmp
 ```
+This reproduces `results/comparison/metrics_common.csv` exactly from the committed
+per-protein scores + committed ground-truth labels (no network, no model).
 
-**B. Full reproduction from scratch:**
+**B. Full reproduction from scratch** (needs `uv run toxfam download-data` first, to
+fetch `training_data.csv` + embeddings + taxonomy, which are not in git):
 ```bash
 # 1. ToxFam (emb+tax) baseline + shared substrate + ToxFam scores
 uv run toxfam train configs/combined.yaml          # -> model/model_output/combined_run
@@ -169,11 +171,15 @@ scripts/external_tools/
 ├── compare.py             # unified metrics + paired bootstrap + ROC/PR figure
 └── results/
     ├── comparison/        # metrics_full, metrics_common, paired_vs_toxfam, roc_pr.png, summary.txt
+    ├── ground_truth/      # test_labels.csv, val_labels.csv (identifier,seq_len,is_toxic,family; NO sequences)
     ├── notes/             # per-tool provenance: toxinpred3, toxdl2 (+ feasibility)
     └── scores/            # per-protein predictions (accession + score; no sequences)
 ```
 
-Not committed (regenerated / bulk data): FASTAs and label tables (sequences),
-ProtT5 embeddings, taxonomy vectors, model weights, AlphaFold structures, tool
-checkouts and virtualenvs — all under gitignored `benchmark/`, `data/`,
-`model/model_output/`, `tools/`.
+Committed (small, reproducible): scripts, the comparison artifacts, per-protein
+prediction scores, and ground-truth labels (accession + is_toxic + family + length,
+**no sequences**) so path A above is fully self-contained.
+
+Not committed (bulk data): FASTAs (sequences), ProtT5 embeddings, taxonomy vectors,
+model weights, AlphaFold structures, tool checkouts and virtualenvs, all under
+gitignored `benchmark/`, `data/`, `model/model_output/`, `tools/`.

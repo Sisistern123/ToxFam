@@ -91,6 +91,7 @@ def point_metrics(y: np.ndarray, s: np.ndarray, thr: float) -> dict:
         "recall": recall_score(y, pred, zero_division=0),
         "bal_acc": balanced_accuracy_score(y, pred),
         "accuracy": accuracy_score(y, pred),
+        "mcc_at_0.5": matthews_corrcoef(y, (s >= 0.5).astype(int)),
         "threshold": thr,
     }
 
@@ -130,7 +131,12 @@ def main() -> None:
     MIN_COVERAGE = 0.95  # ToxDL 2.0 = 97.6% (250 proteins lack an AlphaFold structure)
     rows_full, merged, kept = [], {}, []
     for m in loaded:
-        t = m["test"].merge(labels, on="identifier", how="inner").dropna(subset=["score"])
+        scored = m["test"].dropna(subset=["score"])
+        t = scored.merge(labels, on="identifier", how="inner")
+        n_unlabelled = len(scored) - len(t)
+        if n_unlabelled:
+            print(f"  [warn] {m['name']}: {n_unlabelled} scored proteins have no matching "
+                  "label in --labels-dir (scores/labels snapshot mismatch?)")
         cov = len(t) / len(labels)
         if cov < MIN_COVERAGE:
             print(f"  [skip] {m['name']}: coverage {cov:.1%} < {int(MIN_COVERAGE*100)}% "
@@ -153,7 +159,7 @@ def main() -> None:
     loaded = kept
 
     full = pd.DataFrame(rows_full).set_index("method")
-    cols = ["n_scored", "coverage", "roc_auc", "pr_auc", "mcc", "f1",
+    cols = ["n_scored", "coverage", "roc_auc", "pr_auc", "mcc", "mcc_at_0.5", "f1",
             "precision", "recall", "bal_acc", "accuracy", "threshold", "threshold_src"]
     full[cols].to_csv(OUT / "metrics_full.csv")
 
@@ -239,12 +245,12 @@ def main() -> None:
                  f"({100*labels.is_toxic.mean():.2f}% positive prior)")
     lines.append("")
     lines.append("Per-method (own scored subset):")
-    lines.append(full[["n_scored", "coverage", "roc_auc", "pr_auc", "mcc", "f1",
-                       "precision", "recall", "threshold", "threshold_src"]].round(4).to_string())
+    lines.append(full[["n_scored", "coverage", "roc_auc", "pr_auc", "mcc", "mcc_at_0.5",
+                       "f1", "precision", "recall", "threshold", "threshold_src"]].round(4).to_string())
     lines.append("")
     lines.append(f"Common scored subset: n={len(common_ids)} "
                  f"({int(lab_c.sum())} toxic, {100*lab_c.mean():.2f}% prior)")
-    lines.append(common[["roc_auc", "pr_auc", "mcc", "f1", "precision", "recall"]].round(4).to_string())
+    lines.append(common[["roc_auc", "pr_auc", "mcc", "mcc_at_0.5", "f1", "precision", "recall"]].round(4).to_string())
     if not paired.empty:
         lines.append("")
         lines.append("Paired bootstrap vs ToxFam (positive = ToxFam better; CI excludes 0 => significant):")
