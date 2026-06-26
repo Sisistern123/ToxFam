@@ -1,23 +1,23 @@
 ==============================================================================
-BINARY TOXICITY COMPARISON (local test snapshot)
+BINARY TOXICITY COMPARISON (9,779 canonical test set)
 ==============================================================================
-Ground truth: 10407 test proteins, 541 toxic (5.20% positive prior)
+Ground truth: 9779 test proteins, 515 toxic (5.27% positive prior)
 
 Per-method (own scored subset):
                   n_scored  coverage  roc_auc  pr_auc     mcc  mcc_at_0.5      f1  precision  recall  threshold threshold_src
 method                                                                                                                       
-ToxFam (emb+tax)     10407     1.000   0.9929  0.9225  0.7558      0.8302  0.7522     0.6186  0.9593     0.0694    youden@val
-ToxinPred 3.0        10407     1.000   0.9319  0.5771  0.5232      0.6442  0.5018     0.3496  0.8891     0.4100    youden@val
-ToxDL 2.0            10157     0.976   0.9898  0.7699  0.7814      0.7814  0.7777     0.6491  0.9698     0.5000   default@0.5
+ToxFam (emb+tax)      9779    1.0000   0.9948  0.9494  0.8494      0.8874  0.8500     0.7478  0.9845     0.1955    youden@val
+ToxinPred 3.0         9779    1.0000   0.9255  0.5720  0.5397      0.5968  0.5273     0.3798  0.8621     0.3950    youden@val
+ToxDL 2.0             9201    0.9409   0.9921  0.7976  0.8078      0.8078  0.8066     0.6879  0.9748     0.5000   default@0.5
 
-Common scored subset: n=10157 (496 toxic, 4.88% prior)
+Common scored subset: n=9201 (477 toxic, 5.18% prior)
                   roc_auc  pr_auc     mcc  mcc_at_0.5      f1  precision  recall
 method                                                                          
-ToxFam (emb+tax)   0.9932  0.9344  0.7592      0.8335  0.7552     0.6234  0.9577
-ToxinPred 3.0      0.9326  0.5662  0.5134      0.6368  0.4883     0.3369  0.8871
-ToxDL 2.0          0.9898  0.7699  0.7814      0.7814  0.7777     0.6491  0.9698
+ToxFam (emb+tax)   0.9949  0.9553  0.8630      0.8999  0.8640     0.7692  0.9853
+ToxinPred 3.0      0.9217  0.5737  0.5400      0.5970  0.5285     0.3824  0.8553
+ToxDL 2.0          0.9921  0.7976  0.8078      0.8078  0.8066     0.6879  0.9748
 
 Paired bootstrap vs ToxFam (positive = ToxFam better; CI excludes 0 => significant):
             comparison  d_roc_auc  d_roc_lo  d_roc_hi  d_pr_auc  d_pr_lo  d_pr_hi  n_common
-ToxFam - ToxinPred 3.0     0.0607    0.0456    0.0767    0.3672   0.3211   0.4105     10157
-    ToxFam - ToxDL 2.0     0.0034   -0.0016    0.0070    0.1641   0.1262   0.2054     10157
+ToxFam - ToxinPred 3.0     0.0736    0.0574    0.0920    0.3809   0.3319   0.4295      9201
+    ToxFam - ToxDL 2.0     0.0028   -0.0021    0.0067    0.1563   0.1109   0.2011      9201

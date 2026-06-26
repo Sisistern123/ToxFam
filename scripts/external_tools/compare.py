@@ -128,7 +128,7 @@ def main() -> None:
 
     # Per-method threshold (Youden on val if available) + merged test frame.
     # Skip methods whose run is still incomplete (coverage below MIN_COVERAGE).
-    MIN_COVERAGE = 0.95  # ToxDL 2.0 = 97.6% (250 proteins lack an AlphaFold structure)
+    MIN_COVERAGE = 0.90  # ToxDL 2.0 = 94.1% on the 9,779 set (578 proteins lack an AlphaFold structure)
     rows_full, merged, kept = [], {}, []
     for m in loaded:
         scored = m["test"].dropna(subset=["score"])
@@ -231,7 +231,7 @@ def main() -> None:
     axp.set(xlabel="Recall", ylabel="Precision",
             title=f"Precision-Recall — common subset (n={len(common_ids)})")
     axp.legend(fontsize=8, loc="lower left")
-    fig.suptitle("Binary toxicity: ToxFam vs external tools (local test snapshot)")
+    fig.suptitle("Binary toxicity: ToxFam vs external tools (9,779 canonical test set)")
     fig.tight_layout()
     fig.savefig(OUT / "roc_pr.png", dpi=150, bbox_inches="tight")
     plt.close(fig)
@@ -239,7 +239,7 @@ def main() -> None:
     # Console + summary.txt
     lines = []
     lines.append("=" * 78)
-    lines.append("BINARY TOXICITY COMPARISON (local test snapshot)")
+    lines.append("BINARY TOXICITY COMPARISON (9,779 canonical test set)")
     lines.append("=" * 78)
     lines.append(f"Ground truth: {len(labels)} test proteins, {int(labels.is_toxic.sum())} toxic "
                  f"({100*labels.is_toxic.mean():.2f}% positive prior)")

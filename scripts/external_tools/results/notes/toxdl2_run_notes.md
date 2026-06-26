@@ -1,5 +1,14 @@
 # ToxDL 2.0 — run notes
 
+> **UPDATE (9,779 redo):** the headline benchmark now runs on the canonical 9,779
+> test set — see `results/RESULTS_9779.md`. This file documents the original 10,407
+> run + method; the method is unchanged. Two reproduction notes for the redo:
+> (1) set `return_contacts=False` in ToxDL2's `dataset.py` (~8× faster, identical
+> outputs, validated to 4e-7); (2) fetch AlphaFold structures with ≤8 concurrent
+> workers (AFDB throttles higher concurrency). On 9,779: coverage 94.1% (578 lack a
+> structure); **337/515 test toxins (65.4%) are in ToxDL2's training set** —
+> contamination is now quantified and a clean-subset comparison is reported.
+
 Status: **GO, completed full coverage.** Date: 2026-06-25 (Apple Silicon, MPS; no CUDA).
 
 ## Code / weights

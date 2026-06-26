@@ -7,24 +7,27 @@ own metric code so every method is directly comparable.
 ## TL;DR
 
 On the binary toxic/non-toxic task (the only axis where a fair external comparison
-exists — see *Scope*), evaluated on the common subset of **10,157** test proteins
-all three methods scored (496 toxins, 4.88% positive prior):
+exists — see *Scope*), evaluated on the **canonical 9,779-protein test set** (the
+manuscript's published split), common subset of **9,201** proteins all three methods
+scored (477 toxins, 5.18% positive prior):
 
 | Method | ROC-AUC | **PR-AUC** | MCC @ t=0.5 |
 |---|---|---|---|
-| **ToxFam (emb+tax)** | **0.993** | **0.934** | **0.834** |
-| ToxDL 2.0 (2025) | 0.990 | 0.770 | 0.781 |
-| ToxinPred 3.0 (2024) | 0.933 | 0.566 | 0.637 |
+| **ToxFam (emb+tax)** | **0.9949** | **0.9553** | **0.8999** |
+| ToxDL 2.0 (2025) | 0.9921 | 0.7976 | 0.8078 |
+| ToxinPred 3.0 (2024) | 0.9217 | 0.5737 | 0.5970 |
 
 Paired-bootstrap difference vs ToxFam (2000 resamples; ✓ = 95% CI excludes 0):
-- vs **ToxinPred 3.0**: ΔROC **+0.061** ✓, ΔPR **+0.367** ✓
-- vs **ToxDL 2.0**: ΔROC +0.003 (tied), ΔPR **+0.164** ✓
+- vs **ToxinPred 3.0**: ΔROC **+0.074** ✓, ΔPR **+0.381** ✓
+- vs **ToxDL 2.0**: ΔROC +0.003 (tied), ΔPR **+0.156** ✓
 
 **ToxFam wins PR-AUC against both, significantly** — and PR-AUC is the metric that
 matters under a ~5% prior (ROC-AUC is near-ceiling for everyone). The result is
 strengthened by a contamination asymmetry (below): ToxinPred 3.0 is a *clean*
 comparator that ToxFam beats decisively, while ToxDL 2.0 has a train/test-overlap
-advantage and ToxFam still beats it on PR-AUC.
+advantage (it has seen **65% of our test toxins** in training) — and on the
+contamination-excluded clean subset ToxFam beats it on **both** ROC-AUC *and*
+PR-AUC (see *Contamination*).
 
 ## Scope: why only the binary axis
 
@@ -77,35 +80,35 @@ externally, by design:
 
 ## Key decision points & caveats
 
-- **Data snapshot: local 10,407, not the paper's 9,779.** The manuscript reports a
-  9,779-protein / 515-toxin test set; this checkout's `training_data.csv` defines a
-  *different, older* 10,407 / 541 split (the published snapshot post-dates the local
-  March/April model runs and was never committed here). A benchmark only needs all
-  methods scored on identical proteins with identical ground truth, which this
-  gives. The ranking is very unlikely to change on 9,779 (gaps are large, method is
-  identical); a 9,779 re-run mainly aligns ToxFam's *absolute* numbers with the
-  paper. **To do that:** `toxfam download-data`, retrain the baseline, regenerate
-  the split, re-score (ToxinPred is fast; ToxDL 2.0 reuses cached structures),
-  re-compare.
+- **Data snapshot: the canonical 9,779 set (resolved).** The benchmark runs on the
+  published `data-v1` release split (train 45621 / val 9779 / **test 9779 / 515
+  toxins**) — the set the manuscript reports. (An earlier pass used a stale, drifted
+  local `training_data.csv` with a 10,407 test split; swapping in the release CSV
+  fixed it. Same ranking, ToxFam's absolute numbers now match the paper.)
 - **ToxFam baseline = a fresh `configs/combined.yaml` train** into
-  `model/model_output/combined_run`. None of the committed local runs matched the
-  published model, and the only existing emb+tax run had a stale `model_config.json`
-  plus 1128-d *augmented* inputs (not the plain 1024-d embeddings), so it could not
-  be loaded against `embeddings.h5`. Training the committed config is the cleanest,
-  fully reproducible baseline (full 10,407 test set: ROC 0.993, PR-AUC 0.922; 0.934
-  on the common 10,157 subset), close to the paper's 0.995 / 0.949.
-- **Contamination asymmetry (the important one).** ToxDL 2.0 trains on
-  ToxProt-provenance positives that overlap our UniProt KW-0800 test positives (its
-  bundled data even contains test accessions, e.g. P01546), so its 0.990 / 0.770 is
+  `model/model_output/combined_run`, **retrained on the 9,779 split** so there is no
+  train/test leakage. Standalone on the full 9,779 test: **ROC-AUC 0.9948, PR-AUC
+  0.9494, MCC@0.5 0.8874** — matching the paper's 0.995 / 0.949.
+- **Contamination of ToxDL 2.0 (the important one).** ToxDL 2.0 trains on
+  ToxProt-provenance positives that overlap our UniProt KW-0800 test positives.
+  Intersecting its bundled training set (`train.fasta` + `valid.domain`, 15,631
+  accessions) with our test set: **337 of 515 test toxins (65.4%) are in ToxDL 2.0's
+  training data** (850 / 9,779 proteins overall, 8.7%). So its full-set numbers are
   an **inflated upper bound**, not OOD generalisation — yet ToxFam still beats it on
-  PR-AUC. ToxinPred 3.0 is *not* ToxProt-trained → a cleaner comparator, and ToxFam
-  beats it by a wide margin.
+  PR-AUC. **Contamination-excluded clean subset** (drop the 850 seen proteins;
+  common n=8,392, 164 toxins): ToxDL 2.0's PR-AUC collapses 0.798 → 0.557 and ToxFam
+  beats it on **both** ROC-AUC (ΔROC +0.008 ✓, vs a tie on the full set) **and**
+  PR-AUC (ΔPR +0.329 ✓) — proving the win is real, not memorisation. ToxinPred 3.0
+  is *not* ToxProt-trained → a cleaner comparator, beaten by a wide margin
+  throughout (clean-subset ΔPR +0.572 ✓).
 - **ToxinPred 3.0 domain shift.** Peptide-oriented tool applied to full-length
   proteins; it over-calls (precision 0.34), which depresses its PR-AUC.
-- **250 proteins (45 toxic) had no AlphaFold structure**, so they are unscorable by
-  ToxDL 2.0; recorded NA and excluded from the common subset so all three compare on
-  the same 10,157. Those 45 excluded toxins are not a random sample (they merely lack
-  an AlphaFold model), so every method's common-subset score is lifted slightly and
+- **578 proteins (38 toxic) had no AlphaFold structure** on the 9,779 set, so they
+  are unscorable by ToxDL 2.0 (94.1% coverage); recorded NA and excluded from the
+  common subset so all three compare on the same 9,201. (`compare.py` `MIN_COVERAGE`
+  is 0.90 to admit this complete-but-94%-coverage run; the gate exists to exclude
+  *incomplete* runs.) Those excluded toxins are not a random sample (they merely lack
+  an AlphaFold model), so every method's common-subset score shifts slightly and
   equally versus the full set (compare `metrics_full.csv` vs `metrics_common.csv`).
 - **AlphaFold DB is now v6, not v4** (the v4 URL in older recipes is stale); the
   ToxDL 2.0 downloader tries v6→v5→v4. Flagged for any future structure-based tool.
@@ -130,35 +133,51 @@ without re-running any tool.
 **A. Verify the headline table from the committed artifacts (cheap, fully
 self-contained: only needs `uv sync`; no `download-data`, no tool installs):**
 ```bash
+# full 9,779 comparison
 uv run python scripts/external_tools/compare.py \
   --scores-base scripts/external_tools/results/scores \
   --labels-dir  scripts/external_tools/results/ground_truth \
   --out /tmp/toxfam_extcmp
+# contamination-excluded clean subset (toxins ToxDL 2.0 never trained on)
+uv run python scripts/external_tools/compare.py \
+  --scores-base scripts/external_tools/results/scores \
+  --labels-dir  scripts/external_tools/results/ground_truth_clean \
+  --out /tmp/toxfam_extcmp_clean
 ```
-This reproduces `results/comparison/metrics_common.csv` exactly from the committed
-per-protein scores + committed ground-truth labels (no network, no model).
+This reproduces `results/comparison/` and `results/comparison_clean/` exactly from
+the committed per-protein scores + committed ground-truth labels (no network, no
+model).
 
 **B. Full reproduction from scratch** (needs `uv run toxfam download-data` first, to
 fetch `training_data.csv` + embeddings + taxonomy, which are not in git):
 ```bash
-# 1. ToxFam (emb+tax) baseline + shared substrate + ToxFam scores
+# 1. ToxFam (emb+tax) baseline (retrained on the 9,779 split) + shared substrate + scores
+uv run toxfam download-data --force                # canonical 9,779 split training_data.csv
 uv run toxfam train configs/combined.yaml          # -> model/model_output/combined_run
 uv run python scripts/external_tools/build_harness.py
 
-# 2. ToxinPred 3.0  (PyPI `toxinpred3` v1.4 in a py3.10 venv; ML model, t=0.38)
-#    see results/notes/toxinpred3_run_notes.md
-<env>/bin/python scripts/external_tools/run_toxinpred3.py \
+# 2. ToxinPred 3.0  (py3.10 venv; the v1.4 model pickle is a pre-sklearn-1.3 tree)
+#    uv pip install toxinpred3==1.4 scikit-learn==1.2.2 numpy==1.26.4   # newer sklearn -> "node dtype" error
+.toxinpred3_env/bin/python scripts/external_tools/run_toxinpred3.py \
   --fasta benchmark/test_set/_shared/test.fasta \
   --out   benchmark/test_set/toxinpred3/test_scores.csv \
   --workers 8 --model 1 --threshold 0.38 --raw-dir /tmp/tp3_test
 #    (repeat for val.fasta -> val_scores.csv)
 
 # 3. ToxDL 2.0  (github.com/shzhulin/ToxDL2 @ a265475; weights committed in-repo;
-#    ESM-2 650M + AlphaFold DB structures + UniProt InterPro domains)
+#    ESM-2 650M + AlphaFold DB structures + UniProt InterPro domains). Drivers in
+#    scripts/external_tools/toxdl2/ (copy into tools/ToxDL2/src/). REQUIRED patch:
+#    set return_contacts=False in ToxDL2's dataset.py (~8x faster, identical output).
+#    Fetch AF structures with <=8 workers (AlphaFold DB throttles at higher concurrency).
+tools/toxdl2_env/bin/python tools/ToxDL2/src/prefetch_structures.py
+PYTORCH_ENABLE_MPS_FALLBACK=1 PYTHONPATH=tools/ToxDL2 \
+  tools/toxdl2_env/bin/python tools/ToxDL2/src/run_inference_9779.py
 #    see results/notes/toxdl2_run_notes.md  ->  benchmark/test_set/toxdl2/test_scores.csv
 
-# 4. compare
+# 4. compare (full + contamination-excluded clean subset)
 uv run python scripts/external_tools/compare.py
+uv run python scripts/external_tools/compare.py \
+  --labels-dir benchmark/test_set/_shared_clean --out benchmark/test_set/comparison_clean
 ```
 
 ## Files
@@ -169,11 +188,18 @@ scripts/external_tools/
 ├── build_harness.py       # shared FASTA + ground truth + ToxFam p_toxic   (--shared-only)
 ├── run_toxinpred3.py      # parallel driver for the unmodified ToxinPred 3.0 CLI
 ├── compare.py             # unified metrics + paired bootstrap + ROC/PR figure
+├── toxdl2/                # ToxDL 2.0 drivers (copy into tools/ToxDL2/src/ to reproduce)
+│   ├── prefetch_structures.py   # parallel AlphaFold structure fetch (<=8 workers + backoff)
+│   ├── run_inference_9779.py    # resumable ESM(MPS)+GCN(CPU) inference; reuses cached scores
+│   └── validate_9779.py         # one-protein numeric check vs a cached score
 └── results/
-    ├── comparison/        # metrics_full, metrics_common, paired_vs_toxfam, roc_pr.png, summary.txt
-    ├── ground_truth/      # test_labels.csv, val_labels.csv (identifier,seq_len,is_toxic,family; NO sequences)
-    ├── notes/             # per-tool provenance: toxinpred3, toxdl2 (+ feasibility)
-    └── scores/            # per-protein predictions (accession + score; no sequences)
+    ├── RESULTS_9779.md       # full writeup (both tables + contamination)
+    ├── comparison/           # full 9,779: metrics_full, metrics_common, paired_vs_toxfam, roc_pr.png, summary.txt
+    ├── comparison_clean/     # contamination-excluded clean subset (same files)
+    ├── ground_truth/         # test/val_labels.csv (id,seq_len,is_toxic,family; NO seqs) + toxdl2_seen_in_train.txt
+    ├── ground_truth_clean/   # clean-subset test_labels (8,929) + full val_labels for thresholding
+    ├── notes/                # per-tool provenance: toxinpred3, toxdl2 (+ feasibility)
+    └── scores/               # per-protein predictions (accession + score; no sequences)
 ```
 
 Committed (small, reproducible): scripts, the comparison artifacts, per-protein

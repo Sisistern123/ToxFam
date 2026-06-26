@@ -12,9 +12,10 @@ ToxFam baseline = the combined (emb+tax) model = model/model_output/combined_run
 (MultiInputMLP, tax_dim=50, 38 classes). Binary score = 1 - sum P(nontox classes),
 exactly as toxfam.evaluation.binary.compute_p_toxic.
 
-NOTE: this uses the LOCAL data snapshot (test = 10,407 / 541 toxins), which differs
-from the manuscript's 9,779 / 515 snapshot (newer, not checked out here). The point
-is internal consistency: all methods scored on identical proteins + ground truth.
+NOTE: this uses the canonical `data-v1` release split (test = 9,779 / 515 toxins),
+i.e. the manuscript's published test set. The ToxFam baseline (combined_run) is
+retrained on this split so there is no train/test leakage; all methods are scored
+on identical proteins + ground truth.
 """
 
 from __future__ import annotations
@@ -150,13 +151,13 @@ def main() -> None:
     out = {
         "method": "ToxFam (emb+tax)",
         "model_dir": str(MODEL_DIR.relative_to(ROOT)),
-        "snapshot": "local (test=10407)",
+        "snapshot": "canonical data-v1 release (test=9779)",
         "optimized_threshold": thr,
         "test_default": {k: v for k, v in m_def.items() if k not in drop},
         "test_optimized": {k: v for k, v in m_opt.items() if k not in drop},
     }
     (TOXFAM / "metrics.json").write_text(json.dumps(out, indent=2))
-    print(f"\nToxFam (emb+tax) on LOCAL test (t*={thr:.3f}):")
+    print(f"\nToxFam (emb+tax) on 9,779 test (t*={thr:.3f}):")
     print(f"  ROC-AUC={m_def['roc_auc']:.4f}  PR-AUC={m_def['pr_auc']:.4f}  "
           f"MCC(t*)={m_opt['mcc']:.4f}  F1(t*)={m_opt['f1']:.4f}  acc(t*)={m_opt['accuracy']:.4f}")
     print(f"\nWrote: {OUT}")
