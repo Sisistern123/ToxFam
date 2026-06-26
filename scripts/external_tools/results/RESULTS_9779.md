@@ -10,6 +10,14 @@ is no train/test leakage; all methods are scored by the same metric code
 ToxFam standalone on the full 9,779 test: **ROC-AUC 0.9948, PR-AUC 0.9494,
 MCC@0.5 0.8874** — matches the paper's 0.995 / 0.949 (validates the redo).
 
+**Provenance.** Training split = `data/processed/training_data.csv` md5
+`944a36346cb9f1f1a438c471f6f73ad2` (canonical `data-v1` release: train 45621 /
+val 9779 / test 9779). `combined_run` was retrained on this CSV *after* the swap —
+`model/model_output/combined_run/predictions/test_predictions.csv` has 9,779 rows
+and its `config.yaml` `input_csv` points at it, so no test id is in its training
+set. The contamination set + clean subset are rebuilt by
+`scripts/external_tools/toxdl2/build_clean_subset.py`.
+
 ## 1. Full 9,779 set — common subset n=9,201 (477 toxic, 5.18% prior)
 
 | Method | ROC-AUC | **PR-AUC** | MCC@0.5 |
@@ -58,12 +66,17 @@ on the full set) **and** PR-AUC (gap widens +0.156 → +0.329). This shows ToxFa
 win is real, not a snapshot artifact, and that ToxDL 2.0's apparent full-set
 strength was largely memorization.
 
-## Artifacts
-- Full: `benchmark/test_set/comparison/` (metrics_full, metrics_common, paired_vs_toxfam, roc_pr.png, summary.txt)
-- Clean: `benchmark/test_set/comparison_clean/` (same files; labels from `_shared_clean/`)
-- Per-protein scores: `benchmark/test_set/{toxfam_embtax,toxinpred3,toxdl2}/{test,val}_scores.csv`
-- Contaminated id list: `benchmark/test_set/_shared/toxdl2_seen_in_train.txt` (850)
-- ToxDL2 no-structure (NA) list: `benchmark/test_set/toxdl2/no_structure.txt` (578)
+## Artifacts (committed, self-contained — under `scripts/external_tools/results/`)
+- Full: `comparison/` (metrics_full, metrics_common, paired_vs_toxfam, roc_pr.png, summary.txt)
+- Clean: `comparison_clean/` (same files; labels from `ground_truth_clean/`)
+- Per-protein scores: `scores/{toxfam_embtax,toxinpred3,toxdl2}/{test,val}_scores.csv` (no sequences)
+- Ground truth: `ground_truth/{test,val}_labels.csv`; clean: `ground_truth_clean/test_labels.csv`
+- Contaminated id list (850): `ground_truth/toxdl2_seen_in_train.txt`
+- Builders: `../toxdl2/build_clean_subset.py` (contamination + clean subset),
+  `../toxdl2/{prefetch_structures,run_inference_9779}.py` (ToxDL 2.0 scoring)
+
+(Regenerable working copies live under the gitignored `benchmark/test_set/`; the
+ToxDL 2.0 no-structure NA list is `benchmark/test_set/toxdl2/no_structure.txt`, 578.)
 
 ## Reproduce
 ```bash

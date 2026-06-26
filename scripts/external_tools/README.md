@@ -115,11 +115,13 @@ externally, by design:
 
 ## Results (detail)
 
-`results/comparison/`:
+`results/comparison/` (full 9,779) and `results/comparison_clean/` (clean subset):
 - `metrics_full.csv` — per method on its own scored subset (with coverage).
-- `metrics_common.csv` — all methods on the common 10,157 subset. Carries `mcc` (at
-  each method's operating threshold) and `mcc_at_0.5` (matched 0.5 threshold; the
-  headline MCC: ToxFam 0.834 / ToxDL2 0.781 / ToxinPred3 0.637).
+- `metrics_common.csv` — all methods on the common subset (full: 9,201; clean:
+  8,392). Carries `mcc` (at each method's operating threshold) and `mcc_at_0.5`
+  (matched 0.5 threshold; the headline MCC on the full set: ToxFam 0.900 /
+  ToxDL2 0.808 / ToxinPred3 0.597). Note: ToxDL 2.0 has no val scores so it uses its
+  native 0.5 threshold; the others use Youden@val (threshold-free ROC/PR is the headline).
 - `paired_vs_toxfam.csv` — paired-bootstrap ΔROC / ΔPR vs ToxFam, with 95% CIs.
 - `roc_pr.png` — ROC + Precision-Recall overlay on the common subset.
 - `summary.txt` — the console report.
@@ -191,7 +193,8 @@ scripts/external_tools/
 ├── toxdl2/                # ToxDL 2.0 drivers (copy into tools/ToxDL2/src/ to reproduce)
 │   ├── prefetch_structures.py   # parallel AlphaFold structure fetch (<=8 workers + backoff)
 │   ├── run_inference_9779.py    # resumable ESM(MPS)+GCN(CPU) inference; reuses cached scores
-│   └── validate_9779.py         # one-protein numeric check vs a cached score
+│   ├── validate_9779.py         # one-protein numeric check vs a cached score
+│   └── build_clean_subset.py    # contamination set + clean subset (337/515 seen; rebuilds _shared_clean)
 └── results/
     ├── RESULTS_9779.md       # full writeup (both tables + contamination)
     ├── comparison/           # full 9,779: metrics_full, metrics_common, paired_vs_toxfam, roc_pr.png, summary.txt
