@@ -26,7 +26,7 @@ Newest notes query variants (for overall context):
 
 | File | Query | Original file date | Notes |
 | --- | --- | --- | --- |
-| `data/evaluation/non_metazoan/non_metazoan.tsv` | Not documented in-repo yet | 2026-04-13 | Used by `toxfam eval hbi non_metazoan` and `toxfam eval model non_metazoan` |
+| `data/evaluation/non_metazoan/non_metazoan.tsv` | `(keyword:KW-0800) AND (reviewed:true) AND (date_created:[* TO 2026-03-03]) NOT (taxonomy_id:33208)` | 2026-04-13 | Used by `toxfam eval hbi non_metazoan` and `toxfam eval model non_metazoan`. Reviewed KW-0800 toxins from non-metazoan organisms. Reproduces the 812 entries in the current file (same date cutoff as the raw training data; note no `fragment:false` filter). Re-export with an added `Organism (ID)` field for combined-model `toxfam predict`. |
 
 ## Processed files (derived artifacts)
 
