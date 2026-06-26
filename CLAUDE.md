@@ -52,6 +52,21 @@ The config YAML selects the training strategy. Available configs in `configs/`:
 - `combined.yaml` — two-branch MLP (embeddings + taxonomy)
 - `example.yaml` — annotated reference config
 
+### Predict (inference on arbitrary proteins)
+
+```bash
+# Combined model (input TSV needs identifier + Organism (ID); + Sequence if embeddings must be generated)
+uv run toxfam predict input.tsv --model-dir model/model_output/combined_run --embeddings data/processed/embeddings.h5
+
+# Combined + standard fallback (organism-less proteins → standard model; writes two TSVs)
+uv run toxfam predict input.tsv --model-dir model/model_output/combined_run --standard-model-dir model/model_output/standard_run --embeddings <emb.h5>
+
+# Standard model (organism IDs ignored, all proteins predicted)
+uv run toxfam predict input.tsv --model-dir model/model_output/standard_run --embeddings <emb.h5>
+```
+
+The input may be a TSV path or a registered dataset name (`non_metazoan`, `unreviewed`, `test_set`, `val_set` — same registry as `eval`; a name auto-selects its embeddings H5). Outputs a TSV with top-K family predictions (`pred_1..K`, `conf_1..K`), `p_toxic`, and `predicted_toxic`. Always uses the calibrated model (you pass a model directory, not a checkpoint). Missing embeddings are generated from the `Sequence` column. Use `--toxicity-only` to output just the binary call (`identifier`, `p_toxic`, `predicted_toxic`) in any mode. Combined runs write a `*_unresolved_organisms.tsv` sidecar listing organism IDs that yielded no taxonomy signal (unresolvable taxon ID, or organism not among the model's 50 taxa). See `docs/predict.md` for the full contract.
+
 ### Evaluation / Benchmarking
 
 Each method is evaluated independently; results are compared separately.
@@ -104,6 +119,7 @@ src/toxfam/
 │   ├── trainer.py            # train_model, evaluate_model, FocalLoss, get_class_weights
 │   ├── strategies.py         # DataSelector, run_{standard,binary,combined}_strategy
 │   └── orchestrator.py       # run_training(config) + binary metrics pipeline
+├── prediction.py             # toxfam predict: label-free inference (top-K family + binary toxicity)
 ├── evaluation/               # Benchmark evaluation
 │   ├── runner.py             # run_hbi_evaluation, run_model_evaluation, compare_methods
 │   ├── hbi.py                # MMseqs2 HBI search (run_hbi_search, HBIResult)

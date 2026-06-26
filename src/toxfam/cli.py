@@ -274,6 +274,90 @@ def train(
     run_training(cfg)
 
 
+# ---------- toxfam predict ----------
+
+
+@app.command()
+def predict(
+    input_tsv: Annotated[
+        Path,
+        typer.Argument(
+            help="Input TSV path, or a registered dataset name (e.g. non_metazoan, "
+            "unreviewed). TSV needs 'identifier' (+ 'Organism (ID)' for combined "
+            "models, + 'Sequence' if embeddings must be generated). A dataset name "
+            "also auto-selects its embeddings H5.",
+        ),
+    ],
+    model_dir: Annotated[
+        Path,
+        typer.Option(
+            help="Primary model directory (combined or standard, auto-detected)",
+            exists=True,
+        ),
+    ],
+    standard_model_dir: Annotated[
+        Optional[Path],
+        typer.Option(
+            help="Standard (ModularMLP) model for proteins without an organism ID. "
+            "Only used when --model-dir is a combined model.",
+            exists=True,
+        ),
+    ] = None,
+    embeddings: Annotated[
+        Optional[Path],
+        typer.Option(
+            "--embeddings",
+            help="Precomputed ProtT5 embeddings H5 (keyed by identifier). Missing "
+            "identifiers are embedded from the 'Sequence' column.",
+            exists=True,
+        ),
+    ] = None,
+    output: Annotated[
+        Path, typer.Option("-o", "--output", help="Output TSV path")
+    ] = Path("predictions.tsv"),
+    top_k: Annotated[int, typer.Option(help="Number of top family predictions")] = 3,
+    toxicity_only: Annotated[
+        bool,
+        typer.Option(
+            "--toxicity-only",
+            help="Only predict toxic/non-toxic (skip family prediction columns)",
+        ),
+    ] = False,
+    max_residues: Annotated[
+        int, typer.Option(help="Max residues per embedding batch")
+    ] = 4000,
+    max_batch: Annotated[
+        int, typer.Option(help="Max sequences per embedding batch")
+    ] = 100,
+) -> None:
+    """Predict toxin family and toxicity for arbitrary proteins (no labels needed).
+
+    Reads a TSV of proteins and runs a trained model to produce the top-K family
+    predictions with calibrated confidences plus a binary toxic/non-toxic call.
+    ProtT5 embeddings are reused from --embeddings when available and generated
+    on demand otherwise. Three usages, dispatched on the primary model:
+
+    \b
+    * Combined model only: proteins without an organism ID are excluded.
+    * Combined + --standard-model-dir: proteins with an organism ID go to the
+      combined model, those without to the standard model (two output TSVs).
+    * Standard model: organism IDs ignored, all proteins predicted.
+    """
+    from toxfam.prediction import run_prediction
+
+    run_prediction(
+        input_tsv,
+        model_dir,
+        standard_model_dir=standard_model_dir,
+        embeddings_h5=embeddings,
+        output=output,
+        top_k=top_k,
+        toxicity_only=toxicity_only,
+        max_residues=max_residues,
+        max_batch=max_batch,
+    )
+
+
 # ---------- Step 5: toxfam eval {hbi,model,compare} ----------
 
 eval_app = typer.Typer(

@@ -85,10 +85,32 @@ See [configs/readme.md](configs/readme.md) for configuration details and archite
 ### 4. Evaluation
 
 ```bash
-uv run toxfam eval-test [--model-dir <path>]
-uv run toxfam eval-nonmetazoan --h5-path <h5> --model-path <pt> --class-map <json>
-uv run toxfam eval-unreviewed --input-tsv <tsv> --input-fasta <fasta> --input-h5 <h5>
+uv run toxfam eval hbi test_set
+uv run toxfam eval model test_set --model-dir model/model_output/combined_run
+uv run toxfam eval compare test_set
 ```
+
+### 5. Prediction
+
+Run a trained model on arbitrary proteins (no ground-truth labels needed). Outputs a TSV with the top-K family predictions, calibrated confidences, and a binary toxic/non-toxic call.
+
+```bash
+# Combined model (input needs identifier + Organism (ID); proteins without an organism ID are skipped)
+uv run toxfam predict input.tsv --model-dir model/model_output/combined_run --embeddings emb.h5
+
+# Combined + standard fallback (proteins without an organism ID are predicted by the standard model → two TSVs)
+uv run toxfam predict input.tsv \
+  --model-dir model/model_output/combined_run \
+  --standard-model-dir model/model_output/standard_run --embeddings emb.h5
+
+# Standard model (organism IDs ignored, all proteins predicted)
+uv run toxfam predict input.tsv --model-dir model/model_output/standard_run --embeddings emb.h5
+
+# Toxic / non-toxic only (drops the family columns; works in all modes)
+uv run toxfam predict input.tsv --model-dir model/model_output/standard_run --embeddings emb.h5 --toxicity-only
+```
+
+The input is either a TSV path or a registered dataset name (`non_metazoan`, `unreviewed`, `test_set`, `val_set` — a name also auto-selects its embeddings H5). A TSV needs an `identifier` column (`Entry` is also accepted), plus `Organism (ID)` for combined models and `Sequence` only when embeddings must be generated. Omit `--embeddings` to embed every sequence from scratch. Combined runs report organism IDs with no taxonomy signal in a `*_unresolved_organisms.tsv` sidecar. See [docs/predict.md](docs/predict.md) for the full input/output contract and the three usage modes.
 
 ## Further Documentation
 
@@ -97,6 +119,7 @@ uv run toxfam eval-unreviewed --input-tsv <tsv> --input-fasta <fasta> --input-h5
 | [docs/preprocessing.md](docs/preprocessing.md)   | Step-by-step preprocessing pipeline walkthrough           |
 | [docs/embedding.md](docs/embedding.md)           | Embedding generation options, resume support, performance |
 | [docs/taxonomy.md](docs/taxonomy.md)             | Taxonomy binary vector generation pipeline                |
+| [docs/predict.md](docs/predict.md)               | `toxfam predict` input/output contract and usage modes    |
 | [docs/signalp6_setup.md](docs/signalp6_setup.md) | SignalP6 installation and setup guide                     |
 | [configs/readme.md](configs/readme.md)           | Training configuration and architecture diagrams          |
 

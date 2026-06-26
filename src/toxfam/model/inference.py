@@ -104,61 +104,58 @@ def _resolve_tax_h5(model_dir: Path) -> Path | None:
     return p if p.exists() else None
 
 
-def run_inference(
-    df: pd.DataFrame,
-    h5_path: str | Path,
-    model_dir: str | Path,
-) -> pd.DataFrame:
-    """Run batched model inference on a DataFrame of proteins.
-
-    For MultiInputMLP models, loads real taxonomy vectors from the taxonomy H5
-    specified in the model's ``config.yaml``. Falls back to zero vectors if the
-    taxonomy H5 is unavailable.
-
-    Returns DataFrame with columns: identifier, predicted_label, confidence,
-    confidence_uncalibrated.
-    """
-    device = get_device()
-    model_dir = Path(model_dir)
-    model, model_config, idx_to_label = load_calibrated_model(model_dir, device=device)
-
-    is_multi_input = model_config.architecture == "MultiInputMLP"
-    tax_dim = model_config.tax_dim if is_multi_input else None
-
-    identifiers = df["identifier"].tolist()
-
-    # Read all embeddings into a single tensor
+def _load_embeddings(h5_path: str | Path, identifiers: list[str]) -> torch.Tensor:
+    """Stack per-protein embeddings (keyed by identifier) into one tensor."""
     with h5py.File(h5_path, "r") as f:
-        embeddings = torch.stack(
+        return torch.stack(
             [torch.tensor(f[ident][:], dtype=torch.float32) for ident in identifiers]
         )
 
-    # Load taxonomy vectors for combined models
-    tax_vectors = None
-    if is_multi_input:
-        tax_h5_path = _resolve_tax_h5(model_dir)
-        if tax_h5_path is not None:
-            console.print(f"   Loading taxonomy vectors from {tax_h5_path.name}")
-            with h5py.File(tax_h5_path, "r") as tf:
-                tax_list = []
-                for ident in identifiers:
-                    if ident in tf:
-                        tax_list.append(torch.tensor(tf[ident][:], dtype=torch.float32))
-                    else:
-                        tax_list.append(torch.zeros(tax_dim, dtype=torch.float32))
-                tax_vectors = torch.stack(tax_list)
-        else:
-            console.print(
-                "   [yellow]Warning: taxonomy H5 not found, "
-                "using zero vectors (predictions may differ from training)[/]"
-            )
 
-    # Batched forward pass
-    all_preds: list[str] = []
-    all_confs: list[float] = []
-    all_uncal_confs: list[float] = []
-    batch_size = 512
+def _load_tax_vectors(
+    model_dir: Path,
+    identifiers: list[str],
+    tax_dim: int,
+    tax_h5_path: str | Path | None = None,
+) -> torch.Tensor | None:
+    """Load taxonomy vectors for combined models, keyed by identifier.
 
+    Resolves the taxonomy H5 from ``tax_h5_path`` if given, otherwise from the
+    model's saved ``config.yaml`` (training taxonomy H5). Proteins absent from
+    the H5 fall back to a zero vector. Returns ``None`` if no H5 is available.
+    """
+    resolved = Path(tax_h5_path) if tax_h5_path is not None else _resolve_tax_h5(model_dir)
+    if resolved is None or not resolved.exists():
+        console.print(
+            "   [yellow]Warning: taxonomy H5 not found, "
+            "using zero vectors (predictions may differ from training)[/]"
+        )
+        return None
+
+    console.print(f"   Loading taxonomy vectors from {resolved.name}")
+    with h5py.File(resolved, "r") as tf:
+        tax_list = []
+        for ident in identifiers:
+            if ident in tf:
+                tax_list.append(torch.tensor(tf[ident][:], dtype=torch.float32))
+            else:
+                tax_list.append(torch.zeros(tax_dim, dtype=torch.float32))
+    return torch.stack(tax_list)
+
+
+def _calibrated_probs_in_batches(
+    model: ModelWithTemperature,
+    embeddings: torch.Tensor,
+    tax_vectors: torch.Tensor | None,
+    *,
+    is_multi_input: bool,
+    tax_dim: int | None,
+    device: torch.device,
+    batch_size: int = 512,
+) -> tuple[torch.Tensor, torch.Tensor]:
+    """Forward pass over all proteins; return (calibrated_probs, uncalibrated_probs)."""
+    cal_chunks: list[torch.Tensor] = []
+    uncal_chunks: list[torch.Tensor] = []
     with torch.no_grad():
         for i in range(0, len(embeddings), batch_size):
             batch = embeddings[i : i + batch_size].to(device)
@@ -171,21 +168,130 @@ def run_inference(
             else:
                 raw_logits = model.model(batch)
             scaled_logits = model.temperature_scale(raw_logits)
-            cal_probs = torch.softmax(scaled_logits, dim=1)
-            uncal_probs = torch.softmax(raw_logits, dim=1)
-            confs, pred_idxs = cal_probs.max(dim=1)
-            uncal_confs, _ = uncal_probs.max(dim=1)
-            all_preds.extend(
-                idx_to_label.get(idx.item(), "other") for idx in pred_idxs
-            )
-            all_confs.extend(confs.cpu().tolist())
-            all_uncal_confs.extend(uncal_confs.cpu().tolist())
+            cal_chunks.append(torch.softmax(scaled_logits, dim=1).cpu())
+            uncal_chunks.append(torch.softmax(raw_logits, dim=1).cpu())
+    return torch.cat(cal_chunks), torch.cat(uncal_chunks)
+
+
+def run_inference(
+    df: pd.DataFrame,
+    h5_path: str | Path,
+    model_dir: str | Path,
+    *,
+    tax_h5_path: str | Path | None = None,
+) -> pd.DataFrame:
+    """Run batched model inference on a DataFrame of proteins.
+
+    For MultiInputMLP models, loads real taxonomy vectors from ``tax_h5_path``
+    if provided, otherwise from the taxonomy H5 specified in the model's
+    ``config.yaml``. Falls back to zero vectors if the taxonomy H5 is
+    unavailable.
+
+    Returns DataFrame with columns: identifier, predicted_label, confidence,
+    confidence_uncalibrated.
+    """
+    device = get_device()
+    model_dir = Path(model_dir)
+    model, model_config, idx_to_label = load_calibrated_model(model_dir, device=device)
+
+    is_multi_input = model_config.architecture == "MultiInputMLP"
+    tax_dim = model_config.tax_dim if is_multi_input else None
+
+    identifiers = df["identifier"].tolist()
+    embeddings = _load_embeddings(h5_path, identifiers)
+
+    tax_vectors = None
+    if is_multi_input:
+        tax_vectors = _load_tax_vectors(model_dir, identifiers, tax_dim, tax_h5_path)
+
+    cal_probs, uncal_probs = _calibrated_probs_in_batches(
+        model, embeddings, tax_vectors,
+        is_multi_input=is_multi_input, tax_dim=tax_dim, device=device,
+    )
+
+    confs, pred_idxs = cal_probs.max(dim=1)
+    uncal_confs, _ = uncal_probs.max(dim=1)
 
     return pd.DataFrame(
         {
             "identifier": identifiers,
-            "predicted_label": all_preds,
-            "confidence": all_confs,
-            "confidence_uncalibrated": all_uncal_confs,
+            "predicted_label": [
+                idx_to_label.get(idx.item(), "other") for idx in pred_idxs
+            ],
+            "confidence": confs.tolist(),
+            "confidence_uncalibrated": uncal_confs.tolist(),
         }
     )
+
+
+def run_topk_inference(
+    df: pd.DataFrame,
+    h5_path: str | Path,
+    model_dir: str | Path,
+    *,
+    tax_h5_path: str | Path | None = None,
+    top_k: int = 3,
+    binary_only: bool = False,
+) -> pd.DataFrame:
+    """Run inference returning the top-``k`` family predictions plus P(toxic).
+
+    Unlike :func:`run_inference` (argmax + metrics), this returns the highest
+    ``k`` calibrated family probabilities per protein and a score-based binary
+    toxicity probability ``p_toxic`` = 1 - sum(P(nontoxin classes)).
+
+    Returns DataFrame with columns: identifier, pred_1..k, conf_1..k, p_toxic.
+    When ``binary_only`` is set, the per-family columns are skipped and only
+    identifier + p_toxic are returned.
+    """
+    from toxfam.evaluation.metrics import NONTOXIN_LABELS
+
+    device = get_device()
+    model_dir = Path(model_dir)
+    model, model_config, idx_to_label = load_calibrated_model(model_dir, device=device)
+
+    is_multi_input = model_config.architecture == "MultiInputMLP"
+    tax_dim = model_config.tax_dim if is_multi_input else None
+
+    identifiers = df["identifier"].tolist()
+    embeddings = _load_embeddings(h5_path, identifiers)
+
+    tax_vectors = None
+    if is_multi_input:
+        tax_vectors = _load_tax_vectors(model_dir, identifiers, tax_dim, tax_h5_path)
+
+    cal_probs, _ = _calibrated_probs_in_batches(
+        model, embeddings, tax_vectors,
+        is_multi_input=is_multi_input, tax_dim=tax_dim, device=device,
+    )
+
+    # P(toxic) = 1 - sum over nontoxin class probabilities
+    nontox_indices = [
+        idx for idx, label in idx_to_label.items()
+        if str(label).lower() in NONTOXIN_LABELS
+    ]
+    if nontox_indices:
+        p_toxic = 1.0 - cal_probs[:, nontox_indices].sum(dim=1)
+    else:
+        p_toxic = torch.ones(len(identifiers))
+
+    if binary_only:
+        return pd.DataFrame({"identifier": identifiers, "p_toxic": p_toxic.tolist()})
+
+    # Top-k families (clamped to available classes)
+    k = min(top_k, cal_probs.shape[1])
+    top_confs, top_idxs = cal_probs.topk(k, dim=1)
+
+    out: dict[str, object] = {"identifier": identifiers}
+    for rank in range(top_k):
+        if rank < k:
+            out[f"pred_{rank + 1}"] = [
+                idx_to_label.get(top_idxs[row, rank].item(), "other")
+                for row in range(len(identifiers))
+            ]
+            out[f"conf_{rank + 1}"] = top_confs[:, rank].tolist()
+        else:
+            out[f"pred_{rank + 1}"] = [None] * len(identifiers)
+            out[f"conf_{rank + 1}"] = [None] * len(identifiers)
+    out["p_toxic"] = p_toxic.tolist()
+
+    return pd.DataFrame(out)

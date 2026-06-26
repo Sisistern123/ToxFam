@@ -1,4 +1,54 @@
 # ToxFam Notes
+
+## 🔮 Combined-model predictions (`toxfam predict`)
+
+Label-free inference with the combined model (embeddings + taxonomy). The dataset
+name auto-resolves its TSV + embeddings H5; the combined model needs the
+`Organism (ID)` column (both eval TSVs were re-downloaded with it). Always uses
+the calibrated model.
+
+**Non-metazoan** — toxic/non-toxic only (family labels don't apply to these):
+```bash
+uv run toxfam predict non_metazoan \
+  --model-dir model/model_output/combined_run \
+  --toxicity-only \
+  -o benchmark/non_metazoan/predict/combined_toxicity.tsv
+```
+- 812 proteins; all 812 organisms fall outside the model's 50 (metazoan) taxa →
+  zero taxonomy vectors (listed in `*_unresolved_organisms.tsv`), so the combined
+  model is effectively embeddings-only here.
+- Result: **32.5% predicted toxic** (median `p_toxic` 0.069) — though all are
+  toxins, confirming the model can't handle non-metazoan input.
+
+**Unreviewed** — full output (top-3 families + toxicity):
+```bash
+uv run toxfam predict unreviewed \
+  --model-dir model/model_output/combined_run \
+  -o benchmark/unreviewed/predict/combined.tsv
+```
+- 23,136 proteins (all rows, not just the 13,574 with family labels that `eval`
+  keeps); 266 organisms outside the 50 taxa (`combined_unresolved_organisms.tsv`).
+- Result: **47.5% predicted toxic**; top families: nontox (13,600), Conotoxin
+  (3,142), other (1,991), Peptidase S1 (1,120), Venom metalloproteinase (781).
+
+## 24th June Meeting Notes
+- use temp plots 5 & 6a
+
+
+How often is the taxonomy vector zero? (measured on the full training set)
+
+┌──────────────────────────────────────────────┬────────┬───────┐
+│                                              │ count  │   %   │
+├──────────────────────────────────────────────┼────────┼───────┤
+│ Proteins with a taxonomy vector              │ 65,179 │ 100%  │
+├──────────────────────────────────────────────┼────────┼───────┤
+│ All-zero vector                              │ 5,009  │ 7.68% │
+├──────────────────────────────────────────────┼────────┼───────┤
+│ — taxopy couldn't resolve the taxon ID       │ 0      │ 0.00% │
+├──────────────────────────────────────────────┼────────┼───────┤
+│ — resolved but not among the model's 50 taxa │ 5,009  │ 7.68% │
+└──────────────────────────────────────────────┴────────┴───────┘
+
 ## 17th June Meeting Notes
 0. npj review?
 1. explain whats been done, plots etc.
@@ -15,6 +65,17 @@ discussion:
   - non-metazoa
   - proteome
 
+#### model run
+toxfam eval model unreviewed --model-dir model/model_output/combined_run
+
+Running model evaluation 'nn_combined_run' on 'unreviewed'
+   Loaded 13574 sequences from unreviewed.tsv
+   Loaded MultiInputMLP (T=1.578)
+   Loading taxonomy vectors from taxonomy_vectors.h5
+┏━━━━━━━━━━━━━━━━━┳━━━━━━━━━━┳━━━━━━━━┳━━━━━━━━━━━┳━━━━━━━━━━━┳━━━━━━━━━┓
+┃ Method          ┃ Accuracy ┃    MCC ┃ Micro-MCC ┃ Std Error ┃ Samples ┃
+┡━━━━━━━━━━━━━━━━━╇━━━━━━━━━━╇━━━━━━━━╇━━━━━━━━━━━╇━━━━━━━━━━━╇━━━━━━━━━┩
+│ nn_combined_run │   0.1842 │ 0.2345 │    0.1703 │    0.0033 │   13574 │
 
 #### hbi run
 Running HBI evaluation on 'non_metazoan'
