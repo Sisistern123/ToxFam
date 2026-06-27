@@ -21,8 +21,10 @@ model was trained on (train + valid).
 import csv, os, shutil
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[3]            # students/ToxFam
-TOXDL2 = ROOT / "tools/ToxDL2/data"
+# ToxFam root = nearest ancestor with pyproject.toml (location-independent).
+ROOT = next(p for p in Path(__file__).resolve().parents if (p / "pyproject.toml").exists())
+# ToxDL2 checkout (override with TOXDL2_DIR if cloned elsewhere); see README setup.
+TOXDL2 = Path(os.environ.get("TOXDL2_DIR", ROOT / "tools/ToxDL2")) / "data"
 SHARED = ROOT / "benchmark/test_set/_shared"
 CLEAN = ROOT / "benchmark/test_set/_shared_clean"
 CLEAN.mkdir(parents=True, exist_ok=True)

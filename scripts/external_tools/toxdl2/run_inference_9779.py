@@ -8,9 +8,11 @@ are performance/portability:
   * AlphaFold DB structures fetched v6->v5->v4 (v4 URL in the repo recipe is stale).
   * InterPro domains fetched in batches from the UniProt REST API.
 
-Run from tools/ToxDL2/src with PYTHONPATH=<repo root>:
-  PYTORCH_ENABLE_MPS_FALLBACK=1 PYTHONPATH=$(cd .. && pwd) \
-    tools/toxdl2_env/bin/python run_inference_9779.py
+Run in place (no copy into the ToxDL2 checkout). Its modules live in two dirs —
+src/ (dataset, model, utils) and the repo root (parameters/) — so put both on
+PYTHONPATH; TOXDL2_DIR overrides the default tools/ToxDL2 checkout location:
+  PYTORCH_ENABLE_MPS_FALLBACK=1 PYTHONPATH=tools/ToxDL2/src:tools/ToxDL2 \
+    tools/toxdl2_env/bin/python scripts/external_tools/toxdl2/run_inference_9779.py
 """
 import os, sys, time, csv, io
 os.environ.setdefault("PYTORCH_ENABLE_MPS_FALLBACK", "1")
@@ -19,9 +21,11 @@ import requests
 import torch
 
 # ---- paths (absolute, relative to the ToxFam project root) ----
-SRC = Path(__file__).resolve().parent                 # tools/ToxDL2/src
-REPO = SRC.parent                                      # tools/ToxDL2
-TOXFAM_ROOT = REPO.parents[1]                          # students/ToxFam
+# ToxFam root = nearest ancestor with pyproject.toml; runs in place from
+# scripts/external_tools/toxdl2/ (no copy into the ToxDL2 checkout needed).
+TOXFAM_ROOT = next(p for p in Path(__file__).resolve().parents if (p / "pyproject.toml").exists())
+# ToxDL2 checkout supplying the model + importable modules (also on PYTHONPATH).
+REPO = Path(os.environ.get("TOXDL2_DIR", TOXFAM_ROOT / "tools/ToxDL2"))
 TEST_FASTA = TOXFAM_ROOT / "benchmark/test_set/_shared/test.fasta"
 OUT_CSV = TOXFAM_ROOT / "benchmark/test_set/toxdl2/test_scores.csv"
 CACHE_OLD = TOXFAM_ROOT / "benchmark/_score_cache/toxdl2_old_test.csv"

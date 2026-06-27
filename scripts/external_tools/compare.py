@@ -38,7 +38,8 @@ from sklearn.metrics import (
     roc_curve, precision_recall_curve,
 )
 
-ROOT = Path(__file__).resolve().parents[2]
+# ToxFam root = nearest ancestor with pyproject.toml (location-independent).
+ROOT = next(p for p in Path(__file__).resolve().parents if (p / "pyproject.toml").exists())
 BASE = ROOT / "benchmark/test_set"
 SHARED = BASE / "_shared"
 OUT = BASE / "comparison"

@@ -174,12 +174,13 @@ git clone https://github.com/shzhulin/ToxDL2 tools/ToxDL2
 git -C tools/ToxDL2 checkout a26547515e8cd27095ceb861f7346e49985b0d9d
 uv venv --python 3.11 tools/toxdl2_env     # then install torch, torch-geometric, fair-esm,
 #    gensim, numpy==1.26.4, scikit-learn, biopython, requests (exact versions in run_notes)
-cp scripts/external_tools/toxdl2/*.py tools/ToxDL2/src/   # the drivers run from inside the clone
 #    REQUIRED patch: set return_contacts=False in tools/ToxDL2/src/dataset.py (~8x faster,
-#    identical output). Fetch AF structures with <=8 workers (AlphaFold DB throttles higher).
-tools/toxdl2_env/bin/python tools/ToxDL2/src/prefetch_structures.py
-PYTORCH_ENABLE_MPS_FALLBACK=1 PYTHONPATH=tools/ToxDL2 \
-  tools/toxdl2_env/bin/python tools/ToxDL2/src/run_inference_9779.py
+#    identical output). The drivers run IN PLACE from scripts/external_tools/toxdl2/ (no copy);
+#    run_inference/validate need ToxDL2's modules on PYTHONPATH — src/ (dataset/model/utils) and
+#    the repo root (parameters/). Fetch AF structures with <=8 workers (AFDB throttles higher).
+tools/toxdl2_env/bin/python scripts/external_tools/toxdl2/prefetch_structures.py   # pure HTTP, no PYTHONPATH
+PYTORCH_ENABLE_MPS_FALLBACK=1 PYTHONPATH=tools/ToxDL2/src:tools/ToxDL2 \
+  tools/toxdl2_env/bin/python scripts/external_tools/toxdl2/run_inference_9779.py
 #    see results/notes/toxdl2_run_notes.md  ->  benchmark/test_set/toxdl2/test_scores.csv
 #
 #    NB: re-deriving ONLY the contamination set / clean subset is much lighter — it needs
@@ -201,7 +202,7 @@ scripts/external_tools/
 ├── build_harness.py       # shared FASTA + ground truth + ToxFam p_toxic   (--shared-only)
 ├── run_toxinpred3.py      # parallel driver for the unmodified ToxinPred 3.0 CLI
 ├── compare.py             # unified metrics + paired bootstrap + ROC/PR figure
-├── toxdl2/                # ToxDL 2.0 drivers (copy into tools/ToxDL2/src/ to reproduce)
+├── toxdl2/                # ToxDL 2.0 drivers (run in place; ToxDL2 modules via PYTHONPATH)
 │   ├── prefetch_structures.py   # parallel AlphaFold structure fetch (<=8 workers + backoff)
 │   ├── run_inference_9779.py    # resumable ESM(MPS)+GCN(CPU) inference; reuses cached scores
 │   ├── validate_9779.py         # one-protein numeric check vs a cached score
@@ -215,6 +216,25 @@ scripts/external_tools/
     ├── notes/                # per-tool provenance: toxinpred3, toxdl2 (+ feasibility)
     └── scores/               # per-protein predictions (accession + score; no sequences)
 ```
+
+## Snapshot vs live layout
+
+The same artifacts exist in two parallel trees under different names. The committed
+`results/` is the **frozen snapshot** the manuscript cites; `benchmark/test_set/` is
+the **gitignored working tree** the scripts (re)generate. `compare.py` reads whichever
+you point `--scores-base` / `--labels-dir` at (it defaults to the live tree).
+
+| Artifact            | Committed snapshot (in git)     | Live working tree (gitignored, regenerated) |
+| ------------------- | ------------------------------- | ------------------------------------------- |
+| ground-truth labels | `results/ground_truth/`         | `benchmark/test_set/_shared/`               |
+| clean-subset labels | `results/ground_truth_clean/`   | `benchmark/test_set/_shared_clean/`         |
+| per-method scores   | `results/scores/<method>/`      | `benchmark/test_set/<method>/`              |
+| comparison outputs  | `results/comparison{,_clean}/`  | `benchmark/test_set/comparison{,_clean}/`   |
+
+The `_shared` → `ground_truth` rename is historical: `build_harness.py` writes the
+live `_shared/` substrate, and the committed copy was renamed `ground_truth/` for
+clarity. The split itself is intentional — never commit the regenerable working tree;
+commit a frozen snapshot instead.
 
 Committed (small, reproducible): scripts, the comparison artifacts, per-protein
 prediction scores, and ground-truth labels (accession + is_toxic + family + length,

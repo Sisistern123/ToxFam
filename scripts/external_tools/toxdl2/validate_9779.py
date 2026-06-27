@@ -4,9 +4,9 @@ os.environ.setdefault("PYTORCH_ENABLE_MPS_FALLBACK", "1")
 from pathlib import Path
 import torch
 
-SRC = Path(__file__).resolve().parent
-REPO = SRC.parent
-TOXFAM_ROOT = REPO.parents[1]
+# ToxFam root = nearest ancestor with pyproject.toml (runs in place; no copy).
+TOXFAM_ROOT = next(p for p in Path(__file__).resolve().parents if (p / "pyproject.toml").exists())
+REPO = Path(os.environ.get("TOXDL2_DIR", TOXFAM_ROOT / "tools/ToxDL2"))
 CACHE_OLD = TOXFAM_ROOT / "benchmark/_score_cache/toxdl2_old_test.csv"
 TEST_FASTA = TOXFAM_ROOT / "benchmark/test_set/_shared/test.fasta"
 

@@ -9,9 +9,8 @@ from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import requests
 
-SRC = Path(__file__).resolve().parent
-REPO = SRC.parent
-ROOT = REPO.parents[1]
+# ToxFam root = nearest ancestor with pyproject.toml (runs in place; no copy).
+ROOT = next(p for p in Path(__file__).resolve().parents if (p / "pyproject.toml").exists())
 TEST_FASTA = ROOT / "benchmark/test_set/_shared/test.fasta"
 CACHE_OLD = ROOT / "benchmark/_score_cache/toxdl2_old_test.csv"
 OUT_CSV = ROOT / "benchmark/test_set/toxdl2/test_scores.csv"

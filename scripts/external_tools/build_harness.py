@@ -37,7 +37,8 @@ from toxfam.evaluation.metrics import (
 from toxfam.model.inference import load_calibrated_model
 from toxfam.device import get_device
 
-ROOT = Path(__file__).resolve().parents[2]
+# ToxFam root = nearest ancestor with pyproject.toml (location-independent).
+ROOT = next(p for p in Path(__file__).resolve().parents if (p / "pyproject.toml").exists())
 TRAIN_CSV = ROOT / "data/processed/training_data.csv"
 EMB_H5 = ROOT / "data/processed/embeddings.h5"
 TAX_H5 = ROOT / "data/processed/taxonomy_vectors.h5"
