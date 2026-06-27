@@ -57,6 +57,12 @@ tools/signalp6/.venv/
 tools/signalp6/uv.lock
 tools/signalp6/bin/
 
+# ToxDL 2.0 external tool: third-party clone + its venv, fetched only to (re)run
+# the external-tool benchmark. Outputs are committed under
+# scripts/external_tools/results/; setup is documented there. See that README.
+tools/ToxDL2/
+tools/toxdl2_env/
+
 
 # Built by scripts/package_models.py
 models.zip

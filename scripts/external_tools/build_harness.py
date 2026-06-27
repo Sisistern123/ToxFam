@@ -83,11 +83,19 @@ def toxfam_p_toxic(df: pd.DataFrame, model, idx_to_label, tax_dim: int) -> np.nd
     with h5py.File(EMB_H5, "r") as f:
         emb = torch.stack([torch.tensor(f[i][:], dtype=torch.float32) for i in idents])
     with h5py.File(TAX_H5, "r") as tf:
-        tax = torch.stack([
-            torch.tensor(tf[i][:], dtype=torch.float32) if i in tf
-            else torch.zeros(tax_dim, dtype=torch.float32)
-            for i in idents
-        ])
+        tax_rows, missing_tax = [], []
+        for i in idents:
+            if i in tf:
+                tax_rows.append(torch.tensor(tf[i][:], dtype=torch.float32))
+            else:
+                missing_tax.append(i)
+                tax_rows.append(torch.zeros(tax_dim, dtype=torch.float32))
+        tax = torch.stack(tax_rows)
+    if missing_tax:
+        # The trained pipeline (ToxDataset) raises on a missing tax vector; we zero-fill
+        # to stay runnable, but surface it so a silent score divergence can't pass unnoticed.
+        print(f"  [warn] {len(missing_tax)} proteins lack a taxonomy vector; zero-filled. "
+              f"e.g. {missing_tax[:3]}")
     nontox_idx = [i for i, lbl in idx_to_label.items()
                   if str(lbl).lower() in NONTOXIN_LABELS]
     probs = []
@@ -134,16 +142,18 @@ def main() -> None:
     assert mcfg.architecture == "MultiInputMLP", mcfg.architecture
     tax_dim = mcfg.tax_dim
 
+    scores = {}
     for name, sub in (("test", test), ("val", val)):
         p = toxfam_p_toxic(sub, model, idx_to_label, tax_dim)
+        scores[name] = p
         pd.DataFrame({"identifier": sub.identifier.values, "score": p}).to_csv(
             TOXFAM / f"{name}_scores.csv", index=False)
 
     # Sanity: binary metrics, threshold tuned on val (Youden), as in the paper.
     yv = val["Protein families"].apply(is_toxic).values
     yt = test["Protein families"].apply(is_toxic).values
-    sv = pd.read_csv(TOXFAM / "val_scores.csv").score.values
-    st = pd.read_csv(TOXFAM / "test_scores.csv").score.values
+    sv = scores["val"]
+    st = scores["test"]
     thr = find_optimal_threshold(yv, sv, method="youden")["optimal_threshold"]
     m_def = calculate_binary_metrics_with_scores(yt, st, threshold=0.5)
     m_opt = calculate_binary_metrics_with_scores(yt, st, threshold=thr)

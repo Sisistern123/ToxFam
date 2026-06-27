@@ -167,14 +167,25 @@ uv run python scripts/external_tools/build_harness.py
 #    (repeat for val.fasta -> val_scores.csv)
 
 # 3. ToxDL 2.0  (github.com/shzhulin/ToxDL2 @ a265475; weights committed in-repo;
-#    ESM-2 650M + AlphaFold DB structures + UniProt InterPro domains). Drivers in
-#    scripts/external_tools/toxdl2/ (copy into tools/ToxDL2/src/). REQUIRED patch:
-#    set return_contacts=False in ToxDL2's dataset.py (~8x faster, identical output).
-#    Fetch AF structures with <=8 workers (AlphaFold DB throttles at higher concurrency).
+#    ESM-2 650M + AlphaFold DB structures + UniProt InterPro domains).
+#    tools/ToxDL2/ and tools/toxdl2_env/ are gitignored (third-party clone + its venv,
+#    NOT shipped) — recreate them once with this one-time setup:
+git clone https://github.com/shzhulin/ToxDL2 tools/ToxDL2
+git -C tools/ToxDL2 checkout a26547515e8cd27095ceb861f7346e49985b0d9d
+uv venv --python 3.11 tools/toxdl2_env     # then install torch, torch-geometric, fair-esm,
+#    gensim, numpy==1.26.4, scikit-learn, biopython, requests (exact versions in run_notes)
+cp scripts/external_tools/toxdl2/*.py tools/ToxDL2/src/   # the drivers run from inside the clone
+#    REQUIRED patch: set return_contacts=False in tools/ToxDL2/src/dataset.py (~8x faster,
+#    identical output). Fetch AF structures with <=8 workers (AlphaFold DB throttles higher).
 tools/toxdl2_env/bin/python tools/ToxDL2/src/prefetch_structures.py
 PYTORCH_ENABLE_MPS_FALLBACK=1 PYTHONPATH=tools/ToxDL2 \
   tools/toxdl2_env/bin/python tools/ToxDL2/src/run_inference_9779.py
 #    see results/notes/toxdl2_run_notes.md  ->  benchmark/test_set/toxdl2/test_scores.csv
+#
+#    NB: re-deriving ONLY the contamination set / clean subset is much lighter — it needs
+#    just the clone's two data files (no venv, no inference, no structures):
+#      git clone ... tools/ToxDL2 && git -C tools/ToxDL2 checkout a265475
+#      uv run python scripts/external_tools/toxdl2/build_clean_subset.py   # prints train=/valid= counts
 
 # 4. compare (full + contamination-excluded clean subset)
 uv run python scripts/external_tools/compare.py

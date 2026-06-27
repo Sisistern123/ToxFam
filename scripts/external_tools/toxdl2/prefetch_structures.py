@@ -4,7 +4,7 @@ Downloads AF structures concurrently (atomic temp+rename) so the inference loop
 finds them on disk and never blocks on HTTP. Only fetches accessions we still
 need (9,779 test minus cached-reuse minus already-scored).
 """
-import os, csv, time, random
+import os, csv, time, random, threading
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import requests
@@ -42,7 +42,9 @@ def fetch(acc):
             try:
                 r = requests.get(f"https://alphafold.ebi.ac.uk/files/AF-{acc}-F1-model_{v}.pdb", timeout=30)
                 if r.status_code == 200 and r.text.startswith(("HEADER","ATOM","MODEL","REMARK","TITLE","CRYST")):
-                    tmp = dest.with_suffix(f".pdb.tmp{os.getpid()}")
+                    # pid alone is NOT unique across ThreadPoolExecutor threads;
+                    # add the thread id so concurrent fetches never share a tmp path.
+                    tmp = dest.with_suffix(f".pdb.tmp{os.getpid()}.{threading.get_ident()}")
                     tmp.write_text(r.text); os.replace(tmp, dest)
                     return acc, "ok"
                 if r.status_code in (429, 500, 502, 503, 504):

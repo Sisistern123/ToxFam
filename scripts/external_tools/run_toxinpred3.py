@@ -24,7 +24,6 @@ Usage:
 import argparse
 import csv
 import os
-import re
 import subprocess
 import sys
 import time
@@ -32,7 +31,6 @@ from concurrent.futures import ProcessPoolExecutor, as_completed
 
 PYEXE = sys.executable
 MODULE = "toxinpred3.python_scripts.toxinpred3"
-VALID = set("ARNDCQEGHILKMFPSTWYV-")
 
 
 def parse_fasta(fp):
@@ -42,7 +40,8 @@ def parse_fasta(fp):
             if line.startswith(">"):
                 if name is not None:
                     seqs.append("".join(buf))
-                name = line[1:].split()[0]
+                parts = line[1:].split()
+                name = parts[0] if parts else f"_unnamed_{len(ids)}"
                 ids.append(name)
                 buf = []
             else:
@@ -116,6 +115,11 @@ def main():
             with open(out_path) as fh:
                 r = csv.DictReader(fh)
                 cols = r.fieldnames
+                if not cols:  # empty/header-less output: don't crash, skip the chunk
+                    print(f"  chunk {idx} produced empty output; treating as failed",
+                          flush=True)
+                    failed_chunks.append((idx, rc, "empty output"))
+                    continue
                 idcol = "ID" if "ID" in cols else "Subject"
                 for row in r:
                     rid = row[idcol].lstrip(">")

@@ -25,6 +25,9 @@ with open(CACHE_OLD) as f:
     for row in csv.DictReader(f):
         if row.get("has_structure") == "1" and row.get("score") and row["identifier"] in test_ids:
             cache[row["identifier"]] = float(row["score"])
+if not cache:
+    raise SystemExit("No cached accession is also in the 9,779 test set with "
+                     "has_structure=1 and a numeric score — nothing to validate against.")
 acc = next(iter(cache))
 ref = cache[acc]
 print(f"validating {acc}  cached_score={ref}")
@@ -41,7 +44,8 @@ url = ("https://rest.uniprot.org/uniprotkb/accessions"
        f"?accessions={acc}&fields=accession,xref_interpro&format=tsv")
 r = requests.get(url, timeout=60)
 rows = list(csv.reader(r.text.splitlines(), delimiter="\t"))
-iprs = [x for x in rows[1][1].replace(" ", "").split(";") if x.startswith("IPR")] if len(rows) > 1 else []
+iprs = ([x for x in rows[1][1].replace(" ", "").split(";") if x.startswith("IPR")]
+        if len(rows) > 1 and len(rows[1]) > 1 else [])
 print("domains", iprs)
 
 feat = utils.obtain_protein_feature(str(dest), iprs, str(REPO / "checkpoints/protein_domain_embeddings.model"))

@@ -55,6 +55,8 @@ N_BOOT = 2000
 
 
 def youden_threshold(y: np.ndarray, s: np.ndarray) -> float:
+    if len(np.unique(y)) < 2:  # empty or single-class val merge -> roc_curve degenerate
+        return 0.5
     fpr, tpr, thr = roc_curve(y, s)
     j = tpr - fpr
     return float(thr[int(np.argmax(j))])
@@ -70,12 +72,12 @@ def load_method(mdir: str) -> dict | None:
     if "score" not in test.columns or "identifier" not in test.columns:
         print(f"  [skip] {mdir}: test_scores.csv missing identifier/score columns")
         return None
-    test = test[["identifier", "score"]].copy()
+    test = test[["identifier", "score"]].drop_duplicates("identifier").copy()
     test["score"] = pd.to_numeric(test["score"], errors="coerce")
     vf = d / "val_scores.csv"
     val = None
     if vf.exists():
-        val = pd.read_csv(vf)[["identifier", "score"]].copy()
+        val = pd.read_csv(vf)[["identifier", "score"]].drop_duplicates("identifier").copy()
         val["score"] = pd.to_numeric(val["score"], errors="coerce")
     return {"key": mdir, "name": METHODS[mdir], "test": test, "val": val}
 
@@ -116,10 +118,10 @@ def main() -> None:
     if not (SHARED / "test_labels.csv").exists():
         sys.exit(f"Missing {SHARED}/test_labels.csv — run "
                  "`build_harness.py --shared-only` first.")
-    labels = pd.read_csv(SHARED / "test_labels.csv")[["identifier", "is_toxic"]]
+    labels = pd.read_csv(SHARED / "test_labels.csv")[["identifier", "is_toxic"]].drop_duplicates("identifier")
     vlabels = None
     if (SHARED / "val_labels.csv").exists():
-        vlabels = pd.read_csv(SHARED / "val_labels.csv")[["identifier", "is_toxic"]]
+        vlabels = pd.read_csv(SHARED / "val_labels.csv")[["identifier", "is_toxic"]].drop_duplicates("identifier")
 
     loaded = [m for k in METHODS if (m := load_method(k))]
     if not loaded:
@@ -157,6 +159,9 @@ def main() -> None:
                    "threshold_src": thr_src})
         rows_full.append(mm)
     loaded = kept
+    if not loaded:
+        sys.exit("All present methods fell below the coverage threshold "
+                 f"({int(MIN_COVERAGE*100)}%) — nothing to compare.")
 
     full = pd.DataFrame(rows_full).set_index("method")
     cols = ["n_scored", "coverage", "roc_auc", "pr_auc", "mcc", "mcc_at_0.5", "f1",
@@ -200,6 +205,9 @@ def main() -> None:
                     continue
                 d_roc.append(roc_auc_score(yb, base[idx]) - roc_auc_score(yb, other[idx]))
                 d_pr.append(average_precision_score(yb, base[idx]) - average_precision_score(yb, other[idx]))
+            if not d_roc:  # every resample was single-class -> no usable diffs
+                print(f"  [skip] paired bootstrap vs {m['name']}: no two-class resamples")
+                continue
             paired_rows.append({
                 "comparison": f"ToxFam - {m['name']}",
                 "d_roc_auc": float(np.mean(d_roc)),

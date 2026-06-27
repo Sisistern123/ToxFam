@@ -150,8 +150,9 @@ def main():
             print(f"  infer {n}/{len(todo)}  {rate:.2f}/s  eta {(len(todo)-n)/max(rate,1e-9)/60:.1f}m", flush=True)
             _write(all_ids, cache, done, results)
     _write(all_ids, cache, done, results)
-    scored = sum(1 for a in all_ids if (a in cache or a in done or a in results) and
-                 (cache.get(a, done.get(a, results.get(a, ("",))))[0] != ""))
+    # Count exactly what _write emitted: same results>done>cache precedence.
+    scored = sum(1 for a in all_ids
+                 if (results.get(a) or done.get(a) or cache.get(a) or ("",))[0] != "")
     print(f"DONE_TOXDL2  total={len(all_ids)} scored={scored} -> {OUT_CSV}", flush=True)
 
 
