@@ -75,6 +75,9 @@ Each method is evaluated independently; results are compared separately.
 # Run HBI baseline on test set
 uv run toxfam eval hbi test_set
 
+# Run EAT baseline (embedding-based annotation transfer; embedding-space analog of HBI)
+uv run toxfam eval eat test_set
+
 # Run a trained model on test set
 uv run toxfam eval model test_set --model-dir model/model_output/combined_run
 
@@ -121,8 +124,9 @@ src/toxfam/
 │   └── orchestrator.py       # run_training(config) + binary metrics pipeline
 ├── prediction.py             # toxfam predict: label-free inference (top-K family + binary toxicity)
 ├── evaluation/               # Benchmark evaluation
-│   ├── runner.py             # run_hbi_evaluation, run_model_evaluation, compare_methods
+│   ├── runner.py             # run_{hbi,eat,model}_evaluation, compare_methods
 │   ├── hbi.py                # MMseqs2 HBI search (run_hbi_search, HBIResult)
+│   ├── eat.py                # Embedding 1-NN annotation transfer (run_eat_search, EATResult)
 │   ├── metrics.py            # MetricsResult + binary score metrics + threshold optimization
 │   └── binary.py             # Score-based binary evaluation (P(toxic), ROC-AUC, threshold opt)
 └── visualization/            # Plotting utilities
@@ -199,8 +203,9 @@ benchmark/                      # Evaluation results only (gitignored, regenerat
 - `toxfam.model.calibration` — `ModelWithTemperature` wraps trained model with learned temperature scaling
 - `toxfam.model.architectures` — `ModularMLP` (projector + backbone), `MultiInputMLP` (two-branch)
 - `toxfam.model.inference` — loads calibrated models from training output, runs inference for evaluation
-- `toxfam.evaluation.runner` — dataset registry, `run_hbi_evaluation()`, `run_model_evaluation()`, `compare_methods()`; each writes standard outputs (predictions.csv, metrics.json, run_metadata.json) to `benchmark/{dataset}/{method}/`
+- `toxfam.evaluation.runner` — dataset registry, `run_hbi_evaluation()`, `run_eat_evaluation()`, `run_model_evaluation()`, `compare_methods()`; each writes standard outputs (predictions.csv, metrics.json, run_metadata.json) to `benchmark/{dataset}/{method}/`
 - `toxfam.evaluation.hbi` — MMseqs2 search wrapper (`run_hbi_search()` → `HBIResult`)
+- `toxfam.evaluation.eat` — embedding 1-NN annotation transfer (`run_eat_search()` → `EATResult`); reference = training split, transfers nearest ProtT5 neighbour's family + distance-margin `p_toxic`
 - `toxfam.evaluation.metrics` — unified metrics (`calculate_metrics()` → `MetricsResult`)
 
 ### Data Format Conventions

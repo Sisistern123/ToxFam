@@ -152,11 +152,14 @@ def calculate_metrics(
     )
 
 
+def is_nontoxin(label: object) -> bool:
+    """True if a family label denotes a non-toxin class (case-insensitive)."""
+    return str(label).lower() in NONTOXIN_LABELS
+
+
 def to_binary_class(label: str) -> str:
     """Map a protein family label to binary toxin/nontoxin."""
-    if str(label).lower() in NONTOXIN_LABELS:
-        return "nontoxin"
-    return "toxin"
+    return "nontoxin" if is_nontoxin(label) else "toxin"
 
 
 def calculate_binary_metrics(

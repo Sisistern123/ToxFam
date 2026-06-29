@@ -387,6 +387,26 @@ def eval_hbi(
     run_hbi_evaluation(dataset)
 
 
+@eval_app.command("eat")
+def eval_eat(
+    dataset: Annotated[
+        str,
+        typer.Argument(
+            help="Dataset to evaluate: test_set, val_set, non_metazoan, unreviewed"
+        ),
+    ],
+) -> None:
+    """Run EAT (embedding-based annotation transfer) on a dataset.
+
+    Transfers the family label of each query's nearest ProtT5 neighbour (k=1,
+    Euclidean) among the training split — the embedding-space analog of HBI.
+    Results are saved to benchmark/{dataset}/eat/.
+    """
+    from toxfam.evaluation.runner import run_eat_evaluation
+
+    run_eat_evaluation(dataset)
+
+
 @eval_app.command("model")
 def eval_model(
     dataset: Annotated[

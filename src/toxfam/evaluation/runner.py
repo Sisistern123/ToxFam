@@ -3,7 +3,8 @@
 Each method (HBI, NN model) writes results to a standard directory:
     benchmark/{dataset}/{method}/
         predictions.csv       — identifier, actual_label, predicted_label, confidence,
-                                confidence_uncalibrated (NN models only)
+                                confidence_uncalibrated (NN models only),
+                                p_toxic (EAT only)
         metrics.json          — MetricsResult.to_json_dict()
         run_metadata.json     — method, dataset, timestamp, git commit, parameters
         confusion_matrix.png
@@ -25,6 +26,7 @@ from rich.console import Console
 from toxfam._paths import benchmark_dir, evaluation_data_dir, processed_dir
 from toxfam.data._fasta import write_fasta
 from toxfam.data.normalization import normalize_protein_families
+from toxfam.evaluation.eat import run_eat_search
 from toxfam.evaluation.hbi import NO_HIT_LABEL, run_hbi_search
 from toxfam.evaluation.metrics import (
     MetricsResult,
@@ -283,6 +285,129 @@ def run_hbi_evaluation(dataset: str) -> MetricsResult:
 
 
 # ---------------------------------------------------------------------------
+# EAT evaluation (embedding annotation transfer — the embedding-space analog of HBI)
+# ---------------------------------------------------------------------------
+
+
+def run_eat_evaluation(dataset: str) -> MetricsResult:
+    """Run EAT (embedding-based annotation transfer) on a dataset and save results.
+
+    For each query protein, transfer the family label of its nearest ProtT5
+    neighbour (k=1, Euclidean) among the *training split* — the same data the
+    MLP trains on, and disjoint from val/test (no leakage). Mirrors
+    ``run_hbi_evaluation`` and writes the standard ``benchmark/{dataset}/eat/``
+    outputs, so ``toxfam eval compare`` picks it up automatically.
+    """
+    import h5py
+
+    console.print(f"\n[bold]Running EAT evaluation on '{dataset}'[/]")
+
+    df = load_dataset(dataset)
+    proc = processed_dir()
+    output_dir = benchmark_dir() / dataset / "eat"
+
+    # Reference = the training split (what the MLP trained on). Its identifiers are
+    # disjoint from val/test (the Split column partitions them), so EAT never looks
+    # a query up against itself.
+    ref_h5 = proc / "embeddings.h5"
+    train_df = pd.read_csv(proc / "training_data.csv")
+    train_df = train_df[train_df["Split"] == "train"].reset_index(drop=True)
+    # NB: do NOT collapse train-only family labels to "other" here. run_eat_search
+    # derives the toxic/non-toxin mask for p_toxic from these labels, and collapsing
+    # "nontox" -> "other" would mark every non-toxin reference as toxic (degenerate
+    # p_toxic on datasets whose queries lack the "nontox" label, e.g. non_metazoan).
+    # Family-label comparability is instead handled AFTER prediction (unknown
+    # predicted labels -> "other", below), which is behaviour-identical for the
+    # family metric since relabelling a reference never changes which one is nearest.
+
+    # Query embeddings H5 (evaluation datasets carry their own).
+    cfg = DATASETS[dataset]
+    if cfg["source"] == "evaluation":
+        query_h5 = evaluation_data_dir() / dataset / cfg["h5"]
+    else:
+        query_h5 = ref_h5
+    for h5 in (ref_h5, query_h5):
+        if not h5.exists():
+            raise FileNotFoundError(f"Embeddings not found: {h5}")
+
+    # Filter reference + queries to identifiers actually present in their H5.
+    with h5py.File(ref_h5, "r") as f:
+        ref_keys = set(f.keys())
+    with h5py.File(query_h5, "r") as f:
+        query_keys = set(f.keys())
+    n_ref_before = len(train_df)
+    train_df = train_df[train_df["identifier"].isin(ref_keys)].reset_index(drop=True)
+    if len(train_df) < n_ref_before:
+        console.print(
+            f"   Reference: {len(train_df)}/{n_ref_before} train proteins have embeddings"
+        )
+    n_q_before = len(df)
+    df = df[df["identifier"].isin(query_keys)].reset_index(drop=True)
+    if len(df) < n_q_before:
+        console.print(f"   Filtered to {len(df)}/{n_q_before} queries with embeddings")
+
+    # 1-NN embedding annotation transfer.
+    eat_result = run_eat_search(
+        query_h5=query_h5,
+        ref_h5=ref_h5,
+        reference_df=train_df,
+        query_ids=df["identifier"].tolist(),
+    )
+    console.print(
+        f"   Reference: {eat_result.n_reference} proteins; queries: {eat_result.n_queries}"
+    )
+
+    # Merge predictions with ground truth.
+    merged = df[["identifier", "Protein families"]].merge(
+        eat_result.predictions, on="identifier", how="left"
+    )
+
+    # Map unknown predicted labels to "other" (mirror HBI).
+    valid_labels = set(df["Protein families"].unique())
+    unknown = set(merged["eat_prediction"].unique()) - valid_labels
+    if unknown:
+        console.print(f"   Mapping {len(unknown)} unknown EAT labels to 'other'")
+        merged["eat_prediction"] = merged["eat_prediction"].replace(
+            {lbl: "other" for lbl in unknown}
+        )
+
+    # Compute metrics (task-gated, identical to HBI).
+    task = _get_task(dataset)
+    if task == "binary":
+        metrics = calculate_binary_metrics(
+            merged["Protein families"], merged["eat_prediction"]
+        )
+    else:
+        metrics = calculate_metrics(
+            merged["Protein families"], merged["eat_prediction"]
+        )
+
+    # Build standard predictions CSV (+ p_toxic for the binary toxicity comparison).
+    predictions_df = pd.DataFrame(
+        {
+            "identifier": merged["identifier"],
+            "actual_label": merged["Protein families"],
+            "predicted_label": merged["eat_prediction"],
+            "confidence": merged["eat_confidence"],
+            "p_toxic": merged["p_toxic"],
+        }
+    )
+
+    _save_run(
+        predictions_df,
+        metrics,
+        method="eat",
+        dataset=dataset,
+        params={"k": 1, "metric": "euclidean", "reference": "training_data[train]"},
+        output_dir=output_dir,
+    )
+
+    print_metrics_table({"EAT": metrics})
+    console.print(f"   Results saved to: {output_dir}")
+    return metrics
+
+
+# ---------------------------------------------------------------------------
 # Model evaluation
 # ---------------------------------------------------------------------------
 
@@ -400,6 +525,15 @@ def compare_methods(dataset: str) -> pd.DataFrame:
         with open(metrics_path) as f:
             data = json.load(f)
 
+        # Skip foreign metrics.json (e.g. the score-based external-tool benchmark,
+        # which shares benchmark/{dataset}/ but uses a different schema).
+        if "numeric_metrics" not in data:
+            console.print(
+                f"   [yellow]Skipping '{method_name}': metrics.json has no "
+                "'numeric_metrics' (not a toxfam eval method)[/]"
+            )
+            continue
+
         nm = data["numeric_metrics"]
         # Reconstruct a lightweight MetricsResult for the table
         from types import SimpleNamespace
@@ -449,7 +583,9 @@ def compare_methods(dataset: str) -> pd.DataFrame:
         metrics_path = method_dir / "metrics.json"
         if metrics_path.exists() and method_dir.name != "comparison":
             with open(metrics_path) as f:
-                full_report[method_dir.name] = json.load(f)
+                data = json.load(f)
+            if "numeric_metrics" in data:  # skip foreign (external-tool) metrics.json
+                full_report[method_dir.name] = data
 
     with open(comparison_dir / "full_report.json", "w") as f:
         json.dump(full_report, f, indent=4)
