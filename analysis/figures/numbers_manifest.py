@@ -2,7 +2,9 @@
 from __future__ import annotations
 
 import json
+import warnings
 
+import numpy as np
 import pandas as pd
 
 from rich.console import Console
@@ -23,9 +25,29 @@ ADJ_CSV = get_project_root() / "analysis" / "model_test_wrong_conf_annotated.csv
 console = Console()
 
 
+def _boot_two_se(y_true, y_pred, metric_fn, *, n_boot: int = MCC_CI_N_BOOT, seed: int = 42) -> dict:
+    """Point estimate of ``metric_fn`` plus +/-2 bootstrap standard errors.
+
+    Resamples (y_true, y_pred) pairs with replacement (seed 42, 2000 resamples =
+    the same convention as the binary external-tool comparison), so the family
+    capability-matrix metrics carry the same +/-2*SE uncertainty as the binary ones.
+    """
+    yt, yp = np.asarray(y_true), np.asarray(y_pred)
+    n = len(yt)
+    rng = np.random.default_rng(seed)
+    vals = np.empty(n_boot, dtype=float)
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        for i in range(n_boot):
+            idx = rng.integers(0, n, size=n)
+            vals[i] = metric_fn(yt[idx], yp[idx])
+    return {"point": float(metric_fn(yt, yp)), "two_se": float(2.0 * vals.std(ddof=1)), "n": n}
+
+
 def main() -> None:
     classes = test_set_class_list()
     hbi = load_preds("test_set", "hbi")
+    eat = load_preds("test_set", "eat")
     nn = load_preds("test_set", "nn_combined_run")
     std = load_preds("test_set", "nn_standard_run")
     nohit = hbi["predicted_label"] == NO_HIT_LABEL
@@ -51,6 +73,19 @@ def main() -> None:
         },
         "mcc_ci_nn_combined": bootstrap_label_metric_ci(
             nn["actual_label"].values, nn["predicted_label"].values, overall_mcc, n_boot=MCC_CI_N_BOOT),
+        # Family capability matrix (Table: binary + family). All-class accuracy and
+        # overall MCC, each with +/-2 bootstrap SE, for the three family-capable methods
+        # (the external toxin predictors are binary-only and absent here).
+        "family_capability": {
+            m: {
+                "accuracy": _boot_two_se(
+                    d["actual_label"].values, d["predicted_label"].values,
+                    lambda a, b: float((a == b).mean())),
+                "mcc": _boot_two_se(
+                    d["actual_label"].values, d["predicted_label"].values, overall_mcc),
+            }
+            for m, d in [("hbi", hbi), ("eat", eat), ("nn_combined", nn)]
+        },
         "macro_mcc_by_support": macro_mcc_by_support(nn, hbi, class_list=classes).to_dict("records"),
         "adjudication": adjudication_summary(ADJ_CSV),
     }

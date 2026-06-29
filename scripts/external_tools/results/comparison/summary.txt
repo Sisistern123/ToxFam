@@ -19,8 +19,16 @@ EAT (1-NN ProtT5)   0.9967  0.9491  0.7793      0.8813  0.7734     0.6356  0.987
 ToxinPred 3.0       0.9217  0.5737  0.5400      0.5970  0.5285     0.3824  0.8553
 ToxDL 2.0           0.9921  0.7976  0.8078      0.8078  0.8066     0.6879  0.9748
 
+Per-method bootstrap standard error (common subset, 2000 resamples, seed 42):
+                   roc_auc_se  pr_auc_se   mcc_se  mcc_at_0.5_se
+method                                                          
+ToxFam (emb+tax)      0.00233    0.00909  0.01071        0.00983
+EAT (1-NN ProtT5)     0.00061    0.00921  0.01196        0.01132
+ToxinPred 3.0         0.00901    0.02560  0.01433        0.01727
+ToxDL 2.0             0.00089    0.02368  0.01174        0.01174
+
 Paired bootstrap vs ToxFam (positive = ToxFam better; CI excludes 0 => significant):
-                comparison  d_roc_auc  d_roc_lo  d_roc_hi  d_pr_auc  d_pr_lo  d_pr_hi  n_common
-ToxFam - EAT (1-NN ProtT5)    -0.0019   -0.0060    0.0010    0.0060  -0.0081   0.0212      9201
-    ToxFam - ToxinPred 3.0     0.0734    0.0575    0.0908    0.3810   0.3338   0.4294      9201
-        ToxFam - ToxDL 2.0     0.0028   -0.0023    0.0067    0.1554   0.1102   0.2014      9201
+                comparison  d_roc_auc  d_roc_lo  d_roc_hi  d_pr_auc  d_pr_lo  d_pr_hi  d_mcc_at_0.5  d_mcc_lo  d_mcc_hi  n_common
+ToxFam - EAT (1-NN ProtT5)    -0.0019   -0.0060    0.0010    0.0060  -0.0081   0.0212        0.0184   -0.0034    0.0399      9201
+    ToxFam - ToxinPred 3.0     0.0734    0.0575    0.0908    0.3810   0.3338   0.4294        0.3031    0.2725    0.3352      9201
+        ToxFam - ToxDL 2.0     0.0028   -0.0023    0.0067    0.1554   0.1102   0.2014        0.0917    0.0713    0.1130      9201

@@ -186,6 +186,38 @@ def main() -> None:
     common = pd.DataFrame(rows_common).set_index("method")
     common.to_csv(OUT / "metrics_common.csv")
 
+    # Per-method bootstrap standard errors on the common subset (same SEED/N_BOOT).
+    # SE = std (ddof=1) of each metric's bootstrap distribution; report value +/- 2*SE
+    # in text and round each value to the precision of its 2*SE uncertainty.
+    se_metrics = ("roc_auc", "pr_auc", "mcc", "mcc_at_0.5", "f1", "precision", "recall")
+    se_rows = []
+    if len(common_ids) > 10:
+        yc = lab_c.values
+        scores_c = {m["key"]: merged[m["key"]].set_index("identifier").loc[common_ids].score.values
+                    for m in loaded}
+        thr_c = {m["key"]: float(full.loc[m["name"], "threshold"]) for m in loaded}
+        rng_se = np.random.default_rng(SEED)
+        n = len(common_ids)
+        boot = {m["key"]: {k: [] for k in se_metrics} for m in loaded}
+        for _ in range(N_BOOT):
+            idx = rng_se.integers(0, n, n)
+            yb = yc[idx]
+            if yb.sum() == 0 or yb.sum() == len(yb):  # single-class resample -> undefined
+                continue
+            for m in loaded:
+                pm = point_metrics(yb, scores_c[m["key"]][idx], thr_c[m["key"]])
+                for k in se_metrics:
+                    boot[m["key"]][k].append(pm[k])
+        for m in loaded:
+            row = {"method": m["name"]}
+            for k in se_metrics:
+                vals = boot[m["key"]][k]
+                row[f"{k}_se"] = float(np.std(vals, ddof=1)) if vals else float("nan")
+            se_rows.append(row)
+    se = pd.DataFrame(se_rows)
+    if not se.empty:
+        se.set_index("method").to_csv(OUT / "metrics_common_se.csv")
+
     # Paired bootstrap vs ToxFam on common subset (ROC-AUC and PR-AUC diffs).
     paired_rows = []
     if "toxfam_embtax" in merged and len(loaded) > 1 and len(common_ids) > 10:
@@ -199,7 +231,7 @@ def main() -> None:
             if m["key"] == "toxfam_embtax":
                 continue
             other = scores_c[m["key"]]
-            d_roc, d_pr = [], []
+            d_roc, d_pr, d_mcc = [], [], []
             for _ in range(N_BOOT):
                 idx = rng.integers(0, n, n)
                 yb = yc[idx]
@@ -207,6 +239,10 @@ def main() -> None:
                     continue
                 d_roc.append(roc_auc_score(yb, base[idx]) - roc_auc_score(yb, other[idx]))
                 d_pr.append(average_precision_score(yb, base[idx]) - average_precision_score(yb, other[idx]))
+                # Paired MCC at the fixed t=0.5 operating point (the table's MCC column);
+                # paired so correlated methods can resolve even when marginal SEs overlap.
+                d_mcc.append(matthews_corrcoef(yb, (base[idx] >= 0.5).astype(int))
+                             - matthews_corrcoef(yb, (other[idx] >= 0.5).astype(int)))
             if not d_roc:  # every resample was single-class -> no usable diffs
                 print(f"  [skip] paired bootstrap vs {m['name']}: no two-class resamples")
                 continue
@@ -218,6 +254,9 @@ def main() -> None:
                 "d_pr_auc": float(np.mean(d_pr)),
                 "d_pr_lo": float(np.percentile(d_pr, 2.5)),
                 "d_pr_hi": float(np.percentile(d_pr, 97.5)),
+                "d_mcc_at_0.5": float(np.mean(d_mcc)),
+                "d_mcc_lo": float(np.percentile(d_mcc, 2.5)),
+                "d_mcc_hi": float(np.percentile(d_mcc, 97.5)),
                 "n_common": n,
             })
     paired = pd.DataFrame(paired_rows)
@@ -261,6 +300,11 @@ def main() -> None:
     lines.append(f"Common scored subset: n={len(common_ids)} "
                  f"({int(lab_c.sum())} toxic, {100*lab_c.mean():.2f}% prior)")
     lines.append(common[["roc_auc", "pr_auc", "mcc", "mcc_at_0.5", "f1", "precision", "recall"]].round(4).to_string())
+    if not se.empty:
+        lines.append("")
+        lines.append(f"Per-method bootstrap standard error (common subset, {N_BOOT} resamples, seed {SEED}):")
+        lines.append(se.set_index("method")[[f"{k}_se" for k in
+                     ("roc_auc", "pr_auc", "mcc", "mcc_at_0.5")]].round(5).to_string())
     if not paired.empty:
         lines.append("")
         lines.append("Paired bootstrap vs ToxFam (positive = ToxFam better; CI excludes 0 => significant):")
