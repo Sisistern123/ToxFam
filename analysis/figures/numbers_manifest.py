@@ -19,6 +19,7 @@ from toxfam.evaluation.manuscript import (
 )
 from toxfam._paths import benchmark_dir, get_project_root
 from toxfam.evaluation.hbi import NO_HIT_LABEL
+from toxfam.evaluation.metrics import is_nontoxin
 
 ADJ_CSV = get_project_root() / "analysis" / "model_test_wrong_conf_annotated.csv"
 
@@ -88,6 +89,48 @@ def main() -> None:
         },
         "macro_mcc_by_support": macro_mcc_by_support(nn, hbi, class_list=classes).to_dict("records"),
         "adjudication": adjudication_summary(ADJ_CSV),
+    }
+
+    # HBI binary toxic/non-toxic call: toxic iff the transferred family is a toxin
+    # family ('no hit' and the non-toxin class -> non-toxic). HBI emits no score, so it
+    # has no ROC-AUC/PR-AUC; only the discrete-call MCC is defined. Evaluated on the same
+    # common subset (n=9,201) as the external-tool binary comparison so the MCC is
+    # directly comparable to the score-based methods (read from the committed snapshot).
+    scores_dir = get_project_root() / "scripts" / "external_tools" / "results" / "scores"
+    common_ids = None
+    for sm in ("toxfam_embtax", "eat", "toxinpred3", "toxdl2"):
+        s = pd.read_csv(scores_dir / sm / "test_scores.csv")
+        ids = set(s.loc[pd.to_numeric(s["score"], errors="coerce").notna(), "identifier"])
+        common_ids = ids if common_ids is None else (common_ids & ids)
+    hbi_c = hbi[hbi["identifier"].isin(common_ids)]
+    cids = hbi_c["identifier"].tolist()
+    y_true_bin = (~hbi_c["actual_label"].map(is_nontoxin)).to_numpy(dtype=int)
+    y_pred_bin = (
+        (~hbi_c["predicted_label"].map(is_nontoxin)) & (hbi_c["predicted_label"] != NO_HIT_LABEL)
+    ).to_numpy(dtype=int)
+    # Paired-bootstrap CI of the binary-MCC difference vs ToxFam (call = score >= 0.5),
+    # same n / seed as the external-tool paired tests so the "tie" claim is backed.
+    tox_call = (
+        pd.read_csv(scores_dir / "toxfam_embtax" / "test_scores.csv")
+        .drop_duplicates("identifier").set_index("identifier").loc[cids, "score"].to_numpy() >= 0.5
+    ).astype(int)
+    rng_hb = np.random.default_rng(42)
+    diffs = np.empty(MCC_CI_N_BOOT, dtype=float)
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        for i in range(MCC_CI_N_BOOT):
+            bi = rng_hb.integers(0, len(cids), size=len(cids))
+            diffs[i] = overall_mcc(y_true_bin[bi], y_pred_bin[bi]) - overall_mcc(y_true_bin[bi], tox_call[bi])
+    out["hbi_binary"] = {
+        "n": int(len(hbi_c)),
+        "subset": f"common_{len(hbi_c)}",
+        "mcc": _boot_two_se(y_true_bin, y_pred_bin, overall_mcc),
+        "paired_vs_toxfam_mcc": {
+            "diff": float(diffs.mean()),
+            "ci_low": float(np.percentile(diffs, 2.5)),
+            "ci_high": float(np.percentile(diffs, 97.5)),
+        },
+        "note": "binary call = transferred-label class; no score, hence no ROC-AUC/PR-AUC",
     }
 
     # Toxin-only accuracy by sequence-length bin (M3: the <30 aa collapse, where HBI

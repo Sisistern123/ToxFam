@@ -170,6 +170,21 @@
       "Q07932"
     ]
   },
+  "hbi_binary": {
+    "n": 9201,
+    "subset": "common_9201",
+    "mcc": {
+      "point": 0.9048994652313,
+      "two_se": 0.020528408375462357,
+      "n": 9201
+    },
+    "paired_vs_toxfam_mcc": {
+      "diff": 0.004989758824854478,
+      "ci_low": -0.017099400239825768,
+      "ci_high": 0.026724430307764505
+    },
+    "note": "binary call = transferred-label class; no score, hence no ROC-AUC/PR-AUC"
+  },
   "length_bins_toxin_only": {
     "bins": [
       0,
