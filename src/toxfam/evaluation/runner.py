@@ -289,14 +289,15 @@ def run_hbi_evaluation(dataset: str) -> MetricsResult:
 # ---------------------------------------------------------------------------
 
 
-def run_eat_evaluation(dataset: str) -> MetricsResult:
+def run_eat_evaluation(dataset: str, *, metric: str = "cosine") -> MetricsResult:
     """Run EAT (embedding-based annotation transfer) on a dataset and save results.
 
     For each query protein, transfer the family label of its nearest ProtT5
-    neighbour (k=1, Euclidean) among the *training split* — the same data the
-    MLP trains on, and disjoint from val/test (no leakage). Mirrors
-    ``run_hbi_evaluation`` and writes the standard ``benchmark/{dataset}/eat/``
-    outputs, so ``toxfam eval compare`` picks it up automatically.
+    neighbour (k=1) among the *training split* — the same data the MLP trains on,
+    and disjoint from val/test (no leakage). ``metric`` is ``"cosine"`` (default,
+    selected on val_set) or ``"euclidean"``. Mirrors ``run_hbi_evaluation`` and
+    writes the standard ``benchmark/{dataset}/eat/`` outputs, so
+    ``toxfam eval compare`` picks it up automatically.
     """
     import h5py
 
@@ -352,6 +353,7 @@ def run_eat_evaluation(dataset: str) -> MetricsResult:
         ref_h5=ref_h5,
         reference_df=train_df,
         query_ids=df["identifier"].tolist(),
+        metric=metric,
     )
     console.print(
         f"   Reference: {eat_result.n_reference} proteins; queries: {eat_result.n_queries}"
@@ -398,7 +400,7 @@ def run_eat_evaluation(dataset: str) -> MetricsResult:
         metrics,
         method="eat",
         dataset=dataset,
-        params={"k": 1, "metric": "euclidean", "reference": "training_data[train]"},
+        params={"k": 1, "metric": metric, "reference": "training_data[train]"},
         output_dir=output_dir,
     )
 

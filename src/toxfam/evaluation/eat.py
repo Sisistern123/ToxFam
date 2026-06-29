@@ -1,10 +1,11 @@
 """EAT — embedding-based annotation transfer (the embedding-space analog of HBI).
 
 For each query protein, find its nearest neighbour among a labelled reference
-set in ProtT5 embedding space and transfer that neighbour's family label. This
-is k=1 Euclidean annotation transfer — the canonical EAT of Heinzinger et al.,
-"Contrastive learning on protein embeddings enriches the function" (NAR Genomics
-& Bioinformatics 4(2):lqac043, 2022).
+set in ProtT5 embedding space and transfer that neighbour's family label — the
+k=1 EAT of Heinzinger et al., "Contrastive learning on protein embeddings
+enriches the function" (NAR Genomics & Bioinformatics 4(2):lqac043, 2022).
+Both ``cosine`` (default; selected on val_set — beat Euclidean on every metric)
+and ``euclidean`` (the original EAT distance) are supported.
 
 Where HBI transfers the label of the nearest *sequence* homolog (MMseqs2), EAT
 transfers the label of the nearest *embedding* neighbour. A continuous P(toxic)
@@ -22,10 +23,12 @@ import h5py
 import numpy as np
 import pandas as pd
 import torch
+import torch.nn.functional as F
 
 from toxfam.evaluation.metrics import is_nontoxin
 
 DEFAULT_BATCH_SIZE = 512
+METRICS = ("euclidean", "cosine")
 
 
 @dataclass
@@ -57,9 +60,10 @@ def run_eat_search(
     *,
     id_column: str = "identifier",
     label_column: str = "Protein families",
+    metric: str = "cosine",
     batch_size: int = DEFAULT_BATCH_SIZE,
 ) -> EATResult:
-    """k=1 Euclidean annotation transfer from a reference set to query proteins.
+    """k=1 annotation transfer from a reference set to query proteins.
 
     Parameters
     ----------
@@ -69,14 +73,20 @@ def run_eat_search(
     reference_df : labelled reference (e.g. the training split) with
         ``id_column`` + ``label_column``.
     query_ids : identifiers to score, in output order.
+    metric : ``"euclidean"`` (exact L2; canonical EAT) or ``"cosine"``
+        (1 − cosine similarity on L2-normalised embeddings).
 
     Returns
     -------
     EATResult whose ``predictions`` DataFrame has columns
     ``identifier``, ``eat_prediction`` (nearest-neighbour family label),
     ``eat_confidence`` (``1 / (1 + d_nearest)`` ∈ (0, 1]), and ``p_toxic``
-    (``sigmoid(d_nearest_nontoxic - d_nearest_toxic)`` ∈ [0, 1]).
+    (``sigmoid(d_nearest_nontoxic - d_nearest_toxic)`` ∈ [0, 1]). Distances are
+    in the chosen metric; the toxic-vs-nontoxic ranking (ROC-AUC/PR-AUC) is
+    invariant to the sigmoid transform.
     """
+    if metric not in METRICS:
+        raise ValueError(f"Unknown metric {metric!r}; use one of {METRICS}.")
     ref_ids = reference_df[id_column].tolist()
     if not ref_ids:
         raise ValueError("reference_df is empty; cannot run EAT search.")
@@ -89,6 +99,8 @@ def run_eat_search(
     )  # (R,)
 
     ref = _load_matrix(ref_h5, ref_ids)  # (R, D)
+    if metric == "cosine":
+        ref = F.normalize(ref, p=2, dim=1)
 
     preds: list[str] = []
     confidences: list[float] = []
@@ -96,9 +108,13 @@ def run_eat_search(
     for start in range(0, len(query_ids), batch_size):
         batch = query_ids[start : start + batch_size]
         q = _load_matrix(query_h5, batch)  # (B, D)
-        # Exact Euclidean: the matmul expansion (default at D>25) carries ~1e-2
-        # float32 error that can re-order near-tie neighbours of different families.
-        d = torch.cdist(q, ref, compute_mode="donot_use_mm_for_euclid_dist")  # (B, R)
+        if metric == "cosine":
+            # Cosine distance = 1 − cosine similarity ∈ [0, 2] on unit vectors.
+            d = 1.0 - F.normalize(q, p=2, dim=1) @ ref.T  # (B, R)
+        else:
+            # Exact Euclidean: the matmul expansion (default at D>25) carries ~1e-2
+            # float32 error that can re-order near-tie neighbours of different families.
+            d = torch.cdist(q, ref, compute_mode="donot_use_mm_for_euclid_dist")  # (B, R)
 
         nn_idx = d.argmin(dim=1)  # (B,) index of nearest reference
         d_nn = d.gather(1, nn_idx.unsqueeze(1)).squeeze(1)  # (B,) nearest distance

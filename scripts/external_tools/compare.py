@@ -48,6 +48,7 @@ OUT.mkdir(parents=True, exist_ok=True)
 # method dir -> display name (order = plotting/report order)
 METHODS = {
     "toxfam_embtax": "ToxFam (emb+tax)",
+    "eat": "EAT (1-NN ProtT5)",
     "toxinpred3": "ToxinPred 3.0",
     "toxdl2": "ToxDL 2.0",
 }

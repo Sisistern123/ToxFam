@@ -395,16 +395,20 @@ def eval_eat(
             help="Dataset to evaluate: test_set, val_set, non_metazoan, unreviewed"
         ),
     ],
+    metric: Annotated[
+        str,
+        typer.Option(help="Distance metric: cosine (default) or euclidean"),
+    ] = "cosine",
 ) -> None:
     """Run EAT (embedding-based annotation transfer) on a dataset.
 
-    Transfers the family label of each query's nearest ProtT5 neighbour (k=1,
-    Euclidean) among the training split — the embedding-space analog of HBI.
-    Results are saved to benchmark/{dataset}/eat/.
+    Transfers the family label of each query's nearest ProtT5 neighbour (k=1)
+    among the training split — the embedding-space analog of HBI. Results are
+    saved to benchmark/{dataset}/eat/.
     """
     from toxfam.evaluation.runner import run_eat_evaluation
 
-    run_eat_evaluation(dataset)
+    run_eat_evaluation(dataset, metric=metric)
 
 
 @eval_app.command("model")
