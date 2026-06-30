@@ -14,8 +14,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from analysis.figures._common import (
-    ADJUDICATION, DOUBLE_COL, METHODS, apply_style, load_preds, panel_label, save_fig,
-    test_set_class_list,
+    ADJUDICATION, DOUBLE_COL, METHOD_DARK, METHODS, apply_style, load_preds, panel_label,
+    save_fig, test_set_class_list,
 )
 from toxfam._paths import get_project_root
 from toxfam.evaluation.manuscript import adjudication_summary, per_family_mcc_difference
@@ -58,9 +58,10 @@ def main() -> None:
     # connector first, then HBI, then ToxFam on top; uniform marker size (support is in labels).
     axA.hlines(y, fam["mcc_b"], fam["mcc_a"], color="#cccccc", lw=0.9, zorder=1)
     axA.scatter(fam["mcc_b"], y, s=MARKER_S, color=hbi_col, marker="o",
-                edgecolor="#6f6f6f", linewidth=0.5, alpha=0.7, label=hbi_lbl, zorder=2)
+                edgecolor=METHOD_DARK["hbi"], linewidth=0.5, alpha=0.7, label=hbi_lbl, zorder=2)
     axA.scatter(fam["mcc_a"], y, s=MARKER_S, color=nn_col, marker="s",
-                edgecolor="#b06a00", linewidth=0.5, alpha=0.7, label=nn_lbl, zorder=3)
+                edgecolor=METHOD_DARK["nn_combined_run"], linewidth=0.5, alpha=0.7,
+                label=nn_lbl, zorder=3)
     axA.set_yticks(y)
     axA.set_yticklabels([_fam_label(n, s) for n, s in zip(fam["family"], fam["support"])],
                         fontsize=7)

@@ -15,8 +15,8 @@ import numpy as np
 import pandas as pd
 
 from analysis.figures._common import (
-    DOUBLE_COL, LEN_BINS, METHOD_LINESTYLE, METHOD_MARKER, METHODS, apply_style, fmt_pm,
-    load_preds, panel_label, save_fig, sequence_lengths,
+    DOUBLE_COL, LEN_BINS, METHOD_DARK, METHOD_LINESTYLE, METHOD_MARKER, METHODS, apply_style,
+    fmt_pm, load_preds, panel_label, save_fig, sequence_lengths,
 )
 from toxfam.evaluation.manuscript import bootstrap_accuracy_ci, correctness, toxin_mask
 from toxfam.evaluation.hbi import NO_HIT_LABEL
@@ -24,7 +24,7 @@ from toxfam.evaluation.hbi import NO_HIT_LABEL
 # LEN_BINS is imported from _common (shared with numbers_manifest) so the cited
 # per-bin accuracies and the plotted bins stay keyed to identical edges.
 XTICKS = [10, 30, 50, 100, 300, 1000]
-LABEL_COL = {"hbi": "#6f6f6f", "nn_combined_run": METHODS["nn_combined_run"][1]}
+LABEL_COL = {"hbi": METHOD_DARK["hbi"], "nn_combined_run": METHODS["nn_combined_run"][1]}
 
 
 def _toxin_lengths(preds: pd.DataFrame, lengths: pd.Series):

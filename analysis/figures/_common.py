@@ -45,6 +45,10 @@ METHOD_LINESTYLE = {"hbi": (0, (5, 2)), "nn_standard_run": (0, (1, 1)), "nn_comb
 # Canonical method order (the METHODS insertion order). Single source of truth so the
 # figure scripts never re-hardcode the key list and drift from the palette.
 METHOD_ORDER = list(METHODS)
+# Hand-tuned darker variants of the method colours, for text labels and marker edges
+# where the pale canonical fill needs more contrast. Kept beside METHODS so the shade
+# and its base colour live in one place (used by figure2 labels + figure3 edges).
+METHOD_DARK = {"hbi": "#6f6f6f", "nn_combined_run": "#b06a00"}
 
 # Ordered good->bad adjudication ramp (Paul Tol high-contrast). NEVER green=good/
 # red=bad (the exact deuteranopia failure case); this ramp is luminance-ordered so
