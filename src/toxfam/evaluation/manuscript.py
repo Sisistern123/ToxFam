@@ -323,7 +323,8 @@ def bootstrap_accuracy_ci(correct, *, n_boot: int = 2000, seed: int = 42) -> dic
     idx = rng.integers(0, n, size=(n_boot, n))
     means = c[idx].mean(axis=1)
     return {"point": float(c.mean()), "ci_low": float(np.percentile(means, 2.5)),
-            "ci_high": float(np.percentile(means, 97.5)), "n": n}
+            "ci_high": float(np.percentile(means, 97.5)),
+            "two_se": float(2.0 * means.std(ddof=1)), "n": n}
 
 
 def bootstrap_label_metric_ci(y_true, y_pred, metric_fn, *, n_boot: int = 1000, seed: int = 42) -> dict:
@@ -344,7 +345,8 @@ def bootstrap_label_metric_ci(y_true, y_pred, metric_fn, *, n_boot: int = 1000, 
             idx = rng.integers(0, n, size=n)
             vals[i] = metric_fn(yt[idx], yp[idx])
     return {"point": point, "ci_low": float(np.percentile(vals, 2.5)),
-            "ci_high": float(np.percentile(vals, 97.5)), "n": n}
+            "ci_high": float(np.percentile(vals, 97.5)),
+            "two_se": float(2.0 * vals.std(ddof=1)), "n": n}
 
 
 def _ovr_mcc(is_true: np.ndarray, is_pred: np.ndarray) -> float:
