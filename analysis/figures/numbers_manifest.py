@@ -10,7 +10,7 @@ import pandas as pd
 from rich.console import Console
 
 from analysis.figures._common import (
-    FIG_DIR, MCC_CI_N_BOOT, load_preds, sequence_lengths, test_set_class_list,
+    FIG_DIR, LEN_BINS, MCC_CI_N_BOOT, load_preds, sequence_lengths, test_set_class_list,
 )
 from toxfam.evaluation.manuscript import (
     accuracy_by_identity_bins, accuracy_by_length_bins, adjudication_summary, aligned_correctness,
@@ -136,15 +136,14 @@ def main() -> None:
     # Toxin-only accuracy by sequence-length bin (M3: the <30 aa collapse, where HBI
     # degrades but the embedding model stays ~flat).
     lengths = sequence_lengths()
-    len_bins = [0, 30, 50, 75, 150, 5000]
 
     def _len_block(d: pd.DataFrame) -> dict:
-        b = accuracy_by_length_bins(d[toxin_mask(d)], lengths, bins=len_bins)
+        b = accuracy_by_length_bins(d[toxin_mask(d)], lengths, bins=LEN_BINS)
         return {r["bin_label"]: {"accuracy": float(r["accuracy"]), "n": int(r["n"])}
                 for _, r in b.iterrows()}
 
     out["length_bins_toxin_only"] = {
-        "bins": len_bins, "hbi": _len_block(hbi), "nn_combined": _len_block(nn),
+        "bins": LEN_BINS, "hbi": _len_block(hbi), "nn_combined": _len_block(nn),
     }
 
     # Toxin-only accuracy stratified by HBI best-hit sequence identity (the honest

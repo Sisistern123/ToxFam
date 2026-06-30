@@ -11,11 +11,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from analysis.figures._common import (
-    METHODS, SINGLE_COL, apply_style, fmt_pm, load_preds, panel_label, save_fig,
+    METHOD_ORDER, METHODS, SINGLE_COL, apply_style, fmt_pm, load_preds, panel_label, save_fig,
 )
 from toxfam.evaluation.manuscript import bootstrap_accuracy_ci, correctness, toxin_mask
-
-METHOD_ORDER = ["hbi", "nn_standard_run", "nn_combined_run"]
 
 
 def _acc_panel(ax, preds, mask_fn, ylim, title, letter, *, prior=None):
@@ -31,7 +29,7 @@ def _acc_panel(ax, preds, mask_fn, ylim, title, letter, *, prior=None):
                 ha="center", va="bottom", fontsize=7, linespacing=0.95)
     if prior is not None:  # drawn on top of the bars so the ceiling is unmistakable
         ax.axhline(prior, color="#444444", lw=1.0, ls=(0, (4, 2)), zorder=5)
-        ax.text(len(METHOD_ORDER) - 0.55, prior + 0.002, f"non-toxin prior {prior * 100:.1f}%",
+        ax.text(len(METHOD_ORDER) - 0.55, prior + 0.002, f"non-toxin prior {prior * 100:.2f}%",
                 ha="right", va="bottom", fontsize=6.5, color="#444444", zorder=6)
     ax.set_xticks(x)
     ax.set_xticklabels([METHODS[k][0].replace(" (", "\n(") for k in METHOD_ORDER])

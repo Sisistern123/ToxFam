@@ -13,11 +13,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from analysis.figures._common import (
-    MCC_CI_N_BOOT, METHODS, SINGLE_COL, apply_style, fmt_pm, load_preds, save_fig,
+    MCC_CI_N_BOOT, METHOD_ORDER, METHODS, SINGLE_COL, apply_style, fmt_pm, load_preds, save_fig,
 )
 from toxfam.evaluation.manuscript import bootstrap_label_metric_ci, overall_mcc
-
-METHOD_ORDER = ["hbi", "nn_standard_run", "nn_combined_run"]
 
 
 def main() -> None:

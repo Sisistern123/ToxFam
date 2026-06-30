@@ -318,7 +318,8 @@ def bootstrap_accuracy_ci(correct, *, n_boot: int = 2000, seed: int = 42) -> dic
     c = np.asarray(correct, dtype=float)
     n = len(c)
     if n == 0:
-        return {"point": float("nan"), "ci_low": float("nan"), "ci_high": float("nan"), "n": 0}
+        return {"point": float("nan"), "ci_low": float("nan"), "ci_high": float("nan"),
+                "two_se": float("nan"), "n": 0}
     rng = np.random.default_rng(seed)
     idx = rng.integers(0, n, size=(n_boot, n))
     means = c[idx].mean(axis=1)

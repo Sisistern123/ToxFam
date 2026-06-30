@@ -42,14 +42,21 @@ METHODS = {
 # Redundant (non-colour) encoding so series survive total colour loss.
 METHOD_MARKER = {"hbi": "o", "nn_standard_run": "^", "nn_combined_run": "s"}
 METHOD_LINESTYLE = {"hbi": (0, (5, 2)), "nn_standard_run": (0, (1, 1)), "nn_combined_run": "-"}
+# Canonical method order (the METHODS insertion order). Single source of truth so the
+# figure scripts never re-hardcode the key list and drift from the palette.
+METHOD_ORDER = list(METHODS)
 
 # Ordered good->bad adjudication ramp (Paul Tol high-contrast). NEVER green=good/
 # red=bad (the exact deuteranopia failure case); this ramp is luminance-ordered so
 # it reads as good->bad even in greyscale.
 ADJUDICATION = {"correct": "#004488", "partial": "#DDAA33", "incorrect": "#BB5566"}
 
-# Bootstrap resamples for MCC confidence intervals. Shared by figure1 Panel C and
-# numbers_manifest so the figure and the numbers manifest report matching CIs.
+# Toxin-only sequence-length bins, shared by figure2 and numbers_manifest so the
+# plotted per-bin accuracies and the cited numbers stay keyed to identical edges.
+LEN_BINS = [0, 30, 50, 75, 150, 5000]
+
+# Bootstrap resamples for MCC confidence intervals. Shared by figure1 (the MCC panel)
+# and numbers_manifest so the figure and the numbers manifest report matching CIs.
 MCC_CI_N_BOOT = 2000
 
 
@@ -141,20 +148,3 @@ def fmt_pm(value, unc, *, sep=" ± "):
         return f"{value:.3f}"
     ndec = max(0, -(math.floor(math.log10(unc)) - 1))  # decimals for 2 sig figs of unc
     return f"{value:.{ndec}f}{sep}{unc:.{ndec}f}"
-
-
-def size_legend(ax, support_values, *, area_fn, color="#777777", title="support (n)", **kw):
-    """Bubble size legend with marker AREA proportional to value (not radius).
-
-    ``area_fn`` maps a support count to the scatter ``s`` (point^2) value, matching
-    the area scaling used for the plotted points so legend bubbles read true counts.
-    """
-    handles = [
-        plt.scatter([], [], s=area_fn(v), facecolor=color, edgecolor="none",
-                    alpha=0.6, label=str(v))
-        for v in support_values
-    ]
-    leg = ax.legend(handles=handles, title=title, labelspacing=1.1, borderpad=0.8,
-                    handletextpad=0.6, **kw)
-    leg.get_title().set_fontsize(6.5)
-    return leg

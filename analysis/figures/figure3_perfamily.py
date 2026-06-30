@@ -1,11 +1,11 @@
 """Figure 3 — per-family resolution (dumbbell) + confident-error adjudication.
 
 Panel A: per-family one-vs-rest MCC for HBI and ToxFam as a dumbbell (absolute
-capability of both methods AND the gap, in one panel). Marker area grows with
-support; semi-transparent markers + explicit draw order keep both endpoints
-readable when they nearly coincide. No per-point error bars: 37x2 whiskers would
-bury the gap, and the 20 families with <=5 toxins cannot support a valid 95% CI
-(n<10) -- the support-area encoding flags those uncertain estimates instead.
+capability of both methods AND the gap, in one panel). Markers are uniform size
+with each family's support printed in its y-axis label; semi-transparent markers
++ explicit draw order keep both endpoints readable when they nearly coincide. No
+per-point error bars: 37x2 whiskers would bury the gap, and the 20 families with
+<=5 toxins cannot support a valid 95% CI (n<10).
 Panel B: adjudication of the 63 most-confident errors, luminance-ordered ramp.
 """
 from __future__ import annotations

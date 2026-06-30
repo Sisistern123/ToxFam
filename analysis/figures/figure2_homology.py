@@ -15,14 +15,14 @@ import numpy as np
 import pandas as pd
 
 from analysis.figures._common import (
-    DOUBLE_COL, METHOD_LINESTYLE, METHOD_MARKER, METHODS, apply_style, fmt_pm, load_preds,
-    panel_label, save_fig, sequence_lengths,
+    DOUBLE_COL, LEN_BINS, METHOD_LINESTYLE, METHOD_MARKER, METHODS, apply_style, fmt_pm,
+    load_preds, panel_label, save_fig, sequence_lengths,
 )
 from toxfam.evaluation.manuscript import bootstrap_accuracy_ci, correctness, toxin_mask
 from toxfam.evaluation.hbi import NO_HIT_LABEL
 
-# Same bins as numbers_manifest so the cited per-bin accuracies stay reproducible.
-LEN_BINS = [0, 30, 50, 75, 150, 5000]
+# LEN_BINS is imported from _common (shared with numbers_manifest) so the cited
+# per-bin accuracies and the plotted bins stay keyed to identical edges.
 XTICKS = [10, 30, 50, 100, 300, 1000]
 LABEL_COL = {"hbi": "#6f6f6f", "nn_combined_run": METHODS["nn_combined_run"][1]}
 
@@ -62,11 +62,11 @@ def main() -> None:
     series = {}
     for key, d in (("hbi", hbi), ("nn_combined_run", nn)):
         label, color = METHODS[key]
-        cx, acc, se2, _ = _binned(d, lengths)
+        cx, acc, se2, ns = _binned(d, lengths)
         axA.errorbar(cx, acc, yerr=se2, color=color, marker=METHOD_MARKER[key],
                      ls=METHOD_LINESTYLE[key], lw=1.0, ms=5, capsize=2.5,
                      elinewidth=0.7, capthick=0.7, zorder=3)
-        series[key] = (cx, acc, se2)
+        series[key] = (cx, acc, se2, ns)
 
     # Direct labels at the leftmost bin, where the two methods are most separated.
     cx0 = series["hbi"][0][0]
@@ -81,8 +81,8 @@ def main() -> None:
     ln_all, _ = _toxin_lengths(nn, lengths)
     axA.plot(ln_all, np.full_like(ln_all, 0.32), "|", color="#999999", ms=5, alpha=0.45,
              markeredgewidth=0.5, zorder=2, clip_on=True)
-    cx, accn, se2n, ns = _binned(nn, lengths)
-    _, acch, se2h, _ = _binned(hbi, lengths)
+    cx, accn, se2n, ns = series["nn_combined_run"]
+    _, acch, se2h, _ = series["hbi"]
     ylow = np.minimum(accn - se2n, acch - se2h)
     for x, yl, n in zip(cx, ylow, ns):
         axA.text(x, yl - 0.03, f"$n$={n}", ha="center", va="top", fontsize=7, color="#666666")
