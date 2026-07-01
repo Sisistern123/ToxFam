@@ -43,7 +43,8 @@ def main() -> None:
     apply_style()
     preds = {k: load_preds("test_set", k) for k in METHOD_ORDER}
     fig, (axA, axB) = plt.subplots(2, 1, figsize=(SINGLE_COL, 4.7), layout="constrained")
-    _acc_panel(axA, preds, toxin_mask, (0.70, 1.0), "Toxin-only accuracy ($n$=515)", "A")
+    n_tox = int(toxin_mask(preds["nn_combined_run"]).sum())  # from data, not a frozen literal
+    _acc_panel(axA, preds, toxin_mask, (0.70, 1.0), f"Toxin-only accuracy ($n$={n_tox})", "A")
     prior = float((preds["nn_combined_run"]["actual_label"].str.lower() == "nontox").mean())
     _acc_panel(axB, preds, None, (0.90, 1.0), "All-class accuracy", "B", prior=prior)
     save_fig(fig, "figure_supp_accuracy")

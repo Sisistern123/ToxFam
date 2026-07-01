@@ -123,9 +123,13 @@ def apply_style() -> None:
         "axes.grid": False,
         # export: embed TrueType (not Type-3), keep text as text
         "pdf.fonttype": 42, "ps.fonttype": 42, "svg.fonttype": "none",
-        # white opaque background, vector-first
+        # white opaque background, vector-first. NB: NO savefig.bbox="tight" -- a tight
+        # crop changes the saved width away from the exact figsize (overhanging labels
+        # expand it), so \includegraphics[width=\columnwidth] then rescales the figure and
+        # the journal shrinks the fonts below the 7 pt floor. layout="constrained" already
+        # fits decorations inside the canvas, so saving at the built width keeps fonts at spec.
         "figure.facecolor": "white", "axes.facecolor": "white",
-        "savefig.facecolor": "white", "savefig.bbox": "tight", "figure.dpi": 150,
+        "savefig.facecolor": "white", "figure.dpi": 150,
         "legend.frameon": False,
     })
 

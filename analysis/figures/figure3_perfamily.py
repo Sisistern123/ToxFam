@@ -101,7 +101,10 @@ def main() -> None:
     axB.set_yticks([])
     for sp in axB.spines.values():
         sp.set_visible(False)
-    axB.set_title("Confident-error adjudication\n($\\geq$0.8 prob.; $n$=63)", loc="left", pad=6)
+    # smaller title: "adjudication" is wider than this narrow panel at the 9 pt default,
+    # so it would overhang the figure's right edge (clipped once savefig.bbox is not tight)
+    axB.set_title("Confident-error adjudication\n($\\geq$0.8 prob.; $n$=63)", loc="left", pad=6,
+                  fontsize=8)
     panel_label(axB, "B", dx=-0.05)
 
     save_fig(fig, "figure3_perfamily")
