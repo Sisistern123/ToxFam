@@ -20,7 +20,7 @@ Newest notes query variants (for overall context):
 
 | File | Query | Original file date | Notes |
 | --- | --- | --- | --- |
-| `data/evaluation/unreviewed/unreviewed.tsv` | `(keyword:KW-0800) AND (reviewed:false) AND (taxonomy_id:33208) AND (fragment:false)` | 2026-04-13 | Used by `toxfam eval model unreviewed` |
+| `data/evaluation/unreviewed/unreviewed.tsv` | `(keyword:KW-0800) AND (reviewed:false) AND (taxonomy_id:33208) AND (fragment:false) AND (date_created:[* TO 2026-06-10])` | 2026-06-25 | Used by `toxfam eval model unreviewed`. The `date_created` bound pins the export to the 23,136 committed entries (newest was created 2026-06-10); without it TrEMBL keeps growing. Note it only bounds *additions* — existing unreviewed entries can still be deleted or promoted to Swiss-Prot, so the committed `.tsv`/`.fasta`/`.h5` files are the authoritative frozen snapshot. |
 
 ## Non-metazoan
 
