@@ -33,7 +33,8 @@ from analysis.figures._common import (
 )
 from toxfam.evaluation.hbi import NO_HIT_LABEL
 from toxfam.evaluation.manuscript import (
-    bootstrap_accuracy_ci, bootstrap_label_metric_ci, correctness, overall_mcc, toxin_mask,
+    band_separation_length, bootstrap_accuracy_ci, bootstrap_label_metric_ci, correctness,
+    length_support_mask, local_linear_accuracy, local_linear_band, overall_mcc, toxin_mask,
 )
 
 XTICKS = [10, 30, 50, 100, 300, 1000]
@@ -54,37 +55,6 @@ def _toxin_lengths(preds, lengths):
     corr = correctness(tox).astype(float)
     ok = np.isfinite(ln)
     return ln[ok], corr[ok]
-
-
-def _loclin(ln, corr, grid, h):
-    """Local-linear (LOESS deg-1) accuracy vs log10-length; boundary-bias corrected."""
-    lx, gx = np.log10(ln), np.log10(grid)
-    out = np.full(len(grid), np.nan)
-    for j, g in enumerate(gx):
-        d = lx - g
-        w = np.exp(-0.5 * (d / h) ** 2)
-        s0, s1, s2 = w.sum(), (w * d).sum(), (w * d * d).sum()
-        det = s0 * s2 - s1 * s1
-        if det <= 1e-9:
-            continue
-        t0, t1 = (w * corr).sum(), (w * d * corr).sum()
-        out[j] = (s2 * t0 - s1 * t1) / det
-    return np.clip(out, 0, 1)
-
-
-def _loclin_band(ln, corr, grid, h, rng, n_boot=800):
-    n = len(ln)
-    boots = np.empty((n_boot, len(grid)))
-    for i in range(n_boot):
-        idx = rng.integers(0, n, size=n)
-        boots[i] = _loclin(ln[idx], corr[idx], grid, h)
-    return 2 * np.nanstd(boots, axis=0)
-
-
-def _support_mask(ln, grid, h, min_pts=8):
-    """Grid points backed by >= min_pts observations within 1.5 bandwidths."""
-    gx, lx = np.log10(grid), np.log10(ln)
-    return (np.abs(gx[:, None] - lx[None, :]) <= 1.5 * h).sum(1) >= min_pts
 
 
 def _logx(ax):
@@ -135,13 +105,13 @@ def _panel_length(ax, axtop, hbi, nn, lengths, rng):
     # --- accuracy curves: each method pairs its OWN lengths with its OWN correctness
     #     (the hbi and nn frames need not share row order), evaluated on a shared grid. ---
     grid = np.logspace(np.log10(lnH.min()), np.log10(np.percentile(lnH, 98)), 160)
-    keep = _support_mask(lnH, grid, BW)
+    keep = length_support_mask(lnH, grid, bandwidth=BW)
     gk = grid[keep]
     series = {}
     for key, ln_m, corr_m, dark in (("hbi", lnH, corrH, GREY_D),
                                     ("nn_combined_run", lnN, corrN, ORANGE_D)):
-        y = _loclin(ln_m, corr_m, grid, BW)[keep]
-        s = _loclin_band(ln_m, corr_m, grid, BW, rng)[keep]
+        y = local_linear_accuracy(ln_m, corr_m, grid, bandwidth=BW)[keep]
+        s = local_linear_band(ln_m, corr_m, grid, bandwidth=BW, rng=rng)[keep]
         ax.fill_between(gk, y - s, y + s, color=METHODS[key][1], alpha=0.20, lw=0, zorder=2)
         ax.plot(gk, y, color=dark, ls=METHOD_LINESTYLE[key], lw=1.7, zorder=3)
         series[key] = (y, s)
@@ -149,11 +119,9 @@ def _panel_length(ax, axtop, hbi, nn, lengths, rng):
     yH, sH = series["hbi"]
 
     # Significance boundary: the length below which the two +-2 SE bands stop overlapping
-    # (ToxFam pointwise significantly more accurate). Taken from the same plotted bands
-    # (ToxFam lower vs HBI upper), so the guide sits exactly where they visibly separate.
-    sep = (yN - sN) > (yH + sH)
-    trans = np.flatnonzero(sep[:-1] & ~sep[1:])   # first separated -> overlapping crossing
-    xcross = gk[trans[0] + 1] if trans.size else None
+    # (ToxFam pointwise significantly more accurate than HBI); taken from the plotted
+    # bands, so the guide sits exactly where they visibly separate.
+    xcross = band_separation_length(gk, yH + sH, yN - sN)
     if xcross is not None:
         ax.axvline(xcross, color="#9a9a9a", ls=(0, (1, 1.6)), lw=0.8, zorder=1)
         ax.text(xcross * 1.07, 0.30, f"$\\approx${xcross:.0f} aa", fontsize=7,

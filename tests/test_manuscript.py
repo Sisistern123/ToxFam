@@ -10,8 +10,12 @@ from toxfam.evaluation.manuscript import (
     accuracy_by_length_bins,
     adjudication_summary,
     aligned_correctness,
+    band_separation_length,
     binary_reliability,
     correctness,
+    length_support_mask,
+    local_linear_accuracy,
+    local_linear_band,
     macro_f1_by_support,
     macro_f1_conventions,
     mcnemar_test,
@@ -174,6 +178,51 @@ def test_rolling_accuracy_monotone_length_sorted():
     out = rolling_accuracy_vs_length(preds, lengths, window=2)
     assert (out["length"].values == np.array([1, 2, 3, 4, 5])).all()
     assert (out["accuracy"].values == 1.0).all()
+
+
+def test_local_linear_accuracy_constant():
+    length = np.linspace(10, 300, 40)
+    grid = np.array([20.0, 100.0])
+    assert np.allclose(local_linear_accuracy(length, np.ones(40), grid, bandwidth=0.3), 1.0)
+    assert np.allclose(local_linear_accuracy(length, np.zeros(40), grid, bandwidth=0.3), 0.0)
+
+
+def test_local_linear_accuracy_tracks_length_trend():
+    # correct only for longer sequences -> curve lower at short, higher at long
+    length = np.array([10, 12, 15, 20, 30, 50, 80, 120, 200, 300], float)
+    correct = np.array([0, 0, 0, 0, 1, 1, 1, 1, 1, 1], float)
+    curve = local_linear_accuracy(length, correct, np.array([12.0, 250.0]), bandwidth=0.4)
+    assert curve[0] < curve[1]
+    assert np.all((curve >= 0) & (curve <= 1))
+
+
+def test_length_support_mask_windows():
+    length = np.array([10, 11, 12, 13, 14, 100, 101], float)
+    grid = np.array([12.0, 50.0, 100.0])
+    mask = length_support_mask(length, grid, bandwidth=0.1, min_points=3)
+    # 5 observations near 12; none near 50; only 2 near 100 (below the threshold)
+    assert list(mask) == [True, False, False]
+
+
+def test_local_linear_band_zero_variance_and_positive():
+    length = np.linspace(10, 200, 40)
+    grid = np.array([20.0, 100.0])
+    zero = local_linear_band(length, np.ones(40), grid, bandwidth=0.3,
+                             rng=np.random.default_rng(0), n_boot=64)
+    assert np.all(zero >= 0) and np.all(zero < 1e-9)   # all-correct -> no bootstrap variance
+    varied = local_linear_band(length, np.tile([0.0, 1.0], 20), grid, bandwidth=0.3,
+                               rng=np.random.default_rng(0), n_boot=64)
+    assert np.all(varied > 0)
+
+
+def test_band_separation_length():
+    grid = np.array([10, 20, 30, 40, 50], float)
+    lower = np.array([0.90, 0.90, 0.85, 0.80, 0.80])   # stronger method's lower band edge
+    upper = np.array([0.50, 0.70, 0.86, 0.85, 0.82])   # weaker method's upper band edge
+    # sep = lower > upper -> [T, T, F, F, F]; first separated->overlapping at grid[2]
+    assert band_separation_length(grid, upper, lower) == 30.0
+    assert band_separation_length(grid, np.full(5, 0.6), np.full(5, 0.5)) is None  # always overlap
+    assert band_separation_length(grid, np.full(5, 0.1), np.full(5, 0.9)) is None  # never overlap
 
 
 def _two_method_preds():

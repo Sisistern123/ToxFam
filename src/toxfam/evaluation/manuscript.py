@@ -146,6 +146,76 @@ def rolling_accuracy_vs_length(
     return pd.DataFrame({"length": ln[order], "accuracy": roll.to_numpy()})
 
 
+def local_linear_accuracy(
+    length: np.ndarray, correct: np.ndarray, grid: np.ndarray, *, bandwidth: float
+) -> np.ndarray:
+    """Boundary-corrected local-linear (LOESS degree-1) regression of ``correct`` on
+    ``log10(length)``, evaluated at ``grid``.
+
+    Unlike a plain kernel average (Nadaraya-Watson), the degree-1 local fit corrects the
+    first-order boundary bias at the short-length edge, so a graded accuracy decline is
+    not flattened toward the interior mean. Grid points whose local design is
+    (near-)singular are left NaN; the estimate is clipped to ``[0, 1]``.
+    """
+    lx, gx = np.log10(length), np.log10(grid)
+    out = np.full(len(grid), np.nan)
+    for j, g in enumerate(gx):
+        d = lx - g
+        w = np.exp(-0.5 * (d / bandwidth) ** 2)
+        s0, s1, s2 = w.sum(), (w * d).sum(), (w * d * d).sum()
+        det = s0 * s2 - s1 * s1
+        if det <= 1e-9:
+            continue
+        t0, t1 = (w * correct).sum(), (w * d * correct).sum()
+        out[j] = (s2 * t0 - s1 * t1) / det
+    return np.clip(out, 0.0, 1.0)
+
+
+def local_linear_band(
+    length: np.ndarray, correct: np.ndarray, grid: np.ndarray, *,
+    bandwidth: float, rng: np.random.Generator, n_boot: int = 800,
+) -> np.ndarray:
+    """``+-2`` bootstrap SE band for :func:`local_linear_accuracy` (~95% pointwise).
+
+    Case-resamples the observations ``n_boot`` times (indices drawn from ``rng``) and
+    refits the curve each time, returning twice the per-grid-point bootstrap standard
+    deviation. Pass a seeded ``rng`` for reproducibility; passing the same generator to
+    successive calls draws independent resamples for each.
+    """
+    n = len(length)
+    boots = np.empty((n_boot, len(grid)))
+    for i in range(n_boot):
+        idx = rng.integers(0, n, size=n)
+        boots[i] = local_linear_accuracy(length[idx], correct[idx], grid, bandwidth=bandwidth)
+    return 2.0 * np.nanstd(boots, axis=0)
+
+
+def length_support_mask(
+    length: np.ndarray, grid: np.ndarray, *, bandwidth: float, min_points: int = 8
+) -> np.ndarray:
+    """Boolean mask of grid points backed by ``>= min_points`` observations within
+    ``1.5 * bandwidth`` (in log10 length) --- where the local-linear fit is supported
+    enough to plot rather than extrapolate into empty regions."""
+    gx, lx = np.log10(grid), np.log10(length)
+    return (np.abs(gx[:, None] - lx[None, :]) <= 1.5 * bandwidth).sum(1) >= min_points
+
+
+def band_separation_length(
+    grid: np.ndarray, upper: np.ndarray, lower: np.ndarray
+) -> float | None:
+    """Length at which two ``+-2`` SE bands stop overlapping, scanning short -> long.
+
+    ``lower`` is the lower band edge of the stronger method and ``upper`` the upper edge
+    of the weaker one; where ``lower > upper`` the bands are disjoint (the stronger method
+    is pointwise significantly better). Returns the ``grid`` length at the first
+    separated -> overlapping transition, or ``None`` if the bands never separate. The
+    three arrays must be aligned and length-sorted.
+    """
+    sep = np.asarray(lower) > np.asarray(upper)
+    trans = np.flatnonzero(sep[:-1] & ~sep[1:])
+    return float(grid[trans[0] + 1]) if trans.size else None
+
+
 def accuracy_by_identity_bins(
     hbi: pd.DataFrame,
     other: pd.DataFrame,
