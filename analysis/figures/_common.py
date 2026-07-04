@@ -134,14 +134,16 @@ def apply_style() -> None:
     })
 
 
-def panel_label(ax, letter, *, dx=-0.06, dy=1.02):
+def panel_label(ax, letter, *, dx=-0.06, dy=1.02, in_layout=True):
     """Lowercase bold panel label in axes-fraction coords (Bioinformatics/OUP style).
 
     Placed just outside the top-left of the axes; ``letter`` should be the bare
-    letter (``"a"``), rendered as a bold lowercase tag.
+    letter (``"a"``), rendered as a bold lowercase tag. Pass ``in_layout=False`` when
+    the label is lifted well above the axes (e.g. over a marginal strip) so constrained
+    layout does not reserve space for it and push the axes down.
     """
     ax.text(dx, dy, letter, transform=ax.transAxes, fontsize=9, fontweight="bold",
-            va="bottom", ha="right")
+            va="bottom", ha="right", in_layout=in_layout)
 
 
 def fmt_pm(value, unc, *, sep=" ± "):

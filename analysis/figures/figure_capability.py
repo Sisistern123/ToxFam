@@ -5,13 +5,21 @@ Merges the former Fig. 1 (multiclass-MCC bars) and Fig. 2 (homology break-down)
 into one figure so the whole HBI comparison reads as a single message:
   (A) multiclass (Gorodkin) MCC for HBI, ToxFam (emb) and ToxFam (emb+tax) --- the
       imbalance-robust headline metric, +-2 bootstrap SE;
-  (B) toxin-only accuracy across sequence-length bins: HBI collapses on short toxins
-      while ToxFam stays roughly flat; +-2 bootstrap SE, with a length rug for density;
+  (B) toxin-only accuracy across sequence length as a boundary-corrected local-linear
+      curve (+-2 bootstrap SE band): HBI degrades progressively on the shortest toxins
+      while ToxFam stays flat. A top-marginal histogram shows the length distribution
+      so the reader can weigh where the toxin population actually sits;
   (C) ToxFam coverage on the proteins where HBI returns no hit (HBI = 0% there by
       construction).
 
 Interpretable-but-ranking-redundant accuracy views (toxin-only, all-class) live in
 Supplementary Fig. S1 so the main figure shows only what is needed.
+
+Panel B is a continuous local-linear (LOESS degree-1) regression of correctness on
+log-length rather than coarse bins: it corrects the boundary bias that a plain kernel
+average suffers at the short end, and so faithfully renders the *graded* homology
+collapse (~0.9 down to ~25 aa, then falling to ~0.4 on the shortest toxins) that a
+single <30 aa bin would hide.
 """
 from __future__ import annotations
 
@@ -20,9 +28,8 @@ import matplotlib.ticker as mticker
 import numpy as np
 
 from analysis.figures._common import (
-    DOUBLE_COL, LEN_BINS, MCC_CI_N_BOOT, METHOD_DARK, METHOD_LINESTYLE, METHOD_MARKER,
-    METHOD_ORDER, METHODS, apply_style, fmt_pm, load_preds, panel_label, save_fig,
-    sequence_lengths,
+    DOUBLE_COL, MCC_CI_N_BOOT, METHOD_DARK, METHOD_LINESTYLE, METHOD_ORDER, METHODS,
+    apply_style, fmt_pm, load_preds, panel_label, save_fig, sequence_lengths,
 )
 from toxfam.evaluation.hbi import NO_HIT_LABEL
 from toxfam.evaluation.manuscript import (
@@ -30,7 +37,17 @@ from toxfam.evaluation.manuscript import (
 )
 
 XTICKS = [10, 30, 50, 100, 300, 1000]
-LABEL_COL = {"hbi": METHOD_DARK["hbi"], "nn_combined_run": METHODS["nn_combined_run"][1]}
+XLIM = (9, 1900)
+BW = 0.16                       # local-linear bandwidth in log10 length (tuned to the data)
+HIST_GREY = "#d9d9d9"
+GREY_D, ORANGE_D = METHOD_DARK["hbi"], METHOD_DARK["nn_combined_run"]
+# Panel B is a two-row cell (marginal strip + plot), so its title/letter naturally sit
+# higher than A/C. To keep the three columns balanced, A/C titles and letters are drawn
+# as free text (no layout reservation) at this axes-fraction height, tuned to align with
+# B's strip-top header. Re-check if the figure height or row ratios change.
+HEADER_Y_AC = 1.25
+TITLE_KW = {"fontsize": 8.5, "fontweight": "bold", "va": "bottom", "ha": "left",
+            "in_layout": False}
 
 
 def _toxin_lengths(preds, lengths):
@@ -39,18 +56,46 @@ def _toxin_lengths(preds, lengths):
     return ln, correctness(tox).astype(float)
 
 
-def _binned(preds, lengths):
-    """Per-bin toxin-only accuracy + 2 bootstrap SE, at geometric-mean bin centres."""
-    ln, correct = _toxin_lengths(preds, lengths)
-    centres, acc, se2, ns = [], [], [], []
-    for a, b in zip(LEN_BINS[:-1], LEN_BINS[1:]):
-        m = (ln >= a) & (ln < b)
-        ci = bootstrap_accuracy_ci(correct[m])
-        centres.append(float(np.exp(np.log(ln[m]).mean())))
-        acc.append(ci["point"])
-        se2.append(ci["two_se"])
-        ns.append(int(m.sum()))
-    return np.array(centres), np.array(acc), np.array(se2), ns
+def _loclin(ln, corr, grid, h):
+    """Local-linear (LOESS deg-1) accuracy vs log10-length; boundary-bias corrected."""
+    lx, gx = np.log10(ln), np.log10(grid)
+    out = np.full(len(grid), np.nan)
+    nwin = np.zeros(len(grid))
+    for j, g in enumerate(gx):
+        d = lx - g
+        w = np.exp(-0.5 * (d / h) ** 2)
+        nwin[j] = (np.abs(d) <= 1.5 * h).sum()
+        s0, s1, s2 = w.sum(), (w * d).sum(), (w * d * d).sum()
+        det = s0 * s2 - s1 * s1
+        if det <= 1e-9:
+            continue
+        t0, t1 = (w * corr).sum(), (w * d * corr).sum()
+        out[j] = (s2 * t0 - s1 * t1) / det
+    return np.clip(out, 0, 1), nwin
+
+
+def _loclin_band(ln, corr, grid, h, rng, n_boot=800):
+    n = len(ln)
+    boots = np.empty((n_boot, len(grid)))
+    for i in range(n_boot):
+        idx = rng.integers(0, n, size=n)
+        boots[i], _ = _loclin(ln[idx], corr[idx], grid, h)
+    return 2 * np.nanstd(boots, axis=0)
+
+
+def _kde_logx(ln, grid, bw=0.13):
+    lx, gx = np.log10(ln), np.log10(grid)
+    d = np.exp(-0.5 * ((gx[:, None] - lx[None, :]) / bw) ** 2).sum(1)
+    return d / d.max()
+
+
+def _logx(ax):
+    ax.set_xscale("log")
+    ax.set_xlim(*XLIM)
+    ax.set_xticks(XTICKS)
+    ax.xaxis.set_major_formatter(mticker.FuncFormatter(lambda v, _pos: f"{v:g}"))
+    ax.xaxis.set_minor_formatter(mticker.NullFormatter())
+    ax.set_xlabel("Sequence length (residues)")
 
 
 def _panel_mcc(ax):
@@ -68,47 +113,52 @@ def _panel_mcc(ax):
     ax.set_xticklabels([METHODS[k][0].replace(" (", "\n(") for k in METHOD_ORDER], fontsize=7)
     ax.set_ylim(0.75, 0.95)
     ax.set_ylabel("Multiclass MCC")
-    ax.set_title("Family-level performance", loc="left", pad=6, fontsize=8.5)
-    panel_label(ax, "A")
 
 
-def _panel_length(ax, hbi, nn, lengths):
-    """(B) Toxin-only accuracy by sequence-length bin (HBI vs ToxFam), +-2 bootstrap SE."""
-    ax.axvspan(LEN_BINS[0] or 1, 30, color="#ededed", lw=0, zorder=0)
-    ax.text(np.sqrt(9 * 30), 1.025, "$<$30 aa", ha="center", va="top", fontsize=6.5, color="#888888")
-    series = {}
-    for key, d in (("hbi", hbi), ("nn_combined_run", nn)):
-        _, color = METHODS[key]
-        cx, acc, se2, ns = _binned(d, lengths)
-        ax.errorbar(cx, acc, yerr=se2, color=color, marker=METHOD_MARKER[key],
-                    ls=METHOD_LINESTYLE[key], lw=1.0, ms=5, capsize=2.5,
-                    elinewidth=0.7, capthick=0.7, zorder=3)
-        series[key] = (cx, acc, se2, ns)
-    cx0 = series["hbi"][0][0]
-    ax.annotate("ToxFam", (cx0, series["nn_combined_run"][1][0]),
-                xytext=(cx0 * 1.18, series["nn_combined_run"][1][0] + 0.015),
-                color=LABEL_COL["nn_combined_run"], fontsize=8, fontweight="bold", va="bottom")
-    ax.annotate("HBI", (cx0, series["hbi"][1][0]),
-                xytext=(cx0 * 1.18, series["hbi"][1][0] - 0.02),
-                color=LABEL_COL["hbi"], fontsize=8, fontweight="bold", va="top")
-    ln_all, _ = _toxin_lengths(nn, lengths)
-    ax.plot(ln_all, np.full_like(ln_all, 0.32), "|", color="#999999", ms=5, alpha=0.45,
-            markeredgewidth=0.5, zorder=2, clip_on=True)
-    cx, accn, se2n, ns = series["nn_combined_run"]
-    _, acch, se2h, _ = series["hbi"]
-    ylow = np.minimum(accn - se2n, acch - se2h)
-    for x, yl, n in zip(cx, ylow, ns):
-        ax.text(x, yl - 0.03, f"$n$={n}", ha="center", va="top", fontsize=7, color="#666666")
-    ax.set_xscale("log")
-    ax.set_xlim(9, 1900)
-    ax.set_xticks(XTICKS)
-    ax.xaxis.set_major_formatter(mticker.FuncFormatter(lambda v, _pos: f"{v:g}"))
-    ax.xaxis.set_minor_formatter(mticker.NullFormatter())
-    ax.set_xlabel("Sequence length (residues)")
+def _panel_length(ax, axtop, hbi, nn, lengths, rng):
+    """(B) Toxin-only accuracy vs length (local-linear +-2 SE) with a length histogram."""
+    ln, corrH = _toxin_lengths(hbi, lengths)
+    _, corrN = _toxin_lengths(nn, lengths)
+
+    # --- top marginal: length distribution (own count axis; not overlaid on accuracy) ---
+    edges = np.logspace(np.log10(ln.min()), np.log10(ln.max()), 24)
+    counts, _, _ = axtop.hist(ln, bins=edges, color=HIST_GREY, edgecolor="white", linewidth=0.3)
+    peak = int(counts.max())
+    axtop.set_xscale("log")
+    axtop.set_xlim(*XLIM)
+    axtop.set_ylim(0, peak * 1.18)
+    axtop.set_yticks([0, peak])
+    axtop.tick_params(axis="y", labelsize=6, colors="#999999", length=2)
+    axtop.tick_params(axis="x", labelbottom=False, length=0)
+    axtop.set_ylabel("toxins", fontsize=6.5, color="#999999", rotation=0, ha="right", va="center")
+    for sp in ("top", "right"):
+        axtop.spines[sp].set_visible(False)
+    axtop.set_title("Robustness to sequence length", loc="left", pad=4, fontsize=8.5)
+
+    # --- accuracy curves ---
+    grid = np.logspace(np.log10(ln.min()), np.log10(np.percentile(ln, 98)), 160)
+    ends = {}
+    for key, corr, dark in (("hbi", corrH, GREY_D), ("nn_combined_run", corrN, ORANGE_D)):
+        yc, nwin = _loclin(ln, corr, grid, BW)
+        band = _loclin_band(ln, corr, grid, BW, rng)
+        keep = nwin >= 8
+        g, y, s = grid[keep], yc[keep], band[keep]
+        ax.fill_between(g, y - s, y + s, color=METHODS[key][1], alpha=0.20, lw=0, zorder=2)
+        ax.plot(g, y, color=dark, ls=METHOD_LINESTYLE[key], lw=1.7, zorder=3)
+        ends[key] = (g[-1], y[-1])
+    # direct end-labels in the empty right region (data ends ~400 aa, axis runs to 1900)
+    xr = ends["hbi"][0] * 1.25
+    ax.text(xr, ends["nn_combined_run"][1] + 0.005, "ToxFam", color=ORANGE_D, fontsize=8,
+            fontweight="bold", ha="left", va="center")
+    ax.text(xr, ends["hbi"][1] - 0.005, "HBI", color=GREY_D, fontsize=8,
+            fontweight="bold", ha="left", va="center")
+    ax.annotate("homology degrades\non the shortest toxins", xy=(11, 0.45), xytext=(70, 0.58),
+                fontsize=6.6, color="#777777", ha="left", va="center",
+                arrowprops=dict(arrowstyle="->", color="#aaaaaa", lw=0.7,
+                                connectionstyle="arc3,rad=-0.15"))
+    _logx(ax)
+    ax.set_ylim(0.28, 1.04)
     ax.set_ylabel("Toxin-only accuracy")
-    ax.set_ylim(0.30, 1.04)
-    ax.set_title("Robustness to sequence length", loc="left", pad=6, fontsize=8.5)
-    panel_label(ax, "B")
 
 
 def _panel_coverage(ax, hbi, nn):
@@ -134,8 +184,6 @@ def _panel_coverage(ax, hbi, nn):
     ax.set_xticklabels(labels, fontsize=7)
     ax.set_ylim(0, 1.14)
     ax.set_ylabel("Accuracy")
-    ax.set_title("No-homolog coverage", loc="left", pad=6, fontsize=8.5)
-    panel_label(ax, "C")
 
 
 def main() -> None:
@@ -143,13 +191,27 @@ def main() -> None:
     hbi = load_preds("test_set", "hbi")
     nn = load_preds("test_set", "nn_combined_run")
     lengths = sequence_lengths()
+    rng = np.random.default_rng(0)
 
-    fig, (axA, axB, axC) = plt.subplots(
-        1, 3, figsize=(DOUBLE_COL, 3.15),
-        gridspec_kw={"width_ratios": [1.0, 1.75, 1.05]}, layout="constrained")
+    fig = plt.figure(figsize=(DOUBLE_COL, 3.35), layout="constrained")
+    gs = fig.add_gridspec(2, 3, height_ratios=[1, 6.2],
+                          width_ratios=[1.0, 1.75, 1.05], hspace=0.05)
+    axA = fig.add_subplot(gs[1, 0])
+    axBtop = fig.add_subplot(gs[0, 1])
+    axB = fig.add_subplot(gs[1, 1], sharex=axBtop)
+    axC = fig.add_subplot(gs[1, 2])
+
     _panel_mcc(axA)
-    _panel_length(axB, hbi, nn, lengths)
+    _panel_length(axB, axBtop, hbi, nn, lengths, rng)
     _panel_coverage(axC, hbi, nn)
+
+    # Headers: B's title/letter sit on the marginal strip; A/C are drawn as free text at
+    # the same height so all three columns read as balanced (see HEADER_Y_AC note).
+    axA.text(0, HEADER_Y_AC, "Family-level performance", transform=axA.transAxes, **TITLE_KW)
+    axC.text(0, HEADER_Y_AC, "No-homolog coverage", transform=axC.transAxes, **TITLE_KW)
+    panel_label(axA, "A", dy=HEADER_Y_AC, in_layout=False)
+    panel_label(axBtop, "B")
+    panel_label(axC, "C", dy=HEADER_Y_AC, in_layout=False)
     save_fig(fig, "figure_capability")
 
 
