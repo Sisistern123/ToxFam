@@ -41,13 +41,6 @@ XLIM = (9, 1900)
 BW = 0.16                       # local-linear bandwidth in log10 length (tuned to the data)
 HIST_GREY = "#d9d9d9"
 GREY_D, ORANGE_D = METHOD_DARK["hbi"], METHOD_DARK["nn_combined_run"]
-# Panel B is a two-row cell (marginal strip + plot), so its title/letter naturally sit
-# higher than A/C. To keep the three columns balanced, A/C titles and letters are drawn
-# as free text (no layout reservation) at this axes-fraction height, tuned to align with
-# B's strip-top header. Re-check if the figure height or row ratios change.
-HEADER_Y_AC = 1.25
-TITLE_KW = {"fontsize": 8.5, "fontweight": "bold", "va": "bottom", "ha": "left",
-            "in_layout": False}
 
 
 def _toxin_lengths(preds, lengths):
@@ -60,18 +53,16 @@ def _loclin(ln, corr, grid, h):
     """Local-linear (LOESS deg-1) accuracy vs log10-length; boundary-bias corrected."""
     lx, gx = np.log10(ln), np.log10(grid)
     out = np.full(len(grid), np.nan)
-    nwin = np.zeros(len(grid))
     for j, g in enumerate(gx):
         d = lx - g
         w = np.exp(-0.5 * (d / h) ** 2)
-        nwin[j] = (np.abs(d) <= 1.5 * h).sum()
         s0, s1, s2 = w.sum(), (w * d).sum(), (w * d * d).sum()
         det = s0 * s2 - s1 * s1
         if det <= 1e-9:
             continue
         t0, t1 = (w * corr).sum(), (w * d * corr).sum()
         out[j] = (s2 * t0 - s1 * t1) / det
-    return np.clip(out, 0, 1), nwin
+    return np.clip(out, 0, 1)
 
 
 def _loclin_band(ln, corr, grid, h, rng, n_boot=800):
@@ -79,14 +70,14 @@ def _loclin_band(ln, corr, grid, h, rng, n_boot=800):
     boots = np.empty((n_boot, len(grid)))
     for i in range(n_boot):
         idx = rng.integers(0, n, size=n)
-        boots[i], _ = _loclin(ln[idx], corr[idx], grid, h)
+        boots[i] = _loclin(ln[idx], corr[idx], grid, h)
     return 2 * np.nanstd(boots, axis=0)
 
 
-def _kde_logx(ln, grid, bw=0.13):
-    lx, gx = np.log10(ln), np.log10(grid)
-    d = np.exp(-0.5 * ((gx[:, None] - lx[None, :]) / bw) ** 2).sum(1)
-    return d / d.max()
+def _support_mask(ln, grid, h, min_pts=8):
+    """Grid points backed by >= min_pts observations within 1.5 bandwidths."""
+    gx, lx = np.log10(grid), np.log10(ln)
+    return (np.abs(gx[:, None] - lx[None, :]) <= 1.5 * h).sum(1) >= min_pts
 
 
 def _logx(ax):
@@ -133,36 +124,37 @@ def _panel_length(ax, axtop, hbi, nn, lengths, rng):
     axtop.set_ylabel("toxins", fontsize=6.5, color="#999999", rotation=0, ha="right", va="center")
     for sp in ("top", "right"):
         axtop.spines[sp].set_visible(False)
-    axtop.set_title("Robustness to sequence length", loc="left", pad=4, fontsize=8.5)
 
-    # --- accuracy curves ---
+    # --- accuracy curves (shared grid + support mask; only the fit varies per method) ---
     grid = np.logspace(np.log10(ln.min()), np.log10(np.percentile(ln, 98)), 160)
-    ends, series = {}, {}
+    keep = _support_mask(ln, grid, BW)
+    gk = grid[keep]
+    series = {}
     for key, corr, dark in (("hbi", corrH, GREY_D), ("nn_combined_run", corrN, ORANGE_D)):
-        yc, nwin = _loclin(ln, corr, grid, BW)
-        band = _loclin_band(ln, corr, grid, BW, rng)
-        keep = nwin >= 8
-        g, y, s = grid[keep], yc[keep], band[keep]
-        ax.fill_between(g, y - s, y + s, color=METHODS[key][1], alpha=0.20, lw=0, zorder=2)
-        ax.plot(g, y, color=dark, ls=METHOD_LINESTYLE[key], lw=1.7, zorder=3)
-        ends[key] = (g[-1], y[-1])
-        series[key] = (g, y, s)
-    # Significance boundary: the length below which the two +-2 SE bands stop
-    # overlapping (ToxFam pointwise significantly more accurate). Computed from the
-    # same plotted bands (ToxFam lower vs HBI upper), so the guide sits exactly where
-    # they visibly separate rather than at a hardcoded round number.
-    g = series["hbi"][0]
-    sep = (series["nn_combined_run"][1] - series["nn_combined_run"][2]) > (series["hbi"][1] + series["hbi"][2])
-    xcross = next((g[i] for i in range(1, len(g)) if sep[i - 1] and not sep[i]), None)
+        y = _loclin(ln, corr, grid, BW)[keep]
+        s = _loclin_band(ln, corr, grid, BW, rng)[keep]
+        ax.fill_between(gk, y - s, y + s, color=METHODS[key][1], alpha=0.20, lw=0, zorder=2)
+        ax.plot(gk, y, color=dark, ls=METHOD_LINESTYLE[key], lw=1.7, zorder=3)
+        series[key] = (y, s)
+    yN, sN = series["nn_combined_run"]
+    yH, sH = series["hbi"]
+
+    # Significance boundary: the length below which the two +-2 SE bands stop overlapping
+    # (ToxFam pointwise significantly more accurate). Taken from the same plotted bands
+    # (ToxFam lower vs HBI upper), so the guide sits exactly where they visibly separate.
+    sep = (yN - sN) > (yH + sH)
+    trans = np.flatnonzero(sep[:-1] & ~sep[1:])   # first separated -> overlapping crossing
+    xcross = gk[trans[0] + 1] if trans.size else None
     if xcross is not None:
         ax.axvline(xcross, color="#9a9a9a", ls=(0, (1, 1.6)), lw=0.8, zorder=1)
         ax.text(xcross * 1.07, 0.30, f"$\\approx${xcross:.0f} aa", fontsize=7,
                 color="#8a8a8a", ha="left", va="bottom")
+
     # direct end-labels in the empty right region (data ends ~400 aa, axis runs to 1900)
-    xr = ends["hbi"][0] * 1.25
-    ax.text(xr, ends["nn_combined_run"][1] + 0.005, "ToxFam", color=ORANGE_D, fontsize=8,
+    xr = gk[-1] * 1.25
+    ax.text(xr, yN[-1] + 0.005, "ToxFam", color=ORANGE_D, fontsize=8,
             fontweight="bold", ha="left", va="center")
-    ax.text(xr, ends["hbi"][1] - 0.005, "HBI", color=GREY_D, fontsize=8,
+    ax.text(xr, yH[-1] - 0.005, "HBI", color=GREY_D, fontsize=8,
             fontweight="bold", ha="left", va="center")
     ax.annotate("homology degrades\non the shortest toxins", xy=(11, 0.45), xytext=(70, 0.58),
                 fontsize=6.6, color="#777777", ha="left", va="center",
@@ -208,8 +200,15 @@ def main() -> None:
     fig = plt.figure(figsize=(DOUBLE_COL, 3.35), layout="constrained")
     gs = fig.add_gridspec(2, 3, height_ratios=[1, 6.2],
                           width_ratios=[1.0, 1.75, 1.05], hspace=0.05)
-    axA = fig.add_subplot(gs[1, 0])
+    # Every column has a top-row axes carrying its header, so all three titles and panel
+    # letters align by construction. Only column B's top row is a visible marginal (the
+    # length histogram); A and C use blank spacers.
+    axAtop = fig.add_subplot(gs[0, 0])
     axBtop = fig.add_subplot(gs[0, 1])
+    axCtop = fig.add_subplot(gs[0, 2])
+    axAtop.axis("off")
+    axCtop.axis("off")
+    axA = fig.add_subplot(gs[1, 0])
     axB = fig.add_subplot(gs[1, 1], sharex=axBtop)
     axC = fig.add_subplot(gs[1, 2])
 
@@ -217,13 +216,11 @@ def main() -> None:
     _panel_length(axB, axBtop, hbi, nn, lengths, rng)
     _panel_coverage(axC, hbi, nn)
 
-    # Headers: B's title/letter sit on the marginal strip; A/C are drawn as free text at
-    # the same height so all three columns read as balanced (see HEADER_Y_AC note).
-    axA.text(0, HEADER_Y_AC, "Family-level performance", transform=axA.transAxes, **TITLE_KW)
-    axC.text(0, HEADER_Y_AC, "No-homolog coverage", transform=axC.transAxes, **TITLE_KW)
-    panel_label(axA, "A", dy=HEADER_Y_AC, in_layout=False)
-    panel_label(axBtop, "B")
-    panel_label(axC, "C", dy=HEADER_Y_AC, in_layout=False)
+    for axtop, letter, title in ((axAtop, "A", "Family-level performance"),
+                                 (axBtop, "B", "Robustness to sequence length"),
+                                 (axCtop, "C", "No-homolog coverage")):
+        axtop.set_title(title, loc="left", pad=4, fontsize=8.5)
+        panel_label(axtop, letter)
     save_fig(fig, "figure_capability")
 
 
