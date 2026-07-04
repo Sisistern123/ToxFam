@@ -137,7 +137,7 @@ def _panel_length(ax, axtop, hbi, nn, lengths, rng):
 
     # --- accuracy curves ---
     grid = np.logspace(np.log10(ln.min()), np.log10(np.percentile(ln, 98)), 160)
-    ends = {}
+    ends, series = {}, {}
     for key, corr, dark in (("hbi", corrH, GREY_D), ("nn_combined_run", corrN, ORANGE_D)):
         yc, nwin = _loclin(ln, corr, grid, BW)
         band = _loclin_band(ln, corr, grid, BW, rng)
@@ -146,6 +146,16 @@ def _panel_length(ax, axtop, hbi, nn, lengths, rng):
         ax.fill_between(g, y - s, y + s, color=METHODS[key][1], alpha=0.20, lw=0, zorder=2)
         ax.plot(g, y, color=dark, ls=METHOD_LINESTYLE[key], lw=1.7, zorder=3)
         ends[key] = (g[-1], y[-1])
+        series[key] = (g, y, s)
+    # Significance boundary: the length below which the two +-2 SE bands stop
+    # overlapping (ToxFam pointwise significantly more accurate). Computed from the
+    # same plotted bands (ToxFam lower vs HBI upper), so the guide sits exactly where
+    # they visibly separate rather than at a hardcoded round number.
+    g = series["hbi"][0]
+    sep = (series["nn_combined_run"][1] - series["nn_combined_run"][2]) > (series["hbi"][1] + series["hbi"][2])
+    xcross = next((g[i] for i in range(1, len(g)) if sep[i - 1] and not sep[i]), None)
+    if xcross is not None:
+        ax.axvline(xcross, color="#9a9a9a", ls=(0, (1, 1.6)), lw=0.8, zorder=1)
     # direct end-labels in the empty right region (data ends ~400 aa, axis runs to 1900)
     xr = ends["hbi"][0] * 1.25
     ax.text(xr, ends["nn_combined_run"][1] + 0.005, "ToxFam", color=ORANGE_D, fontsize=8,
