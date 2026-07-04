@@ -44,9 +44,16 @@ GREY_D, ORANGE_D = METHOD_DARK["hbi"], METHOD_DARK["nn_combined_run"]
 
 
 def _toxin_lengths(preds, lengths):
+    """Toxin sequence lengths paired with per-row correctness, in the same order.
+
+    Toxins whose identifier has no known length are dropped from both arrays so a
+    missing length cannot poison the log-scale grid or the local-linear fit.
+    """
     tox = preds[toxin_mask(preds)]
     ln = lengths.reindex(tox["identifier"].to_numpy()).to_numpy(dtype=float)
-    return ln, correctness(tox).astype(float)
+    corr = correctness(tox).astype(float)
+    ok = np.isfinite(ln)
+    return ln[ok], corr[ok]
 
 
 def _loclin(ln, corr, grid, h):
@@ -108,12 +115,12 @@ def _panel_mcc(ax):
 
 def _panel_length(ax, axtop, hbi, nn, lengths, rng):
     """(B) Toxin-only accuracy vs length (local-linear +-2 SE) with a length histogram."""
-    ln, corrH = _toxin_lengths(hbi, lengths)
-    _, corrN = _toxin_lengths(nn, lengths)
+    lnH, corrH = _toxin_lengths(hbi, lengths)
+    lnN, corrN = _toxin_lengths(nn, lengths)
 
     # --- top marginal: length distribution (own count axis; not overlaid on accuracy) ---
-    edges = np.logspace(np.log10(ln.min()), np.log10(ln.max()), 24)
-    counts, _, _ = axtop.hist(ln, bins=edges, color=HIST_GREY, edgecolor="white", linewidth=0.3)
+    edges = np.logspace(np.log10(lnH.min()), np.log10(lnH.max()), 24)
+    counts, _, _ = axtop.hist(lnH, bins=edges, color=HIST_GREY, edgecolor="white", linewidth=0.3)
     peak = int(counts.max())
     axtop.set_xscale("log")
     axtop.set_xlim(*XLIM)
@@ -125,14 +132,16 @@ def _panel_length(ax, axtop, hbi, nn, lengths, rng):
     for sp in ("top", "right"):
         axtop.spines[sp].set_visible(False)
 
-    # --- accuracy curves (shared grid + support mask; only the fit varies per method) ---
-    grid = np.logspace(np.log10(ln.min()), np.log10(np.percentile(ln, 98)), 160)
-    keep = _support_mask(ln, grid, BW)
+    # --- accuracy curves: each method pairs its OWN lengths with its OWN correctness
+    #     (the hbi and nn frames need not share row order), evaluated on a shared grid. ---
+    grid = np.logspace(np.log10(lnH.min()), np.log10(np.percentile(lnH, 98)), 160)
+    keep = _support_mask(lnH, grid, BW)
     gk = grid[keep]
     series = {}
-    for key, corr, dark in (("hbi", corrH, GREY_D), ("nn_combined_run", corrN, ORANGE_D)):
-        y = _loclin(ln, corr, grid, BW)[keep]
-        s = _loclin_band(ln, corr, grid, BW, rng)[keep]
+    for key, ln_m, corr_m, dark in (("hbi", lnH, corrH, GREY_D),
+                                    ("nn_combined_run", lnN, corrN, ORANGE_D)):
+        y = _loclin(ln_m, corr_m, grid, BW)[keep]
+        s = _loclin_band(ln_m, corr_m, grid, BW, rng)[keep]
         ax.fill_between(gk, y - s, y + s, color=METHODS[key][1], alpha=0.20, lw=0, zorder=2)
         ax.plot(gk, y, color=dark, ls=METHOD_LINESTYLE[key], lw=1.7, zorder=3)
         series[key] = (y, s)
