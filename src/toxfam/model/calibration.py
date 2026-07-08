@@ -6,7 +6,7 @@ import torch.optim as optim
 from rich.console import Console
 from torch.utils.data import DataLoader
 
-from toxfam.training.trainer import forward_model
+from toxfam.model.forward import forward_model
 
 console = Console()
 

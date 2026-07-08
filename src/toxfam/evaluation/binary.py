@@ -24,8 +24,8 @@ from torch.utils.data import DataLoader
 from toxfam.config import TrainConfig
 from toxfam.data.dataset import ToxDataset
 from toxfam.device import get_device
+from toxfam.model.forward import forward_model
 from toxfam.training.strategies import DataSelector
-from toxfam.training.trainer import forward_model
 from toxfam.visualization.analysis import plot_binary_pr, plot_binary_roc
 
 console = Console()
@@ -73,7 +73,7 @@ def compute_p_toxic(
     label_col: str = "Protein families",
 ) -> np.ndarray:
     """Compute P(toxic) for each sample by summing toxic-class probabilities."""
-    from toxfam.evaluation.metrics import NONTOXIN_LABELS
+    from toxfam.evaluation.metrics import nontoxin_indices
 
     ds, selector = build_eval_loader(dataset_df, config, label_encoder, label_col)
 
@@ -91,12 +91,8 @@ def compute_p_toxic(
     all_probs = np.concatenate(all_probs, axis=0)
     ds.close()
 
-    # Sum probabilities of all nontoxin classes
-    nontox_indices = [
-        i for i, cls in enumerate(label_encoder.classes_)
-        if cls.lower() in NONTOXIN_LABELS
-    ]
-    p_nontox = all_probs[:, nontox_indices].sum(axis=1)
+    # P(toxic) = 1 - sum over the nontoxin-class probabilities.
+    p_nontox = all_probs[:, nontoxin_indices(label_encoder.classes_)].sum(axis=1)
     return 1.0 - p_nontox
 
 

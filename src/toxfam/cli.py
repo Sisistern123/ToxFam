@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from enum import Enum
 from pathlib import Path
 from typing import (
     Annotated,
@@ -9,13 +10,75 @@ from typing import (
 )  # Required by Typer's runtime type resolution (cannot use X | None syntax)
 
 import typer
+from rich.console import Console
+
+from toxfam import __version__
+
+# Status/narration to stdout; errors to stderr (where scripts expect them).
+console = Console()
+err_console = Console(stderr=True)
 
 app = typer.Typer(
     name="toxfam",
     help="Animal toxin protein family classification using MLP on ProtT5 embeddings.",
     no_args_is_help=True,
     context_settings={"help_option_names": ["-h", "--help"]},
+    # Suppress Typer's local-variable dump on uncaught exceptions — command bodies
+    # hold live tensors / DataFrames / models that would flood the terminal; the
+    # final traceback line (the actionable one) is still shown.
+    pretty_exceptions_show_locals=False,
 )
+
+
+def _version_callback(value: bool) -> None:
+    if value:
+        console.print(f"toxfam {__version__}")
+        raise typer.Exit()
+
+
+@app.callback()
+def _root(
+    version: Annotated[
+        Optional[bool],
+        typer.Option(
+            "--version",
+            callback=_version_callback,
+            is_eager=True,
+            help="Show the toxfam version and exit.",
+        ),
+    ] = None,
+) -> None:
+    # No docstring / help: keep the Typer(help=...) above as the top-level description.
+    pass
+
+
+# Shared embedding-batch option types (reused by `embed` and `predict`). Typer
+# requires the default on the parameter itself, so only the help/metadata is
+# centralized here; the numeric defaults stay at each call site.
+MaxResiduesOpt = Annotated[int, typer.Option(help="Max residues per embedding batch")]
+MaxBatchOpt = Annotated[int, typer.Option(help="Max sequences per embedding batch")]
+
+
+class Dataset(str, Enum):
+    """The evaluation datasets accepted by `toxfam eval`.
+
+    Typing the CLI ``dataset`` argument as this enum gives parse-time validation,
+    a choices list in ``--help``, and shell completion. Kept in sync with
+    ``toxfam.data.registry.DATASETS`` by a test; the runners keep their own
+    ValueError as defense-in-depth.
+    """
+
+    test_set = "test_set"
+    val_set = "val_set"
+    non_metazoan = "non_metazoan"
+    unreviewed = "unreviewed"
+
+
+class EatMetric(str, Enum):
+    """Distance metric for `toxfam eval eat`."""
+
+    cosine = "cosine"
+    euclidean = "euclidean"
 
 
 # ---------- toxfam download-data ----------
@@ -86,6 +149,7 @@ def download_data(
     them with `toxfam taxonomy`. Existing files are skipped unless --force
     is set.
     """
+    import os
     import tempfile
     import zipfile
 
@@ -110,7 +174,7 @@ def download_data(
         url = f"{base_url}/{asset_name}"
 
         if skip_path.exists() and not force:
-            typer.echo(f"  skip {rel_path} (exists)")
+            console.print(f"  skip {rel_path} (exists)")
             continue
 
         try:
@@ -119,18 +183,29 @@ def download_data(
                 extract_dir.mkdir(parents=True, exist_ok=True)
                 with tempfile.NamedTemporaryFile(suffix=".zip", delete=False) as tmp:
                     tmp_path = Path(tmp.name)
-                _download_with_progress(url, tmp_path, asset_name)
-                with zipfile.ZipFile(tmp_path, "r") as zf:
-                    zf.extractall(extract_dir)
-                tmp_path.unlink()
+                try:
+                    _download_with_progress(url, tmp_path, asset_name)
+                    with zipfile.ZipFile(tmp_path, "r") as zf:
+                        zf.extractall(extract_dir)
+                finally:
+                    # Always clean up the temp archive, even if download/extract fails.
+                    tmp_path.unlink(missing_ok=True)
             else:
+                # Stream to a sibling .part file and atomically rename on success,
+                # so an interrupted download can't leave a truncated file that the
+                # skip-if-exists check above would treat as complete.
                 dest = target_dir / rel_path
-                _download_with_progress(url, dest, asset_name)
+                tmp_dest = dest.with_name(dest.name + ".part")
+                try:
+                    _download_with_progress(url, tmp_dest, asset_name)
+                    os.replace(tmp_dest, dest)
+                finally:
+                    tmp_dest.unlink(missing_ok=True)
         except Exception as e:
-            typer.echo(f"  FAILED: {e}", err=True)
+            err_console.print(f"  FAILED: {e}", style="red")
             raise typer.Exit(code=1)
 
-    typer.echo("Done.")
+    console.print("Done.")
 
 
 # ---------- Step 1: toxfam preprocess ----------
@@ -167,12 +242,19 @@ def preprocess(
 @app.command()
 def embed(
     input_fasta: Annotated[
-        Path,
-        typer.Option("-i", "--input", help="Input FASTA file", exists=True),
-    ] = Path("data/intermediate/mmseqs/representatives/all.fasta"),
+        Optional[Path],
+        typer.Option(
+            "-i", "--input", help="Input FASTA file", exists=True,
+            show_default="data/intermediate/mmseqs/representatives/all.fasta",
+        ),
+    ] = None,
     output: Annotated[
-        Path, typer.Option("-o", "--output", help="Output H5 file")
-    ] = Path("data/processed/embeddings.h5"),
+        Optional[Path],
+        typer.Option(
+            "-o", "--output", help="Output H5 file",
+            show_default="data/processed/embeddings.h5",
+        ),
+    ] = None,
     model_dir: Annotated[
         Optional[Path],
         typer.Option(
@@ -183,10 +265,11 @@ def embed(
     model_name: Annotated[
         str, typer.Option(help="HuggingFace model name")
     ] = "Rostlab/prot_t5_xl_half_uniref50-enc",
-    max_residues: Annotated[int, typer.Option(help="Max residues per batch")] = 4000,
-    max_batch: Annotated[int, typer.Option(help="Max sequences per batch")] = 100,
+    max_residues: MaxResiduesOpt = 4000,
+    max_batch: MaxBatchOpt = 100,
     force: Annotated[
-        bool, typer.Option("--force", help="Overwrite existing H5 instead of resuming")
+        bool,
+        typer.Option("--force", "-f", help="Overwrite existing H5 instead of resuming"),
     ] = False,
 ) -> None:
     """Generate per-protein ProtT5 embeddings from a FASTA file.
@@ -196,7 +279,17 @@ def embed(
     Already-embedded sequences are skipped unless --force is set. Automatically
     selects the best available device (CUDA > MPS > CPU).
     """
+    from toxfam._paths import intermediate_dir, processed_dir
     from toxfam.data.embedding import generate_embeddings
+
+    if input_fasta is None:
+        input_fasta = intermediate_dir() / "mmseqs" / "representatives" / "all.fasta"
+    if output is None:
+        output = processed_dir() / "embeddings.h5"
+    # Fail fast (before loading ProtT5) if the resolved default input is missing —
+    # an explicit --input is already validated by exists=True at parse time.
+    if not input_fasta.exists():
+        raise typer.BadParameter(f"Input FASTA not found: {input_fasta}")
 
     generate_embeddings(
         input_fasta=input_fasta,
@@ -215,16 +308,26 @@ def embed(
 @app.command()
 def taxonomy(
     input_csv: Annotated[
-        Path,
-        typer.Option(help="Training CSV with 'Organism (ID)' column", exists=True),
-    ] = Path("data/processed/training_data.csv"),
+        Optional[Path],
+        typer.Option(
+            help="Training CSV with 'Organism (ID)' column", exists=True,
+            show_default="data/processed/training_data.csv",
+        ),
+    ] = None,
     input_h5: Annotated[
-        Path,
-        typer.Option(help="Input H5 with protein embeddings", exists=True),
-    ] = Path("data/processed/embeddings.h5"),
+        Optional[Path],
+        typer.Option(
+            help="Input H5 with protein embeddings", exists=True,
+            show_default="data/processed/embeddings.h5",
+        ),
+    ] = None,
     output_h5: Annotated[
-        Path, typer.Option(help="Output H5 for multi-hot taxonomy vectors")
-    ] = Path("data/processed/taxonomy_vectors.h5"),
+        Optional[Path],
+        typer.Option(
+            help="Output H5 for multi-hot taxonomy vectors",
+            show_default="data/processed/taxonomy_vectors.h5",
+        ),
+    ] = None,
 ) -> None:
     """Generate multi-hot taxonomy vectors for the combined training strategy.
 
@@ -233,7 +336,22 @@ def taxonomy(
     predefined animal taxa as multi-hot vectors stored in HDF5. Only
     proteins present in the input embeddings H5 are included.
     """
+    from toxfam._paths import processed_dir
     from toxfam.data.taxonomy import run_multi_hot_taxonomy_pipeline
+
+    proc = processed_dir()
+    if input_csv is None:
+        input_csv = proc / "training_data.csv"
+    if input_h5 is None:
+        input_h5 = proc / "embeddings.h5"
+    if output_h5 is None:
+        output_h5 = proc / "taxonomy_vectors.h5"
+
+    # Fail fast (before creating the output dir) if a resolved default input is
+    # missing — explicit inputs are already validated by exists=True at parse time.
+    for hint, path in (("--input-csv", input_csv), ("--input-h5", input_h5)):
+        if not path.exists():
+            raise typer.BadParameter(f"{hint} file not found: {path}")
 
     output_h5.parent.mkdir(parents=True, exist_ok=True)
     run_multi_hot_taxonomy_pipeline(
@@ -323,12 +441,8 @@ def predict(
             help="Only predict toxic/non-toxic (skip family prediction columns)",
         ),
     ] = False,
-    max_residues: Annotated[
-        int, typer.Option(help="Max residues per embedding batch")
-    ] = 4000,
-    max_batch: Annotated[
-        int, typer.Option(help="Max sequences per embedding batch")
-    ] = 100,
+    max_residues: MaxResiduesOpt = 4000,
+    max_batch: MaxBatchOpt = 100,
 ) -> None:
     """Predict toxin family and toxicity for arbitrary proteins (no labels needed).
 
@@ -370,10 +484,8 @@ app.add_typer(eval_app, name="eval")
 @eval_app.command("hbi")
 def eval_hbi(
     dataset: Annotated[
-        str,
-        typer.Argument(
-            help="Dataset to evaluate: test_set, val_set, non_metazoan, unreviewed"
-        ),
+        Dataset,
+        typer.Argument(help="Dataset to evaluate"),
     ],
 ) -> None:
     """Run HBI (homology-based inference) on a dataset.
@@ -384,21 +496,19 @@ def eval_hbi(
     """
     from toxfam.evaluation.runner import run_hbi_evaluation
 
-    run_hbi_evaluation(dataset)
+    run_hbi_evaluation(dataset.value)
 
 
 @eval_app.command("eat")
 def eval_eat(
     dataset: Annotated[
-        str,
-        typer.Argument(
-            help="Dataset to evaluate: test_set, val_set, non_metazoan, unreviewed"
-        ),
+        Dataset,
+        typer.Argument(help="Dataset to evaluate"),
     ],
     metric: Annotated[
-        str,
-        typer.Option(help="Distance metric: cosine (default) or euclidean"),
-    ] = "cosine",
+        EatMetric,
+        typer.Option(help="Distance metric (cosine selected on val_set)"),
+    ] = EatMetric.cosine,
 ) -> None:
     """Run EAT (embedding-based annotation transfer) on a dataset.
 
@@ -408,16 +518,14 @@ def eval_eat(
     """
     from toxfam.evaluation.runner import run_eat_evaluation
 
-    run_eat_evaluation(dataset, metric=metric)
+    run_eat_evaluation(dataset.value, metric=metric.value)
 
 
 @eval_app.command("model")
 def eval_model(
     dataset: Annotated[
-        str,
-        typer.Argument(
-            help="Dataset to evaluate: test_set, val_set, non_metazoan, unreviewed"
-        ),
+        Dataset,
+        typer.Argument(help="Dataset to evaluate"),
     ],
     model_dir: Annotated[
         Path,
@@ -434,13 +542,13 @@ def eval_model(
     """
     from toxfam.evaluation.runner import run_model_evaluation
 
-    run_model_evaluation(dataset, model_dir)
+    run_model_evaluation(dataset.value, model_dir)
 
 
 @eval_app.command("compare")
 def eval_compare(
     dataset: Annotated[
-        str,
+        Dataset,
         typer.Argument(help="Dataset to compare methods for"),
     ],
 ) -> None:
@@ -452,7 +560,7 @@ def eval_compare(
     """
     from toxfam.evaluation.runner import compare_methods
 
-    compare_methods(dataset)
+    compare_methods(dataset.value)
 
 
 @eval_app.command("binary")
@@ -472,32 +580,9 @@ def eval_binary(
     (Youden's J), and evaluates on test with both default and optimized
     thresholds. Saves binary_metrics.json and ROC/PR plots.
     """
-    import pandas as pd
+    from toxfam.evaluation.runner import run_binary_evaluation_from_dir
 
-    from toxfam.config import TrainConfig
-    from toxfam.data.dataset import ToxDataset, analyze_data_splits
-    from toxfam.evaluation.binary import run_binary_evaluation
-    from toxfam.model.inference import load_calibrated_model
-
-    config = TrainConfig.from_yaml(model_dir / "config.yaml")
-    config = config.model_copy(update={"output_dir": model_dir})
-
-    df = pd.read_csv(config.input_csv)
-    train_df, val_df, test_df = analyze_data_splits(df)
-
-    h5_paths = [str(p) for p in config.h5_paths]
-    train_ds = ToxDataset(train_df, h5_paths, is_train=True)
-
-    try:
-        scaled_model, _, _ = load_calibrated_model(model_dir)
-
-        run_binary_evaluation(
-            scaled_model, train_ds.le, val_df, test_df, config, model_dir,
-        )
-
-        typer.echo("Binary metrics saved.")
-    finally:
-        train_ds.close()
+    run_binary_evaluation_from_dir(model_dir)
 
 
 # ---------- toxfam plot ----------

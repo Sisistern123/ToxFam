@@ -23,9 +23,13 @@ from pathlib import Path
 import pandas as pd
 from rich.console import Console
 
-from toxfam._paths import benchmark_dir, evaluation_data_dir, processed_dir
+from toxfam._paths import benchmark_dir, processed_dir
 from toxfam.data._fasta import write_fasta
-from toxfam.data.normalization import normalize_protein_families
+from toxfam.data.registry import (
+    DATASETS,
+    load_dataset,
+    resolve_embeddings_h5,
+)
 from toxfam.evaluation.eat import run_eat_search
 from toxfam.evaluation.hbi import NO_HIT_LABEL, run_hbi_search
 from toxfam.evaluation.metrics import (
@@ -38,89 +42,9 @@ from toxfam.visualization.plots import plot_confusion_matrix
 
 console = Console()
 
-# ---------------------------------------------------------------------------
-# Dataset registry
-# ---------------------------------------------------------------------------
-
-DATASETS: dict[str, dict] = {
-    "test_set": {
-        "source": "training_data",
-        "split": "test",
-        "task": "multiclass",
-    },
-    "val_set": {
-        "source": "training_data",
-        "split": "val",
-        "task": "multiclass",
-    },
-    "non_metazoan": {
-        "source": "evaluation",
-        "tsv": "non_metazoan.tsv",
-        "h5": "non_metazoan.h5",
-        "task": "binary",
-    },
-    "unreviewed": {
-        "source": "evaluation",
-        "tsv": "unreviewed.tsv",
-        "h5": "unreviewed.h5",
-        "task": "multiclass",
-    },
-}
-
-
-def list_datasets() -> list[str]:
-    return list(DATASETS.keys())
-
-
-# ---------------------------------------------------------------------------
-# Dataset loading
-# ---------------------------------------------------------------------------
-
-
-def load_dataset(dataset: str) -> pd.DataFrame:
-    """Load ground-truth DataFrame for a dataset.
-
-    Returns DataFrame with at least ``identifier``, ``Sequence``,
-    ``Protein families`` columns.
-    """
-    if dataset not in DATASETS:
-        raise ValueError(f"Unknown dataset '{dataset}'. Available: {list_datasets()}")
-
-    cfg = DATASETS[dataset]
-
-    if cfg["source"] == "training_data":
-        training_csv = processed_dir() / "training_data.csv"
-        if not training_csv.exists():
-            raise FileNotFoundError(
-                f"{training_csv} not found. Run 'toxfam download-data' first."
-            )
-        df = pd.read_csv(training_csv)
-        df = df[df["Split"] == cfg["split"]].reset_index(drop=True)
-        console.print(f"   Loaded {len(df)} sequences from {cfg['split']} split")
-        return df
-
-    # evaluation datasets
-    eval_dir = evaluation_data_dir() / dataset
-    tsv_name = cfg.get("tsv")
-    if tsv_name is None:
-        raise ValueError(f"Dataset '{dataset}' requires --input-tsv")
-
-    tsv_path = eval_dir / tsv_name
-    if not tsv_path.exists():
-        raise FileNotFoundError(
-            f"{tsv_path} not found. Run 'toxfam download-data' first."
-        )
-
-    df = pd.read_csv(tsv_path, sep="\t")
-    # Normalize column names
-    if "Entry" in df.columns and "identifier" not in df.columns:
-        df = df.rename(columns={"Entry": "identifier"})
-
-    df = df.dropna(subset=["Protein families"]).copy()
-    df = normalize_protein_families(df)
-
-    console.print(f"   Loaded {len(df)} sequences from {tsv_path.name}")
-    return df
+# The dataset registry + loaders live in toxfam.data.registry so `toxfam predict`
+# can resolve a dataset name without importing this evaluation/plotting module.
+# DATASETS, load_dataset and resolve_embeddings_h5 are used by the runners below.
 
 
 def _get_task(dataset: str) -> str:
@@ -144,6 +68,42 @@ def git_commit_short() -> str:
         )
     except Exception:
         return "unknown"
+
+
+def git_dirty() -> bool:
+    """True if the working tree has uncommitted changes.
+
+    A bare short SHA silently hides that results were produced from a modified
+    tree; this flags it so provenance is not misleading.
+    """
+    try:
+        out = subprocess.check_output(
+            ["git", "status", "--porcelain"], stderr=subprocess.DEVNULL
+        )
+        return bool(out.strip())
+    except Exception:
+        return False
+
+
+def _environment() -> dict:
+    """Key Python + package versions for reproducibility (best-effort)."""
+    import platform
+    from importlib.metadata import PackageNotFoundError
+    from importlib.metadata import version as _pkg_version
+
+    def _v(pkg: str) -> str:
+        try:
+            return _pkg_version(pkg)
+        except PackageNotFoundError:
+            return "unknown"
+
+    return {
+        "python": platform.python_version(),
+        "torch": _v("torch"),
+        "transformers": _v("transformers"),
+        "scikit-learn": _v("scikit-learn"),
+        "numpy": _v("numpy"),
+    }
 
 
 def _save_run(
@@ -171,6 +131,8 @@ def _save_run(
         "task": _get_task(dataset),
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "git_commit": git_commit_short(),
+        "git_dirty": git_dirty(),
+        "environment": _environment(),
         "n_samples": metrics.n_samples,
         "parameters": params,
     }
@@ -321,12 +283,9 @@ def run_eat_evaluation(dataset: str, *, metric: str = "cosine") -> MetricsResult
     # predicted labels -> "other", below), which is behaviour-identical for the
     # family metric since relabelling a reference never changes which one is nearest.
 
-    # Query embeddings H5 (evaluation datasets carry their own).
-    cfg = DATASETS[dataset]
-    if cfg["source"] == "evaluation":
-        query_h5 = evaluation_data_dir() / dataset / cfg["h5"]
-    else:
-        query_h5 = ref_h5
+    # Query embeddings H5 (evaluation datasets carry their own; the training
+    # splits reuse the processed embeddings, i.e. the same file as ref_h5).
+    query_h5 = resolve_embeddings_h5(dataset)
     for h5 in (ref_h5, query_h5):
         if not h5.exists():
             raise FileNotFoundError(f"Embeddings not found: {h5}")
@@ -437,12 +396,7 @@ def run_model_evaluation(
         )
 
     # Find embeddings H5
-    cfg = DATASETS[dataset]
-    if cfg["source"] == "evaluation":
-        h5_path = evaluation_data_dir() / dataset / cfg["h5"]
-    else:
-        h5_path = processed_dir() / "embeddings.h5"
-
+    h5_path = resolve_embeddings_h5(dataset)
     if not h5_path.exists():
         raise FileNotFoundError(f"Embeddings not found: {h5_path}")
 
@@ -495,6 +449,59 @@ def run_model_evaluation(
     print_metrics_table({method_name: metrics})
     console.print(f"   Results saved to: {output_dir}")
     return metrics
+
+
+# ---------------------------------------------------------------------------
+# Binary evaluation from a trained model directory
+# ---------------------------------------------------------------------------
+
+
+def run_binary_evaluation_from_dir(model_dir: str | Path) -> dict:
+    """Re-compute binary toxic/nontoxin metrics from a trained model directory.
+
+    Loads the calibrated model and its saved ``config.yaml``, computes P(toxic)
+    on the val and test splits, optimizes the threshold on val (Youden's J), and
+    evaluates on test with both default and optimized thresholds — writing
+    ``binary_metrics.json`` + ROC/PR plots into ``model_dir``. Returns the
+    binary-metrics dict. This is the library entrypoint behind ``toxfam eval
+    binary`` (which is a thin delegator to it).
+    """
+    from toxfam.config import TrainConfig
+    from toxfam.data.dataset import ToxDataset, analyze_data_splits
+    from toxfam.evaluation.binary import run_binary_evaluation
+    from toxfam.model.inference import load_calibrated_model
+
+    model_dir = Path(model_dir)
+    config = TrainConfig.from_yaml(model_dir / "config.yaml")
+    config = config.model_copy(update={"output_dir": model_dir})
+
+    df = pd.read_csv(config.input_csv)
+    train_df, val_df, test_df = analyze_data_splits(df)
+
+    h5_paths = [str(p) for p in config.h5_paths]
+    train_ds = ToxDataset(train_df, h5_paths, is_train=True)
+    try:
+        scaled_model, _, idx_to_label = load_calibrated_model(model_dir)
+        # P(toxic) sums the model's non-toxin *output columns*, which are frozen at
+        # training time (class_indices.json). Here the LabelEncoder is refit from
+        # config.input_csv; if that CSV's train-split labels have drifted since
+        # training, the refit order would misalign with the model's neurons and
+        # yield silently-wrong metrics. Fail loudly instead.
+        frozen = [idx_to_label[i] for i in sorted(idx_to_label)]
+        if list(train_ds.le.classes_) != frozen:
+            raise ValueError(
+                "Class order from config.input_csv does not match the model's "
+                "class_indices.json — the training data has drifted since this model "
+                "was trained. Re-run eval against the CSV the model was trained on."
+            )
+        results = run_binary_evaluation(
+            scaled_model, train_ds.le, val_df, test_df, config, model_dir,
+        )
+    finally:
+        train_ds.close()
+
+    console.print("Binary metrics saved.")
+    return results
 
 
 # ---------------------------------------------------------------------------

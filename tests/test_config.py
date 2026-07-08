@@ -1,4 +1,4 @@
-"""Tests for TrainConfig validation, fields, and effective_embedding_dim."""
+"""Tests for TrainConfig validation, fields, and YAML loading."""
 
 import pytest
 import yaml
@@ -54,12 +54,6 @@ class TestFocalLoss:
         minimal_config["focal_loss_gamma"] = -1.0
         with pytest.raises(ValueError, match="focal_loss_gamma"):
             TrainConfig(**minimal_config)
-
-
-class TestEffectiveEmbeddingDim:
-    def test_default_is_embedding_dim(self, minimal_config):
-        cfg = TrainConfig(**minimal_config)
-        assert cfg.effective_embedding_dim == 1024
 
 
 class TestFromYaml:

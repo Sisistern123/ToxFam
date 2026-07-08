@@ -11,7 +11,14 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from paper.figures._common import (
-    METHOD_ORDER, METHODS, SINGLE_COL, apply_style, fmt_pm, load_preds, panel_label, save_fig,
+    METHOD_ORDER,
+    METHODS,
+    SINGLE_COL,
+    apply_style,
+    fmt_pm,
+    load_preds,
+    panel_label,
+    save_fig,
 )
 from paper.stats import bootstrap_accuracy_ci, correctness, toxin_mask
 

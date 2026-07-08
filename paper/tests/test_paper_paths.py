@@ -1,8 +1,7 @@
 """Tests for the paper-tree path helpers (paper._paths)."""
 
-from toxfam._paths import get_project_root
-
 from paper import _paths
+from toxfam._paths import get_project_root
 
 
 def test_paper_root_is_under_project_root():

@@ -243,7 +243,7 @@ def run_topk_inference(
     When ``binary_only`` is set, the per-family columns are skipped and only
     identifier + p_toxic are returned.
     """
-    from toxfam.evaluation.metrics import is_nontoxin
+    from toxfam.evaluation.metrics import nontoxin_indices
 
     device = get_device()
     model_dir = Path(model_dir)
@@ -264,10 +264,11 @@ def run_topk_inference(
         is_multi_input=is_multi_input, tax_dim=tax_dim, device=device,
     )
 
-    # P(toxic) = 1 - sum over nontoxin class probabilities
-    nontox_indices = [
-        idx for idx, label in idx_to_label.items() if is_nontoxin(label)
-    ]
+    # P(toxic) = 1 - sum over nontoxin class probabilities. Index by actual output
+    # column so a class_indices.json that doesn't cover every column (or isn't a
+    # contiguous 0..n-1 map) degrades gracefully instead of raising KeyError.
+    ordered_labels = [idx_to_label.get(i, "") for i in range(cal_probs.shape[1])]
+    nontox_indices = nontoxin_indices(ordered_labels)
     if nontox_indices:
         p_toxic = 1.0 - cal_probs[:, nontox_indices].sum(dim=1)
     else:

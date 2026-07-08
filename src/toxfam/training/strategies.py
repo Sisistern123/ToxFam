@@ -8,19 +8,19 @@ import pandas as pd
 import torch
 import torch.nn as nn
 from rich.console import Console
-from torch.utils.data import DataLoader
 from sklearn.metrics import classification_report
+from torch.utils.data import DataLoader
 
 try:
     import wandb
 except ImportError:
     wandb = None
 
+from toxfam.device import get_device
 from toxfam.model.architectures import (
     ModularMLP,
     MultiInputMLP,
 )
-from toxfam.device import get_device
 from toxfam.training.trainer import (
     evaluate_model,
     train_model,
@@ -74,7 +74,7 @@ def run_standard_strategy(
 ) -> nn.Module:
     console.print("[bold]>>> Running Strategy: STANDARD (Embeddings Only)[/bold]")
     model = ModularMLP(
-        input_dim=config.effective_embedding_dim,
+        input_dim=config.embedding_dim,
         hidden_dims=config.hidden_dims,
         num_classes=num_classes,
         dropout=config.dropout,
@@ -100,7 +100,7 @@ def run_combined_strategy(
 ) -> nn.Module:
     console.print("[bold]>>> Running Strategy: COMBINED (Branched Architecture)[/bold]")
     model = MultiInputMLP(
-        embed_dim=config.effective_embedding_dim,
+        embed_dim=config.embedding_dim,
         tax_dim=config.tax_dim,
         hidden_dims=config.hidden_dims,
         num_classes=num_classes,
@@ -132,7 +132,7 @@ def run_binary_strategy(
     """
     console.print("[bold]>>> Running Strategy: BINARY (Toxic vs Non-toxic)[/bold]")
     model = ModularMLP(
-        input_dim=config.effective_embedding_dim,
+        input_dim=config.embedding_dim,
         hidden_dims=config.hidden_dims,
         num_classes=num_classes,
         dropout=config.dropout,

@@ -2,10 +2,9 @@
 
 from __future__ import annotations
 
-import numpy as np
-
 # Use non-interactive backend for CI
 import matplotlib
+import numpy as np
 
 matplotlib.use("Agg")
 

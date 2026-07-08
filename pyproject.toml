@@ -5,8 +5,18 @@ description = "Animal toxin protein family classification using MLP on ProtT5 em
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
+    # Directly imported by src/toxfam (previously satisfied only transitively).
+    "h5py>=3.14.0",
+    "matplotlib>=3.10",
+    "numpy>=2.2",
+    "pandas>=2.3",
+    "pyyaml>=6.0",
+    "scikit-learn>=1.7",
+    "scipy>=1.16",
+    # plotly + kaleido back the shipped `toxfam plot taxonomy` command.
+    "plotly>=6.6.0",
+    "kaleido>=1.2.0",
     "iterative-stratification>=0.1.9",
-    "jupyter>=1.1.1",
     "protobuf>=6.33.5",
     "protspace==3.3.1",
     "pydantic>=2.0",
@@ -19,7 +29,6 @@ dependencies = [
     "torch>=2.7.1",
     "transformers>=5.1.0",
     "typer>=0.15.0",
-    "wandb>=0.25.0",
 ]
 
 [project.scripts]
@@ -33,11 +42,16 @@ build-backend = "hatchling.build"
 packages = ["src/toxfam"]
 
 [dependency-groups]
+# Installed by `uv sync` (for the maintainer + CI) but NOT by `pip install toxfam`.
+# jupyter (notebook-only) and wandb (training-only, imported under try/except) are
+# not needed at runtime by the shipped commands, so they live here, not in
+# [project.dependencies].
 dev = [
-    "kaleido>=1.2.0",
-    "plotly>=6.6.0",
+    "jupyter>=1.1.1",
     "pytest>=9.0.2",
+    "pytest-cov>=6.0",
     "ruff>=0.15.4",
+    "wandb>=0.25.0",
 ]
 
 [tool.pytest.ini_options]
@@ -45,9 +59,18 @@ dev = [
 # (paper/tests/) coexist even with same-named modules, and is the pytest-recommended
 # mode for new/src-layout projects. pythonpath="." makes the non-installed `paper`
 # package importable from the repo root during tests.
-addopts = "--import-mode=importlib"
+# `-m 'not slow'` deselects the end-to-end training smoke test by default (run it
+# explicitly with `pytest -m slow`), keeping the default suite fast + hermetic.
+addopts = "--import-mode=importlib -m 'not slow'"
 pythonpath = ["."]
 testpaths = ["tests", "paper/tests"]
+markers = [
+    "slow: end-to-end training smoke test; deselected by default, run with `pytest -m slow`",
+]
+
+[tool.ruff.lint]
+# Add import sorting (isort) on top of ruff's default rule set.
+extend-select = ["I"]
 
 [tool.ruff.lint.per-file-ignores]
 # Figure scripts favour dense, layout-oriented code (semicolon-grouped coordinate

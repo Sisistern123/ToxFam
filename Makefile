@@ -15,7 +15,12 @@
 PY := uv run python -m paper.figures
 
 .PHONY: figures numbers fig-pipeline fig-capability fig-confidence-curation \
-        fig-supp-accuracy fig-supp-perfamily fig-supplementary unreviewed-predictions
+        fig-supp-accuracy fig-supp-perfamily fig-supplementary unreviewed-predictions \
+        coverage
+
+## Ad-hoc test-coverage report (no CI gate; run occasionally).
+coverage:
+	uv run pytest --cov=toxfam --cov-report=term-missing
 
 ## Build every manuscript figure + the results-numbers manifest.
 figures: numbers fig-pipeline fig-capability fig-confidence-curation \

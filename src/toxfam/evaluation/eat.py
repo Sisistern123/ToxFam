@@ -20,7 +20,6 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import h5py
-import numpy as np
 import pandas as pd
 import torch
 import torch.nn.functional as F

@@ -14,21 +14,21 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-from toxfam.data._fasta import parse_fasta, write_fasta
 from iterstrat.ml_stratifiers import MultilabelStratifiedShuffleSplit
 from pymmseqs.commands import easy_cluster
 from rich.console import Console
 from rich.progress import (
+    BarColumn,
+    MofNCompleteColumn,
     Progress,
     SpinnerColumn,
     TextColumn,
-    BarColumn,
-    MofNCompleteColumn,
 )
 from rich.table import Table
 from sklearn.preprocessing import MultiLabelBinarizer
 
-from toxfam._paths import get_project_root, raw_dir, intermediate_dir, processed_dir
+from toxfam._paths import get_project_root, intermediate_dir, processed_dir, raw_dir
+from toxfam.data._fasta import parse_fasta, write_fasta
 from toxfam.data.normalization import normalize_protein_families
 
 console = Console()

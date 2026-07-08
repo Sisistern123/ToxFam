@@ -18,7 +18,13 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from paper.figures._common import (
-    DOUBLE_COL, METHOD_DARK, METHODS, apply_style, load_preds, save_fig, test_set_class_list,
+    DOUBLE_COL,
+    METHOD_DARK,
+    METHODS,
+    apply_style,
+    load_preds,
+    save_fig,
+    test_set_class_list,
 )
 from paper.stats import per_family_mcc_difference
 
