@@ -183,10 +183,13 @@ def download_data(
                 extract_dir.mkdir(parents=True, exist_ok=True)
                 with tempfile.NamedTemporaryFile(suffix=".zip", delete=False) as tmp:
                     tmp_path = Path(tmp.name)
-                _download_with_progress(url, tmp_path, asset_name)
-                with zipfile.ZipFile(tmp_path, "r") as zf:
-                    zf.extractall(extract_dir)
-                tmp_path.unlink()
+                try:
+                    _download_with_progress(url, tmp_path, asset_name)
+                    with zipfile.ZipFile(tmp_path, "r") as zf:
+                        zf.extractall(extract_dir)
+                finally:
+                    # Always clean up the temp archive, even if download/extract fails.
+                    tmp_path.unlink(missing_ok=True)
             else:
                 # Stream to a sibling .part file and atomically rename on success,
                 # so an interrupted download can't leave a truncated file that the
@@ -283,6 +286,10 @@ def embed(
         input_fasta = intermediate_dir() / "mmseqs" / "representatives" / "all.fasta"
     if output is None:
         output = processed_dir() / "embeddings.h5"
+    # Fail fast (before loading ProtT5) if the resolved default input is missing —
+    # an explicit --input is already validated by exists=True at parse time.
+    if not input_fasta.exists():
+        raise typer.BadParameter(f"Input FASTA not found: {input_fasta}")
 
     generate_embeddings(
         input_fasta=input_fasta,
@@ -339,6 +346,12 @@ def taxonomy(
         input_h5 = proc / "embeddings.h5"
     if output_h5 is None:
         output_h5 = proc / "taxonomy_vectors.h5"
+
+    # Fail fast (before creating the output dir) if a resolved default input is
+    # missing — explicit inputs are already validated by exists=True at parse time.
+    for hint, path in (("--input-csv", input_csv), ("--input-h5", input_h5)):
+        if not path.exists():
+            raise typer.BadParameter(f"{hint} file not found: {path}")
 
     output_h5.parent.mkdir(parents=True, exist_ok=True)
     run_multi_hot_taxonomy_pipeline(

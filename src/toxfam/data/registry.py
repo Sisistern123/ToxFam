@@ -90,6 +90,7 @@ def load_dataset(dataset: str) -> pd.DataFrame:
                 f"{training_csv} not found. Run 'toxfam download-data' first."
             )
         df = pd.read_csv(training_csv)
+        df = ensure_identifier_column(df)
         df = df[df["Split"] == cfg["split"]].reset_index(drop=True)
         console.print(f"   Loaded {len(df)} sequences from {cfg['split']} split")
         return df

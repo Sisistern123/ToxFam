@@ -254,5 +254,5 @@ benchmark/                      # Evaluation results only (gitignored, regenerat
 - All commands can be run from the project root via `uv run toxfam <command>`
 - Families with <10 members are collapsed into an `"other"` class during preprocessing
 - The taxonomy multi-hot vectors encode membership in 50 predefined animal taxa (from Porifera to Soricidae), defined in `toxfam.data.taxonomy.TAXA`
-- Path resolution uses `toxfam._paths.get_project_root()` which finds the project root by walking up to find `pyproject.toml`
+- Path resolution uses `toxfam._paths.get_project_root()` which finds the project root by walking up to find `pyproject.toml` (or honors the `TOXFAM_ROOT` env var if set); the result is cached per process
 - The project uses `rich` for all CLI output (progress bars via `rich.progress.Progress`, styled messages via `console.print()`) — not `tqdm` or raw `print()`

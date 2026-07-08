@@ -481,7 +481,19 @@ def run_binary_evaluation_from_dir(model_dir: str | Path) -> dict:
     h5_paths = [str(p) for p in config.h5_paths]
     train_ds = ToxDataset(train_df, h5_paths, is_train=True)
     try:
-        scaled_model, _, _ = load_calibrated_model(model_dir)
+        scaled_model, _, idx_to_label = load_calibrated_model(model_dir)
+        # P(toxic) sums the model's non-toxin *output columns*, which are frozen at
+        # training time (class_indices.json). Here the LabelEncoder is refit from
+        # config.input_csv; if that CSV's train-split labels have drifted since
+        # training, the refit order would misalign with the model's neurons and
+        # yield silently-wrong metrics. Fail loudly instead.
+        frozen = [idx_to_label[i] for i in sorted(idx_to_label)]
+        if list(train_ds.le.classes_) != frozen:
+            raise ValueError(
+                "Class order from config.input_csv does not match the model's "
+                "class_indices.json — the training data has drifted since this model "
+                "was trained. Re-run eval against the CSV the model was trained on."
+            )
         results = run_binary_evaluation(
             scaled_model, train_ds.le, val_df, test_df, config, model_dir,
         )
