@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import pandas as pd
 
-
 # Conotoxin superfamily prefix corrections (matched case-insensitively)
 _CONOTOXIN_REPLACEMENTS = {
     "i1 superfamily": "Conotoxin I1 superfamily",

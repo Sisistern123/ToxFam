@@ -13,6 +13,7 @@ import torch.optim as optim
 from rich.console import Console
 from sklearn.metrics import accuracy_score, matthews_corrcoef
 from sklearn.preprocessing import label_binarize
+
 from toxfam.device import get_device
 from toxfam.model.forward import forward_model
 

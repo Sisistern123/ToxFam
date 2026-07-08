@@ -16,6 +16,7 @@ except ImportError:
 
 from toxfam.config import TrainConfig
 from toxfam.data.dataset import ToxDataset, analyze_data_splits
+from toxfam.device import get_device
 from toxfam.model.calibration import ModelWithTemperature
 from toxfam.training.strategies import (
     DataSelector,
@@ -24,7 +25,6 @@ from toxfam.training.strategies import (
     run_combined_strategy,
     run_standard_strategy,
 )
-from toxfam.device import get_device
 from toxfam.training.trainer import get_class_weights, set_seed
 from toxfam.visualization.analysis import analyze_label_distribution_for_split
 

@@ -16,7 +16,6 @@ from toxfam.evaluation.metrics import (
     to_binary_class,
 )
 
-
 # ---------- to_binary_class ----------
 
 

@@ -6,18 +6,31 @@ import warnings
 
 import numpy as np
 import pandas as pd
-
 from rich.console import Console
 
+from paper._paths import adjudication_csv, manuscript_tex_target
 from paper.figures._common import (
-    FIG_DIR, LEN_BINS, MCC_CI_N_BOOT, load_preds, sequence_lengths, test_set_class_list,
+    FIG_DIR,
+    LEN_BINS,
+    MCC_CI_N_BOOT,
+    load_preds,
+    sequence_lengths,
+    test_set_class_list,
 )
 from paper.stats import (
-    accuracy_by_identity_bins, accuracy_by_length_bins, adjudication_summary, aligned_correctness,
-    bootstrap_label_metric_ci, macro_mcc_by_support, mcnemar_test, micro_mcc,
-    overall_mcc, paired_bootstrap_accuracy_diff, subset_accuracy, toxin_mask,
+    accuracy_by_identity_bins,
+    accuracy_by_length_bins,
+    adjudication_summary,
+    aligned_correctness,
+    bootstrap_label_metric_ci,
+    macro_mcc_by_support,
+    mcnemar_test,
+    micro_mcc,
+    overall_mcc,
+    paired_bootstrap_accuracy_diff,
+    subset_accuracy,
+    toxin_mask,
 )
-from paper._paths import adjudication_csv, manuscript_tex_target
 from toxfam._paths import benchmark_dir, get_project_root
 from toxfam.evaluation.hbi import NO_HIT_LABEL
 from toxfam.evaluation.metrics import is_nontoxin

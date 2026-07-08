@@ -8,19 +8,19 @@ import pandas as pd
 import torch
 import torch.nn as nn
 from rich.console import Console
-from torch.utils.data import DataLoader
 from sklearn.metrics import classification_report
+from torch.utils.data import DataLoader
 
 try:
     import wandb
 except ImportError:
     wandb = None
 
+from toxfam.device import get_device
 from toxfam.model.architectures import (
     ModularMLP,
     MultiInputMLP,
 )
-from toxfam.device import get_device
 from toxfam.training.trainer import (
     evaluate_model,
     train_model,

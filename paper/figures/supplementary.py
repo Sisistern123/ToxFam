@@ -5,11 +5,9 @@ adds the calibration + convention artifacts that did not previously exist.)
 """
 from __future__ import annotations
 
-
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-
 from rich.console import Console
 
 from paper.figures._common import apply_style, load_preds, save_fig, test_set_class_list

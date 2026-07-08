@@ -68,6 +68,10 @@ markers = [
     "slow: end-to-end training smoke test; deselected by default, run with `pytest -m slow`",
 ]
 
+[tool.ruff.lint]
+# Add import sorting (isort) on top of ruff's default rule set.
+extend-select = ["I"]
+
 [tool.ruff.lint.per-file-ignores]
 # Figure scripts favour dense, layout-oriented code (semicolon-grouped coordinate
 # assignments + small lambdas) that reads better compact than fully expanded.

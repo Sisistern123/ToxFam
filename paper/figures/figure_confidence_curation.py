@@ -22,7 +22,11 @@ from matplotlib.patches import ConnectionPatch, FancyBboxPatch
 
 from paper._paths import adjudication_csv
 from paper.figures._common import (
-    ADJUDICATION, DOUBLE_COL, apply_style, load_preds, save_fig,
+    ADJUDICATION,
+    DOUBLE_COL,
+    apply_style,
+    load_preds,
+    save_fig,
 )
 from toxfam._paths import processed_dir
 
