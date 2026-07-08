@@ -64,6 +64,7 @@ def convention_table() -> None:
         {"method": "HBI", **conv},
     ])
     from paper.figures._common import FIG_DIR
+    FIG_DIR.mkdir(parents=True, exist_ok=True)
     out.to_csv(FIG_DIR / "supp_macro_f1_conventions.csv", index=False)
     console.print(out.to_string(index=False))
 

@@ -31,3 +31,12 @@ def test_manuscript_tex_target_respects_env_override(monkeypatch, tmp_path):
     # Pointing at a non-existent dir yields None (callers skip the sync).
     monkeypatch.setenv("TOXFAM_MANUSCRIPT_DIR", str(tmp_path / "does_not_exist"))
     assert _paths.manuscript_tex_target() is None
+
+
+def test_manuscript_tex_target_relative_override_anchors_to_project_root(monkeypatch, tmp_path):
+    # A RELATIVE override must resolve under the project root, not the CWD, to honour
+    # the module's "stable regardless of the current working directory" contract.
+    monkeypatch.setattr(_paths, "get_project_root", lambda: tmp_path)
+    (tmp_path / "ms").mkdir()
+    monkeypatch.setenv("TOXFAM_MANUSCRIPT_DIR", "ms")
+    assert _paths.manuscript_tex_target() == tmp_path / "ms" / "results_numbers.tex"

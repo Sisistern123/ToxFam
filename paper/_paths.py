@@ -53,5 +53,12 @@ def manuscript_tex_target() -> Path | None:
     manuscript checkout is available, so callers simply skip the sync.
     """
     override = os.environ.get("TOXFAM_MANUSCRIPT_DIR")
-    base = Path(override) if override else get_project_root() / "manuscript"
+    if override:
+        base = Path(override)
+        if not base.is_absolute():
+            # Anchor a relative override to the project root, not the CWD, so the
+            # result stays stable regardless of where the process was launched.
+            base = get_project_root() / base
+    else:
+        base = get_project_root() / "manuscript"
     return (base / "results_numbers.tex") if base.is_dir() else None
