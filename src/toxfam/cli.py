@@ -10,6 +10,13 @@ from typing import (
 )  # Required by Typer's runtime type resolution (cannot use X | None syntax)
 
 import typer
+from rich.console import Console
+
+from toxfam import __version__
+
+# Status/narration to stdout; errors to stderr (where scripts expect them).
+console = Console()
+err_console = Console(stderr=True)
 
 app = typer.Typer(
     name="toxfam",
@@ -21,6 +28,35 @@ app = typer.Typer(
     # final traceback line (the actionable one) is still shown.
     pretty_exceptions_show_locals=False,
 )
+
+
+def _version_callback(value: bool) -> None:
+    if value:
+        console.print(f"toxfam {__version__}")
+        raise typer.Exit()
+
+
+@app.callback()
+def _root(
+    version: Annotated[
+        Optional[bool],
+        typer.Option(
+            "--version",
+            callback=_version_callback,
+            is_eager=True,
+            help="Show the toxfam version and exit.",
+        ),
+    ] = None,
+) -> None:
+    # No docstring / help: keep the Typer(help=...) above as the top-level description.
+    pass
+
+
+# Shared embedding-batch option types (reused by `embed` and `predict`). Typer
+# requires the default on the parameter itself, so only the help/metadata is
+# centralized here; the numeric defaults stay at each call site.
+MaxResiduesOpt = Annotated[int, typer.Option(help="Max residues per embedding batch")]
+MaxBatchOpt = Annotated[int, typer.Option(help="Max sequences per embedding batch")]
 
 
 class Dataset(str, Enum):
@@ -138,7 +174,7 @@ def download_data(
         url = f"{base_url}/{asset_name}"
 
         if skip_path.exists() and not force:
-            typer.echo(f"  skip {rel_path} (exists)")
+            console.print(f"  skip {rel_path} (exists)")
             continue
 
         try:
@@ -163,10 +199,10 @@ def download_data(
                 finally:
                     tmp_dest.unlink(missing_ok=True)
         except Exception as e:
-            typer.echo(f"  FAILED: {e}", err=True)
+            err_console.print(f"  FAILED: {e}", style="red")
             raise typer.Exit(code=1)
 
-    typer.echo("Done.")
+    console.print("Done.")
 
 
 # ---------- Step 1: toxfam preprocess ----------
@@ -219,10 +255,11 @@ def embed(
     model_name: Annotated[
         str, typer.Option(help="HuggingFace model name")
     ] = "Rostlab/prot_t5_xl_half_uniref50-enc",
-    max_residues: Annotated[int, typer.Option(help="Max residues per batch")] = 4000,
-    max_batch: Annotated[int, typer.Option(help="Max sequences per batch")] = 100,
+    max_residues: MaxResiduesOpt = 4000,
+    max_batch: MaxBatchOpt = 100,
     force: Annotated[
-        bool, typer.Option("--force", help="Overwrite existing H5 instead of resuming")
+        bool,
+        typer.Option("--force", "-f", help="Overwrite existing H5 instead of resuming"),
     ] = False,
 ) -> None:
     """Generate per-protein ProtT5 embeddings from a FASTA file.
@@ -359,12 +396,8 @@ def predict(
             help="Only predict toxic/non-toxic (skip family prediction columns)",
         ),
     ] = False,
-    max_residues: Annotated[
-        int, typer.Option(help="Max residues per embedding batch")
-    ] = 4000,
-    max_batch: Annotated[
-        int, typer.Option(help="Max sequences per embedding batch")
-    ] = 100,
+    max_residues: MaxResiduesOpt = 4000,
+    max_batch: MaxBatchOpt = 100,
 ) -> None:
     """Predict toxin family and toxicity for arbitrary proteins (no labels needed).
 
@@ -525,7 +558,7 @@ def eval_binary(
             scaled_model, train_ds.le, val_df, test_df, config, model_dir,
         )
 
-        typer.echo("Binary metrics saved.")
+        console.print("Binary metrics saved.")
     finally:
         train_ds.close()
 

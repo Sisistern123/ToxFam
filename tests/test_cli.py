@@ -184,3 +184,12 @@ def test_eval_eat_rejects_invalid_metric():
     """An unknown --metric value is rejected at parse time."""
     result = runner.invoke(app, ["eval", "eat", "test_set", "--metric", "manhattan"])
     assert result.exit_code == 2
+
+
+def test_version_flag():
+    """--version prints the package version and exits 0."""
+    from toxfam import __version__
+
+    result = runner.invoke(app, ["--version"])
+    assert result.exit_code == 0
+    assert __version__ in result.output
