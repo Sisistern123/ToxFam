@@ -22,10 +22,6 @@ def test_adjudication_csv_lives_in_paper_data():
     assert csv.name == "model_test_wrong_conf_annotated.csv"
 
 
-def test_curation_dir_under_paper_data():
-    assert _paths.curation_dir() == _paths.paper_data_dir() / "curation"
-
-
 def test_manuscript_tex_target_respects_env_override(monkeypatch, tmp_path):
     # With an override dir that exists, the target is <dir>/results_numbers.tex.
     monkeypatch.setenv("TOXFAM_MANUSCRIPT_DIR", str(tmp_path))

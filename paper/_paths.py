@@ -43,11 +43,6 @@ def adjudication_csv() -> Path:
     return paper_data_dir() / "model_test_wrong_conf_annotated.csv"
 
 
-def curation_dir() -> Path:
-    """Blind-curation sheets + answer key for the confident-error re-curation."""
-    return paper_data_dir() / "curation"
-
-
 def manuscript_tex_target() -> Path | None:
     """Optional target for auto-syncing ``results_numbers.tex`` into the manuscript.
 
