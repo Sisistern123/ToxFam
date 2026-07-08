@@ -70,7 +70,7 @@ Results display items and must not re-spend a slot on an approach overview.)
 | **M1 — Capability** | First metazoan-wide, multi-class toxin-**family** classifier: one taxonomy-fused ProtT5 MLP resolves 38 classes (36 ToxProt families + catch-all toxin + non-toxin) across Metazoa — a capability homology cannot provide where no homolog exists. | 38-class stratified test; HBI returns "no hit" on 74 proteins. Taxonomic breadth = dataset sunbursts (Porifera→Soricidae). | Carry on the 38-class structure + toxin-only performance, **never** on inflated all-class accuracy. |
 | **M2 — Superiority on toxins** | On the scientifically relevant toxin population the taxonomy-fused NN is **significantly more accurate than homology** (0.924 vs 0.854). | Toxin-only n=515; McNemar p≈0.003; paired-bootstrap Δacc CI excludes 0. NN-combined > NN-standard on every aggregate (acc 0.984→0.986, MCC 0.862→0.874, micro-MCC 0.984→0.986). | Use the **paired** test. Frame taxonomy fusion as a *small consistent gain* unless the per-family/per-taxon breakdown shows where it helps. |
 | **M3 — Beyond homology = coverage** | The advantage is concentrated **where alignment breaks**: no-hit coverage and toxins <30 aa — *not* the twilight zone. | No-hit subset n=74, HBI 0 % (by construction) vs NN 94.6 %; toxins <30 aa n=62, HBI 0.565 vs NN 0.903; NN ≈flat across length. Identity-null reported in Supp. | The 74 no-hits are **64 non-toxin + 10 toxin** — report the toxin coverage separately; don't let easy negatives carry the panel. |
-| **M4 — Calibrated readout + database curation** | A temperature-calibrated binary toxicity readout falls out of the family head; its confident "errors" are **enriched for candidate annotation gaps** in ToxProt — positioning ToxFam as a curation tool. | Expert adjudication of the 63 confident (≥0.8) errors (`analysis/model_test_wrong_conf_annotated.csv`, by I. Koludarov): **43/63 (68 %) model-vindicated** (33 correct + 10 partial) vs 20 genuine model false-positives; **38 are nontox-labelled but verdict = toxin** (candidate ToxProt additions), 39 venom-secreted yet only 8 carry the toxin keyword. Worked examples P00601, F8J2F6 also in notes.md. | Honest **mixed** result (not "all errors are label noise") — 20/63 are real FPs. Binary ROC-AUC/PR-AUC/ECE **still do not exist** and must be recomputed (Methods promises them). |
+| **M4 — Calibrated readout + database curation** | A temperature-calibrated binary toxicity readout falls out of the family head; its confident "errors" are **enriched for candidate annotation gaps** in ToxProt — positioning ToxFam as a curation tool. | Expert adjudication of the 63 confident (≥0.8) errors (`paper/data/model_test_wrong_conf_annotated.csv`, by I. Koludarov): **43/63 (68 %) model-vindicated** (33 correct + 10 partial) vs 20 genuine model false-positives; **38 are nontox-labelled but verdict = toxin** (candidate ToxProt additions), 39 venom-secreted yet only 8 carry the toxin keyword. Worked examples P00601, F8J2F6 also in notes.md. | Honest **mixed** result (not "all errors are label noise") — 20/63 are real FPs. Binary ROC-AUC/PR-AUC/ECE **still do not exist** and must be recomputed (Methods promises them). |
 
 ---
 
@@ -106,7 +106,7 @@ Results display items and must not re-spend a slot on an approach overview.)
   negative bars are the support ≤ 5 families. Title inset = support-stratified macro-MCC (support>5:
   ToxFam 0.880 vs HBI 0.842 over 17 families / 457 toxins; support≤5: ToxFam 0.723 vs HBI 0.865 over
   20 families / 58 toxins — HBI's only edge is on ultra-rare families).
-- **Panel B — Confident-error adjudication (data EXISTS — `analysis/model_test_wrong_conf_annotated.csv`):**
+- **Panel B — Confident-error adjudication (data EXISTS — `paper/data/model_test_wrong_conf_annotated.csv`):**
   expert review (I. Koludarov) of the **63** confident (≥0.8) errors, each annotated with `verdict`,
   `assessment` (correct / partial / incorrect) and `assessment_category`. Stacked bar:
   **33 correct + 10 partial (43/63 = 68 % model-vindicated) vs 20 genuine model FPs**; categories
@@ -145,7 +145,7 @@ Results display items and must not re-spend a slot on an approach overview.)
    thresholds, ECE before/after temperature scaling, from `predictions.csv` → Fig 2C / Supp.
 3. **Regenerate OOD:** `toxfam eval model non_metazoan` (binary axis) and `unreviewed` (confidence only) →
    `benchmark/{non_metazoan,unreviewed}/` are currently absent.
-4. **Expert adjudication (H2) — DONE:** `analysis/model_test_wrong_conf_annotated.csv` (63 confident errors,
+4. **Expert adjudication (H2) — DONE:** `paper/data/model_test_wrong_conf_annotated.csv` (63 confident errors,
    adjudicated by I. Koludarov). Remaining: render it as the Fig 3 Panel B stacked bar + worked examples and
    reconcile the 63 adjudicated vs ~81 flagged.
 5. **No-hit convention:** MCC counts HBI "no hit" as wrong — the only honest option, with no macro-averaging
@@ -158,7 +158,7 @@ Results display items and must not re-spend a slot on an approach overview.)
   quote the toxin-only accuracy (0.924 vs 0.854, paired p≈0.003) and aggregate MCC (0.874 vs 0.828) as the
   headline numbers.
 - **Adjudication count:** reconcile the 63 expert-annotated confident errors
-  (`analysis/model_test_wrong_conf_annotated.csv`) with the ~81 the analysis flagged (likely a
+  (`paper/data/model_test_wrong_conf_annotated.csv`) with the ~81 the analysis flagged (likely a
   confidence-threshold or calibrated-vs-raw difference); lock the denominator before quoting "68 % vindicated".
 - **Taxonomy-fusion contribution:** headline as architectural (needs the per-taxon/family "where it helps"
   breakdown — PLA2 / Peptidase S1 / Insulin / CRISP confusable families) or downgrade to "small consistent

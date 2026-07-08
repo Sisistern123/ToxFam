@@ -48,3 +48,8 @@ dev = [
 addopts = "--import-mode=importlib"
 pythonpath = ["."]
 testpaths = ["tests", "paper/tests"]
+
+[tool.ruff.lint.per-file-ignores]
+# Figure scripts favour dense, layout-oriented code (semicolon-grouped coordinate
+# assignments + small lambdas) that reads better compact than fully expanded.
+"paper/figures/*" = ["E702", "E731"]

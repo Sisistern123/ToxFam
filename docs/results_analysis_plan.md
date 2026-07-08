@@ -1,5 +1,13 @@
 # ToxFam Results — Analysis & Figure Implementation Plan
 
+> ⚠️ **SUPERSEDED / HISTORICAL (2026-07).** This is the original build plan for the
+> manuscript figures, kept for provenance. The figure tree has since been restructured:
+> `analysis/figures/` → `paper/figures/`, `analysis/manuscript_figures/` →
+> `paper/figures/output/`, and `src/toxfam/evaluation/manuscript.py` → `paper/stats.py`.
+> Figures are now regenerated via the `Makefile` (`make figures`), not
+> `uv run python -m analysis.figures.<name>`. Paths and (early) figure names in the body
+> below are historical. See **`docs/reorg_plan.md`** for the current layout.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Produce every number, statistic, and figure for the three main Results display items + supplementary, per `docs/results_section_plan.md`, with the load-bearing statistics unit-tested against verified values.
