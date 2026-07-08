@@ -29,6 +29,17 @@ _FAMILY_MAPPING = {
 }
 
 
+def ensure_identifier_column(df: pd.DataFrame) -> pd.DataFrame:
+    """Rename a UniProt ``Entry`` column to ``identifier`` when present.
+
+    Idempotent: returns the frame unchanged if it already has ``identifier`` (or
+    has no ``Entry`` column). Shared by the prediction and dataset-registry readers.
+    """
+    if "Entry" in df.columns and "identifier" not in df.columns:
+        return df.rename(columns={"Entry": "identifier"})
+    return df
+
+
 def normalize_protein_families(
     df: pd.DataFrame,
     column: str = "Protein families",

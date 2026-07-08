@@ -13,6 +13,7 @@ from toxfam.evaluation.metrics import (
     calculate_binary_metrics_with_scores,
     calculate_metrics,
     find_optimal_threshold,
+    nontoxin_indices,
     to_binary_class,
 )
 
@@ -43,6 +44,19 @@ def test_nontoxin_labels_constant():
     assert "nontox" in NONTOXIN_LABELS
     assert "nontoxic" in NONTOXIN_LABELS
     assert "nontoxin" in NONTOXIN_LABELS
+
+
+# ---------- nontoxin_indices (shared P(toxic) column definition) ----------
+
+
+def test_nontoxin_indices_case_insensitive():
+    labels = ["Conotoxin family", "NonTox", "Three-finger toxin family", "nontoxin"]
+    # 'NonTox' and 'nontoxin' are the non-toxin classes (matched case-insensitively).
+    assert nontoxin_indices(labels) == [1, 3]
+
+
+def test_nontoxin_indices_empty_when_no_nontoxin_class():
+    assert nontoxin_indices(["Conotoxin family", "Three-finger toxin family"]) == []
 
 
 # ---------- calculate_metrics (MetricsResult) ----------

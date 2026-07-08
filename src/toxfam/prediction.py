@@ -28,6 +28,7 @@ import h5py
 import pandas as pd
 from rich.console import Console
 
+from toxfam.data.normalization import ensure_identifier_column
 from toxfam.model.inference import run_topk_inference
 from toxfam.model.model_config import ModelConfig
 
@@ -44,8 +45,7 @@ ORGANISM_COL = "Organism (ID)"
 def _read_input(input_tsv: str | Path) -> pd.DataFrame:
     """Read the prediction input TSV and normalize the identifier column."""
     df = pd.read_csv(input_tsv, sep="\t")
-    if "Entry" in df.columns and "identifier" not in df.columns:
-        df = df.rename(columns={"Entry": "identifier"})
+    df = ensure_identifier_column(df)
     if "identifier" not in df.columns:
         raise ValueError(
             "Input TSV must contain an 'identifier' (or 'Entry') column. "
@@ -90,11 +90,9 @@ def _resolve_input(spec: str | Path) -> tuple[pd.DataFrame, Path | None]:
             console.print(f"   Resolved dataset '{name}' -> {tsv.name}")
             return _read_input(tsv), default_h5
 
-        # training_data split (test_set / val_set)
-        df = load_dataset(name)
-        if "Entry" in df.columns and "identifier" not in df.columns:
-            df = df.rename(columns={"Entry": "identifier"})
-        return df, default_h5
+        # training_data split (test_set / val_set) — training_data.csv is always
+        # 'identifier'-keyed (renamed at preprocessing), so no rename is needed.
+        return load_dataset(name), default_h5
 
     if not spec_path.exists():
         raise FileNotFoundError(

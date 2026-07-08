@@ -109,6 +109,14 @@ def test_dataset_enum_matches_registry():
     assert {d.value for d in Dataset} == set(list_datasets())
 
 
+def test_eat_metric_enum_matches_source():
+    """The CLI EatMetric enum must stay in sync with evaluation.eat.METRICS."""
+    from toxfam.cli import EatMetric
+    from toxfam.evaluation.eat import METRICS
+
+    assert {m.value for m in EatMetric} == set(METRICS)
+
+
 def test_predict_forwards_flags(tmp_path, monkeypatch):
     """predict forwards its 9 params, incl. the --embeddings -> embeddings_h5 rename."""
     rec = _Recorder(ret=[])

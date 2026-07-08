@@ -65,21 +65,6 @@ def compute_binary_labels(
     return (df[label_col].apply(to_binary_class) == "toxin").astype(int).values
 
 
-def _nontox_indices(label_encoder) -> list[int]:
-    """Indices of the non-toxin classes in the encoder (case-insensitive).
-
-    Pins the exact P(toxic) column definition: P(toxic) = 1 - sum over these
-    class probabilities.
-    """
-    from toxfam.evaluation.metrics import NONTOXIN_LABELS
-
-    return [
-        i
-        for i, cls in enumerate(label_encoder.classes_)
-        if str(cls).lower() in NONTOXIN_LABELS
-    ]
-
-
 def compute_p_toxic(
     model,
     dataset_df: pd.DataFrame,
@@ -88,6 +73,8 @@ def compute_p_toxic(
     label_col: str = "Protein families",
 ) -> np.ndarray:
     """Compute P(toxic) for each sample by summing toxic-class probabilities."""
+    from toxfam.evaluation.metrics import nontoxin_indices
+
     ds, selector = build_eval_loader(dataset_df, config, label_encoder, label_col)
 
     device = get_device()
@@ -105,7 +92,7 @@ def compute_p_toxic(
     ds.close()
 
     # P(toxic) = 1 - sum over the nontoxin-class probabilities.
-    p_nontox = all_probs[:, _nontox_indices(label_encoder)].sum(axis=1)
+    p_nontox = all_probs[:, nontoxin_indices(label_encoder.classes_)].sum(axis=1)
     return 1.0 - p_nontox
 
 

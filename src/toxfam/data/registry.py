@@ -14,7 +14,10 @@ import pandas as pd
 from rich.console import Console
 
 from toxfam._paths import evaluation_data_dir, processed_dir
-from toxfam.data.normalization import normalize_protein_families
+from toxfam.data.normalization import (
+    ensure_identifier_column,
+    normalize_protein_families,
+)
 
 console = Console()
 
@@ -104,10 +107,7 @@ def load_dataset(dataset: str) -> pd.DataFrame:
         )
 
     df = pd.read_csv(tsv_path, sep="\t")
-    # Normalize column names
-    if "Entry" in df.columns and "identifier" not in df.columns:
-        df = df.rename(columns={"Entry": "identifier"})
-
+    df = ensure_identifier_column(df)
     df = df.dropna(subset=["Protein families"]).copy()
     df = normalize_protein_families(df)
 

@@ -12,6 +12,7 @@ ProtTucker convention (Heinzinger et al. 2022).
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -155,6 +156,15 @@ def calculate_metrics(
 def is_nontoxin(label: object) -> bool:
     """True if a family label denotes a non-toxin class (case-insensitive)."""
     return str(label).lower() in NONTOXIN_LABELS
+
+
+def nontoxin_indices(labels: Iterable[object]) -> list[int]:
+    """Positions of the non-toxin classes in an ordered label sequence.
+
+    Single source for the P(toxic) = 1 - sum(P(nontoxin classes)) column, shared
+    by eval (`compute_p_toxic`) and prediction (`run_topk_inference`).
+    """
+    return [i for i, label in enumerate(labels) if is_nontoxin(label)]
 
 
 def to_binary_class(label: str) -> str:
