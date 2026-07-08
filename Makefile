@@ -15,7 +15,7 @@
 PY := uv run python -m paper.figures
 
 .PHONY: figures numbers fig-pipeline fig-capability fig-confidence-curation \
-        fig-supp-accuracy fig-supp-perfamily fig-supplementary
+        fig-supp-accuracy fig-supp-perfamily fig-supplementary unreviewed-predictions
 
 ## Build every manuscript figure + the results-numbers manifest.
 figures: numbers fig-pipeline fig-capability fig-confidence-curation \
@@ -42,3 +42,9 @@ fig-supp-perfamily:
 
 fig-supplementary:
 	$(PY).supplementary
+
+## Manual data-prep step (NOT part of `figures`): run the combined model on the
+## unreviewed TrEMBL set -> paper/figures/output/unreviewed_predictions.csv.
+## Requires model/model_output/combined_run + the unreviewed evaluation H5.
+unreviewed-predictions:
+	$(PY).run_unreviewed_inference
