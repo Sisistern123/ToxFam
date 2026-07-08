@@ -54,11 +54,6 @@ class TrainConfig(BaseModel):
 
     model_config = {"extra": "ignore"}  # Pydantic's model config, not ML model config
 
-    @property
-    def effective_embedding_dim(self) -> int:
-        """Total input dimension for the model."""
-        return self.embedding_dim
-
     @field_validator("dropout")
     @classmethod
     def _check_dropout(cls, v: float) -> float:

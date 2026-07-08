@@ -64,7 +64,7 @@ class Dataset(str, Enum):
 
     Typing the CLI ``dataset`` argument as this enum gives parse-time validation,
     a choices list in ``--help``, and shell completion. Kept in sync with
-    ``toxfam.evaluation.runner.DATASETS`` by a test; the runners keep their own
+    ``toxfam.data.registry.DATASETS`` by a test; the runners keep their own
     ValueError as defense-in-depth.
     """
 
@@ -239,12 +239,19 @@ def preprocess(
 @app.command()
 def embed(
     input_fasta: Annotated[
-        Path,
-        typer.Option("-i", "--input", help="Input FASTA file", exists=True),
-    ] = Path("data/intermediate/mmseqs/representatives/all.fasta"),
+        Optional[Path],
+        typer.Option(
+            "-i", "--input", help="Input FASTA file", exists=True,
+            show_default="data/intermediate/mmseqs/representatives/all.fasta",
+        ),
+    ] = None,
     output: Annotated[
-        Path, typer.Option("-o", "--output", help="Output H5 file")
-    ] = Path("data/processed/embeddings.h5"),
+        Optional[Path],
+        typer.Option(
+            "-o", "--output", help="Output H5 file",
+            show_default="data/processed/embeddings.h5",
+        ),
+    ] = None,
     model_dir: Annotated[
         Optional[Path],
         typer.Option(
@@ -269,7 +276,13 @@ def embed(
     Already-embedded sequences are skipped unless --force is set. Automatically
     selects the best available device (CUDA > MPS > CPU).
     """
+    from toxfam._paths import intermediate_dir, processed_dir
     from toxfam.data.embedding import generate_embeddings
+
+    if input_fasta is None:
+        input_fasta = intermediate_dir() / "mmseqs" / "representatives" / "all.fasta"
+    if output is None:
+        output = processed_dir() / "embeddings.h5"
 
     generate_embeddings(
         input_fasta=input_fasta,
@@ -288,16 +301,26 @@ def embed(
 @app.command()
 def taxonomy(
     input_csv: Annotated[
-        Path,
-        typer.Option(help="Training CSV with 'Organism (ID)' column", exists=True),
-    ] = Path("data/processed/training_data.csv"),
+        Optional[Path],
+        typer.Option(
+            help="Training CSV with 'Organism (ID)' column", exists=True,
+            show_default="data/processed/training_data.csv",
+        ),
+    ] = None,
     input_h5: Annotated[
-        Path,
-        typer.Option(help="Input H5 with protein embeddings", exists=True),
-    ] = Path("data/processed/embeddings.h5"),
+        Optional[Path],
+        typer.Option(
+            help="Input H5 with protein embeddings", exists=True,
+            show_default="data/processed/embeddings.h5",
+        ),
+    ] = None,
     output_h5: Annotated[
-        Path, typer.Option(help="Output H5 for multi-hot taxonomy vectors")
-    ] = Path("data/processed/taxonomy_vectors.h5"),
+        Optional[Path],
+        typer.Option(
+            help="Output H5 for multi-hot taxonomy vectors",
+            show_default="data/processed/taxonomy_vectors.h5",
+        ),
+    ] = None,
 ) -> None:
     """Generate multi-hot taxonomy vectors for the combined training strategy.
 
@@ -306,7 +329,16 @@ def taxonomy(
     predefined animal taxa as multi-hot vectors stored in HDF5. Only
     proteins present in the input embeddings H5 are included.
     """
+    from toxfam._paths import processed_dir
     from toxfam.data.taxonomy import run_multi_hot_taxonomy_pipeline
+
+    proc = processed_dir()
+    if input_csv is None:
+        input_csv = proc / "training_data.csv"
+    if input_h5 is None:
+        input_h5 = proc / "embeddings.h5"
+    if output_h5 is None:
+        output_h5 = proc / "taxonomy_vectors.h5"
 
     output_h5.parent.mkdir(parents=True, exist_ok=True)
     run_multi_hot_taxonomy_pipeline(
@@ -535,32 +567,9 @@ def eval_binary(
     (Youden's J), and evaluates on test with both default and optimized
     thresholds. Saves binary_metrics.json and ROC/PR plots.
     """
-    import pandas as pd
+    from toxfam.evaluation.runner import run_binary_evaluation_from_dir
 
-    from toxfam.config import TrainConfig
-    from toxfam.data.dataset import ToxDataset, analyze_data_splits
-    from toxfam.evaluation.binary import run_binary_evaluation
-    from toxfam.model.inference import load_calibrated_model
-
-    config = TrainConfig.from_yaml(model_dir / "config.yaml")
-    config = config.model_copy(update={"output_dir": model_dir})
-
-    df = pd.read_csv(config.input_csv)
-    train_df, val_df, test_df = analyze_data_splits(df)
-
-    h5_paths = [str(p) for p in config.h5_paths]
-    train_ds = ToxDataset(train_df, h5_paths, is_train=True)
-
-    try:
-        scaled_model, _, _ = load_calibrated_model(model_dir)
-
-        run_binary_evaluation(
-            scaled_model, train_ds.le, val_df, test_df, config, model_dir,
-        )
-
-        console.print("Binary metrics saved.")
-    finally:
-        train_ds.close()
+    run_binary_evaluation_from_dir(model_dir)
 
 
 # ---------- toxfam plot ----------

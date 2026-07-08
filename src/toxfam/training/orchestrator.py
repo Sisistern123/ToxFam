@@ -148,7 +148,7 @@ def run_training(config: TrainConfig) -> None:
         architecture="MultiInputMLP"
         if config.training_strategy == "combined"
         else "ModularMLP",
-        embedding_dim=config.effective_embedding_dim,
+        embedding_dim=config.embedding_dim,
         hidden_dims=config.hidden_dims,
         num_classes=num_classes,
         dropout=config.dropout,

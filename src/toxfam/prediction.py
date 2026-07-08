@@ -61,33 +61,40 @@ def _resolve_input(spec: str | Path) -> tuple[pd.DataFrame, Path | None]:
     names accepted by ``toxfam eval``, e.g. ``non_metazoan``). For a registered
     dataset, the TSV and a default embeddings H5 are looked up from the registry;
     unlike eval, rows are *not* dropped for missing family labels.
+
+    Resolves against the light ``toxfam.data.registry`` (not ``evaluation.runner``)
+    so prediction does not import the evaluation/plotting stack.
     """
-    from toxfam._paths import evaluation_data_dir, processed_dir
-    from toxfam.evaluation.runner import DATASETS, list_datasets
+    from toxfam._paths import evaluation_data_dir
+    from toxfam.data.registry import (
+        DATASETS,
+        list_datasets,
+        load_dataset,
+        resolve_embeddings_h5,
+    )
 
     spec_path = Path(spec)
     name = str(spec)
 
     if name in DATASETS and not spec_path.exists():
         cfg = DATASETS[name]
+        default_h5 = resolve_embeddings_h5(name)
+        default_h5 = default_h5 if default_h5.exists() else None
+
         if cfg["source"] == "evaluation":
-            eval_dir = evaluation_data_dir() / name
-            tsv = eval_dir / cfg["tsv"]
+            tsv = evaluation_data_dir() / name / cfg["tsv"]
             if not tsv.exists():
                 raise FileNotFoundError(
                     f"{tsv} not found. Run 'toxfam download-data' first."
                 )
-            default_h5 = eval_dir / cfg["h5"]
-        else:  # training_data split (test_set / val_set)
-            from toxfam.evaluation.runner import load_dataset
+            console.print(f"   Resolved dataset '{name}' -> {tsv.name}")
+            return _read_input(tsv), default_h5
 
-            df = load_dataset(name)
-            if "Entry" in df.columns and "identifier" not in df.columns:
-                df = df.rename(columns={"Entry": "identifier"})
-            default_h5 = processed_dir() / "embeddings.h5"
-            return df, (default_h5 if default_h5.exists() else None)
-        console.print(f"   Resolved dataset '{name}' -> {tsv.name}")
-        return _read_input(tsv), (default_h5 if default_h5.exists() else None)
+        # training_data split (test_set / val_set)
+        df = load_dataset(name)
+        if "Entry" in df.columns and "identifier" not in df.columns:
+            df = df.rename(columns={"Entry": "identifier"})
+        return df, default_h5
 
     if not spec_path.exists():
         raise FileNotFoundError(

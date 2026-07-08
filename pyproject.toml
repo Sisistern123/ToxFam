@@ -59,9 +59,14 @@ dev = [
 # (paper/tests/) coexist even with same-named modules, and is the pytest-recommended
 # mode for new/src-layout projects. pythonpath="." makes the non-installed `paper`
 # package importable from the repo root during tests.
-addopts = "--import-mode=importlib"
+# `-m 'not slow'` deselects the end-to-end training smoke test by default (run it
+# explicitly with `pytest -m slow`), keeping the default suite fast + hermetic.
+addopts = "--import-mode=importlib -m 'not slow'"
 pythonpath = ["."]
 testpaths = ["tests", "paper/tests"]
+markers = [
+    "slow: end-to-end training smoke test; deselected by default, run with `pytest -m slow`",
+]
 
 [tool.ruff.lint.per-file-ignores]
 # Figure scripts favour dense, layout-oriented code (semicolon-grouped coordinate

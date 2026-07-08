@@ -25,7 +25,7 @@ from toxfam.config import TrainConfig
 from toxfam.data.dataset import ToxDataset
 from toxfam.device import get_device
 from toxfam.training.strategies import DataSelector
-from toxfam.training.trainer import forward_model
+from toxfam.model.forward import forward_model
 from toxfam.visualization.analysis import plot_binary_pr, plot_binary_roc
 
 console = Console()
@@ -65,6 +65,21 @@ def compute_binary_labels(
     return (df[label_col].apply(to_binary_class) == "toxin").astype(int).values
 
 
+def _nontox_indices(label_encoder) -> list[int]:
+    """Indices of the non-toxin classes in the encoder (case-insensitive).
+
+    Pins the exact P(toxic) column definition: P(toxic) = 1 - sum over these
+    class probabilities.
+    """
+    from toxfam.evaluation.metrics import NONTOXIN_LABELS
+
+    return [
+        i
+        for i, cls in enumerate(label_encoder.classes_)
+        if str(cls).lower() in NONTOXIN_LABELS
+    ]
+
+
 def compute_p_toxic(
     model,
     dataset_df: pd.DataFrame,
@@ -73,8 +88,6 @@ def compute_p_toxic(
     label_col: str = "Protein families",
 ) -> np.ndarray:
     """Compute P(toxic) for each sample by summing toxic-class probabilities."""
-    from toxfam.evaluation.metrics import NONTOXIN_LABELS
-
     ds, selector = build_eval_loader(dataset_df, config, label_encoder, label_col)
 
     device = get_device()
@@ -91,12 +104,8 @@ def compute_p_toxic(
     all_probs = np.concatenate(all_probs, axis=0)
     ds.close()
 
-    # Sum probabilities of all nontoxin classes
-    nontox_indices = [
-        i for i, cls in enumerate(label_encoder.classes_)
-        if cls.lower() in NONTOXIN_LABELS
-    ]
-    p_nontox = all_probs[:, nontox_indices].sum(axis=1)
+    # P(toxic) = 1 - sum over the nontoxin-class probabilities.
+    p_nontox = all_probs[:, _nontox_indices(label_encoder)].sum(axis=1)
     return 1.0 - p_nontox
 
 

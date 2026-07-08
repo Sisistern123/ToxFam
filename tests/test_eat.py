@@ -140,6 +140,7 @@ def test_run_eat_evaluation_keeps_nontoxin_for_p_toxic(tmp_path, monkeypatch):
     before the toxic mask is derived. If it were, datasets whose queries lack the
     'nontox' label (e.g. non_metazoan) would get a degenerate constant p_toxic=1.0.
     """
+    from toxfam.data import registry
     from toxfam.evaluation import runner
 
     proc = tmp_path / "processed"
@@ -167,7 +168,10 @@ def test_run_eat_evaluation_keeps_nontoxin_for_p_toxic(tmp_path, monkeypatch):
         for ident, _family, _split, emb in rows:
             f.create_dataset(ident, data=np.asarray(emb, dtype=np.float32))
 
+    # Dataset loading + embeddings-H5 resolution moved to toxfam.data.registry,
+    # which holds its own processed_dir reference; patch both call sites.
     monkeypatch.setattr(runner, "processed_dir", lambda: proc)
+    monkeypatch.setattr(registry, "processed_dir", lambda: proc)
     monkeypatch.setattr(runner, "benchmark_dir", lambda: bench)
     monkeypatch.setattr(runner, "plot_confusion_matrix", lambda *a, **k: None)
 

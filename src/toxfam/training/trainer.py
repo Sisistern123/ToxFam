@@ -14,6 +14,7 @@ from rich.console import Console
 from sklearn.metrics import accuracy_score, matthews_corrcoef
 from sklearn.preprocessing import label_binarize
 from toxfam.device import get_device
+from toxfam.model.forward import forward_model
 
 try:
     import wandb
@@ -78,24 +79,6 @@ class FocalLoss(nn.Module):
         elif self.reduction == "sum":
             return focal_loss.sum()
         return focal_loss
-
-
-# ---------------------------------------------------------------------------
-# Forward helper
-# ---------------------------------------------------------------------------
-
-
-def forward_model(
-    model: nn.Module,
-    features: torch.Tensor | tuple[torch.Tensor, ...],
-    device: torch.device | str,
-) -> torch.Tensor:
-    """Handle single-input (Tensor) or multi-input ((emb, tax)) forwarding."""
-    if isinstance(features, (tuple, list)):
-        features = [f.to(device) for f in features]
-        return model(*features)
-    else:
-        return model(features.to(device))
 
 
 # ---------------------------------------------------------------------------

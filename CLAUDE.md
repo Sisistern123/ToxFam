@@ -109,12 +109,14 @@ src/toxfam/
 ├── data/                     # Data loading, preprocessing, feature generation
 │   ├── _fasta.py             # parse_fasta, read_fasta_as_dict, write_fasta
 │   ├── dataset.py            # ToxDataset (embeddings + optional taxonomy)
+│   ├── registry.py           # Dataset registry + loaders (shared by eval AND predict; light imports)
 │   ├── preprocessing.py      # Full pipeline: normalize, SignalP6, cluster, stratified splits
 │   ├── embedding.py          # ProtT5 embedding generation
 │   ├── taxonomy.py           # Taxonomy retrieval + multi-hot vector generation
 │   └── normalization.py      # normalize_protein_families (shared)
 ├── model/                    # Neural network architectures
 │   ├── architectures.py      # ModularMLP, MultiInputMLP
+│   ├── forward.py            # Shared forward pass (torch-only leaf; keeps model/ dep-free of training/)
 │   ├── calibration.py        # ModelWithTemperature
 │   ├── model_config.py       # ModelConfig for deterministic architecture reconstruction
 │   └── inference.py          # Model loading + inference for evaluation
@@ -233,7 +235,8 @@ benchmark/                      # Evaluation results only (gitignored, regenerat
 - `toxfam.model.calibration` — `ModelWithTemperature` wraps trained model with learned temperature scaling
 - `toxfam.model.architectures` — `ModularMLP` (projector + backbone), `MultiInputMLP` (two-branch)
 - `toxfam.model.inference` — loads calibrated models from training output, runs inference for evaluation
-- `toxfam.evaluation.runner` — dataset registry, `run_hbi_evaluation()`, `run_eat_evaluation()`, `run_model_evaluation()`, `compare_methods()`; each writes standard outputs (predictions.csv, metrics.json, run_metadata.json) to `benchmark/{dataset}/{method}/`
+- `toxfam.data.registry` — named dataset registry (`DATASETS`, `list_datasets()`, `load_dataset()`, `resolve_embeddings_h5()`); lives in the light `data` layer so `toxfam predict` resolves dataset names without importing the eval/plotting stack
+- `toxfam.evaluation.runner` — `run_hbi_evaluation()`, `run_eat_evaluation()`, `run_model_evaluation()`, `run_binary_evaluation_from_dir()`, `compare_methods()` (consumes `data.registry`); each writes standard outputs (predictions.csv, metrics.json, run_metadata.json) to `benchmark/{dataset}/{method}/`
 - `toxfam.evaluation.hbi` — MMseqs2 search wrapper (`run_hbi_search()` → `HBIResult`)
 - `toxfam.evaluation.eat` — embedding 1-NN annotation transfer (`run_eat_search()` → `EATResult`); reference = training split, transfers nearest ProtT5 neighbour's family + distance-margin `p_toxic`
 - `toxfam.evaluation.metrics` — unified metrics (`calculate_metrics()` → `MetricsResult`)

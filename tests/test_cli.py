@@ -104,7 +104,7 @@ class _Recorder:
 def test_dataset_enum_matches_registry():
     """The CLI Dataset enum must stay in sync with the runner's registry."""
     from toxfam.cli import Dataset
-    from toxfam.evaluation.runner import list_datasets
+    from toxfam.data.registry import list_datasets
 
     assert {d.value for d in Dataset} == set(list_datasets())
 
@@ -160,6 +160,21 @@ def test_eval_model_forwards_dataset_and_dir(monkeypatch):
 
     assert result.exit_code == 0, result.output
     assert rec.args == ("test_set", Path("foo"))
+
+
+def test_eval_binary_delegates(tmp_path, monkeypatch):
+    """eval binary is a thin delegator to the runner entrypoint (post S11/C4)."""
+    rec = _Recorder()
+    monkeypatch.setattr(
+        "toxfam.evaluation.runner.run_binary_evaluation_from_dir", rec
+    )
+    model_dir = tmp_path / "model"  # positional arg has exists=True
+    model_dir.mkdir()
+
+    result = runner.invoke(app, ["eval", "binary", str(model_dir)])
+
+    assert result.exit_code == 0, result.output
+    assert rec.args == (model_dir,)
 
 
 def test_eval_eat_forwards_metric(monkeypatch):
