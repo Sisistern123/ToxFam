@@ -20,12 +20,13 @@ import pandas as pd
 from matplotlib.lines import Line2D
 from matplotlib.patches import ConnectionPatch, FancyBboxPatch
 
+from paper._paths import adjudication_csv
 from paper.figures._common import (
     ADJUDICATION, DOUBLE_COL, apply_style, load_preds, save_fig,
 )
-from toxfam._paths import get_project_root, processed_dir
+from toxfam._paths import processed_dir
 
-ADJ_CSV = get_project_root() / "analysis" / "model_test_wrong_conf_annotated.csv"
+ADJ_CSV = adjudication_csv()
 
 BLUE, AMBER, RED = ADJUDICATION["correct"], ADJUDICATION["partial"], ADJUDICATION["incorrect"]
 GREY = "#BBBBBB"

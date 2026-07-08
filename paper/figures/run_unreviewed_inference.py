@@ -1,6 +1,6 @@
 """Inference-only on the unreviewed TrEMBL set (no labels available).
 
-Writes analysis/manuscript_figures/unreviewed_predictions.csv with
+Writes paper/figures/output/unreviewed_predictions.csv with
 identifier, predicted_label, confidence, confidence_uncalibrated.
 """
 from __future__ import annotations
@@ -9,13 +9,14 @@ import h5py
 import pandas as pd
 from rich.console import Console
 
+from paper._paths import figures_output_dir
 from toxfam._paths import evaluation_data_dir, get_project_root
 from toxfam.model.inference import run_inference
 
 console = Console()
 
 MODEL_DIR = get_project_root() / "model" / "model_output" / "combined_run"
-OUT = get_project_root() / "analysis" / "manuscript_figures" / "unreviewed_predictions.csv"
+OUT = figures_output_dir() / "unreviewed_predictions.csv"
 
 
 def main() -> None:

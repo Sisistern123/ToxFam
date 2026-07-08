@@ -1,8 +1,7 @@
 """Supplementary figures: reliability/ECE + macro-F1 convention table.
 
-(Identity-binned null and confusion matrices reuse existing analysis/plots and
-model_output confusion matrices; this script adds the calibration + convention
-artifacts that did not previously exist.)
+(Identity-binned null and confusion matrices are produced elsewhere; this script
+adds the calibration + convention artifacts that did not previously exist.)
 """
 from __future__ import annotations
 
