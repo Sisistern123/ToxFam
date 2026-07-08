@@ -72,8 +72,8 @@ models.zip
 
 # Regenerable manuscript-figure artifacts — keep only the vector PDFs + the small
 # JSON/CSV manifests in git; rasters and the large predictions CSV are reproducible.
-/analysis/manuscript_figures/unreviewed_predictions.csv
-/analysis/manuscript_figures/*.png
+/paper/figures/output/unreviewed_predictions.csv
+/paper/figures/output/*.png
 
 # Claude-in-Chrome / Playwright MCP scratch (console logs + page snapshots from
 # visually verifying figures); transient, never part of the project.

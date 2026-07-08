@@ -9,7 +9,7 @@ import pandas as pd
 
 from rich.console import Console
 
-from analysis.figures._common import (
+from paper.figures._common import (
     FIG_DIR, LEN_BINS, MCC_CI_N_BOOT, load_preds, sequence_lengths, test_set_class_list,
 )
 from toxfam.evaluation.manuscript import (

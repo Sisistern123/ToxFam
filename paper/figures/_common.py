@@ -20,12 +20,14 @@ import numpy as np
 import pandas as pd
 from rich.console import Console
 
-from toxfam._paths import benchmark_dir, get_project_root, processed_dir
+from paper._paths import figures_output_dir
+from toxfam._paths import benchmark_dir, processed_dir
 
 console = Console()
 
-FIG_DIR = get_project_root() / "analysis" / "manuscript_figures"
-FIG_DIR.mkdir(parents=True, exist_ok=True)
+# Figure PDFs/PNGs + results_numbers.{json,tex} are written here (paper/figures/output).
+# Created lazily by save_fig / the manifest writer, not at import time.
+FIG_DIR = figures_output_dir()
 
 # --- Bioinformatics (OUP) column widths, inches (verified: 86 mm / 178 mm) ---
 SINGLE_COL = 86 / 25.4   # 3.386 in
@@ -92,6 +94,7 @@ def save_fig(fig: plt.Figure, name: str) -> None:
     PDFs are copied into manuscript/Fig/ separately, only after visual verification,
     so a broken render never lands in the manuscript automatically.
     """
+    FIG_DIR.mkdir(parents=True, exist_ok=True)
     fig.savefig(FIG_DIR / f"{name}.pdf")            # vector, fonts embedded (rcParams)
     fig.savefig(FIG_DIR / f"{name}.png", dpi=600)   # raster preview
     plt.close(fig)

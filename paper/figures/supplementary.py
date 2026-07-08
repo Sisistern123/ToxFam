@@ -13,7 +13,7 @@ import pandas as pd
 
 from rich.console import Console
 
-from analysis.figures._common import apply_style, load_preds, save_fig, test_set_class_list
+from paper.figures._common import apply_style, load_preds, save_fig, test_set_class_list
 from toxfam.evaluation.manuscript import macro_f1_conventions
 
 console = Console()
@@ -64,7 +64,7 @@ def convention_table() -> None:
     out = pd.DataFrame([
         {"method": "HBI", **conv},
     ])
-    from analysis.figures._common import FIG_DIR
+    from paper.figures._common import FIG_DIR
     out.to_csv(FIG_DIR / "supp_macro_f1_conventions.csv", index=False)
     console.print(out.to_string(index=False))
 

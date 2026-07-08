@@ -20,7 +20,7 @@ import pandas as pd
 from matplotlib.lines import Line2D
 from matplotlib.patches import ConnectionPatch, FancyBboxPatch
 
-from analysis.figures._common import (
+from paper.figures._common import (
     ADJUDICATION, DOUBLE_COL, apply_style, load_preds, save_fig,
 )
 from toxfam._paths import get_project_root, processed_dir

@@ -27,7 +27,7 @@ import matplotlib.pyplot as plt
 import matplotlib.ticker as mticker
 import numpy as np
 
-from analysis.figures._common import (
+from paper.figures._common import (
     DOUBLE_COL, MCC_CI_N_BOOT, METHOD_DARK, METHOD_LINESTYLE, METHOD_ORDER, METHODS,
     apply_style, fmt_pm, load_preds, panel_label, save_fig, sequence_lengths,
 )

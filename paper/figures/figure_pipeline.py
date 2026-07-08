@@ -46,7 +46,7 @@ import math
 import matplotlib.pyplot as plt
 from matplotlib.patches import FancyArrowPatch, FancyBboxPatch
 
-from analysis.figures._common import DOUBLE_COL, apply_style, save_fig
+from paper.figures._common import DOUBLE_COL, apply_style, save_fig
 
 # --- Okabe-Ito semantic colours (same hex as the method palette in _common) ---
 TOX = "#E69F00"      # amber = toxins (the focus)
