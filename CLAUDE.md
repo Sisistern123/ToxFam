@@ -135,6 +135,36 @@ src/toxfam/
     └── taxonomy_sunburst.py  # Plotly sunburst plots for taxonomic distribution
 ```
 
+### Paper / Analysis Tree (`paper/`, repo-only — NOT in the wheel)
+
+One-off manuscript code lives in `paper/`, deliberately kept out of the installable
+`toxfam` wheel (`[tool.hatch.build.targets.wheel] packages = ["src/toxfam"]`).
+Dependency direction is strictly one-way: `paper` imports `toxfam`, never the reverse.
+
+```
+paper/
+├── _paths.py          # central path helpers (figure output, curated data, manuscript sync)
+├── stats.py           # manuscript statistics (mcnemar, bootstrap CIs, per-family F1, ...) — unit-tested
+├── figures/           # thin matplotlib render scripts (run via the Makefile, not by hand)
+│   ├── _common.py     # shared style + loaders; save_fig() -> paper/figures/output/
+│   ├── figure_*.py    # one module per figure (each exposes main())
+│   ├── numbers_manifest.py   # emits paper/figures/output/results_numbers.{json,tex}
+│   └── output/        # rendered artifacts (PDFs + results_numbers tracked; PNGs gitignored)
+├── data/              # hand-curated inputs (adjudication CSV, curation key)
+└── tests/             # tests for paper.stats + paper._paths (collected via testpaths)
+```
+
+- **Regenerate figures** with the `Makefile`: `make figures` (all) or `make fig-<name>`.
+  Do NOT invoke `python -m paper.figures.<name>` by hand.
+- Figures read the gitignored `model/model_output/` + `benchmark/` trees, so a clean
+  checkout must first run `toxfam train` + `toxfam eval` — see the `Makefile` header for
+  the full `train → eval → figures` chain.
+- The manuscript statistics formerly in `src/toxfam/evaluation/manuscript.py` now live
+  in `paper/stats.py` (imported as `from paper.stats import ...`).
+- Hardcoded figure paths (the old `ADJ_CSV`, figure-output dir, manuscript `.tex` sync)
+  are centralized in `paper/_paths.py`; the manuscript sync target is overridable via
+  the `TOXFAM_MANUSCRIPT_DIR` env var.
+
 ### Training Strategies (the central design axis)
 
 The system supports three training strategies, selected via `training_strategy` in the YAML config:

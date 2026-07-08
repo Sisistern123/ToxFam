@@ -39,3 +39,17 @@ dev = [
     "pytest>=9.0.2",
     "ruff>=0.15.4",
 ]
+
+[tool.pytest.ini_options]
+# importlib mode: lets the library tests (tests/) and the repo-only paper tests
+# (paper/tests/) coexist even with same-named modules, and is the pytest-recommended
+# mode for new/src-layout projects. pythonpath="." makes the non-installed `paper`
+# package importable from the repo root during tests.
+addopts = "--import-mode=importlib"
+pythonpath = ["."]
+testpaths = ["tests", "paper/tests"]
+
+[tool.ruff.lint.per-file-ignores]
+# Figure scripts favour dense, layout-oriented code (semicolon-grouped coordinate
+# assignments + small lambdas) that reads better compact than fully expanded.
+"paper/figures/*" = ["E702", "E731"]

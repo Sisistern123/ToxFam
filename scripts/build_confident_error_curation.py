@@ -3,7 +3,7 @@
 
 Runs the calibrated combined model on the requested splits, finds predictions that
 DISAGREE with the Swiss-Prot family label at calibrated confidence >= threshold, and
-writes two files to ``analysis/curation/``:
+writes two files to ``paper/data/curation/``:
 
   * ``confident_errors_key.tsv``       — INTERNAL. identifier, split, actual_label,
     predicted_label, confidence. Keeps the confidence + split so the curator's verdicts
@@ -14,9 +14,9 @@ writes two files to ``analysis/curation/``:
     OMITS the calibrated confidence and the split, and the row order is SHUFFLED (fixed
     seed) so that nothing biases the curator toward the model.
 
-This supersedes the ad-hoc ``analysis/eval_exploration.ipynb`` cell that produced
-``analysis/model_test_wrong_conf.csv`` (test-only, and using a fragile
-``.iloc[series.index]`` pattern). Run:
+This supersedes an ad-hoc notebook cell that produced the old test-only
+``model_test_wrong_conf.csv`` (which used a fragile ``.iloc[series.index]``
+pattern). Run:
 
     uv run scripts/build_confident_error_curation.py --splits train,val,test --threshold 0.9
 
@@ -76,7 +76,7 @@ def main() -> None:
     root = get_project_root()
     model_dir = Path(args.model_dir) if args.model_dir else root / "model" / "model_output" / "combined_run"
     h5 = processed_dir() / "embeddings.h5"
-    out_dir = Path(args.out_dir) if args.out_dir else root / "analysis" / "curation"
+    out_dir = Path(args.out_dir) if args.out_dir else root / "paper" / "data" / "curation"
     out_dir.mkdir(parents=True, exist_ok=True)
 
     splits = [s.strip() for s in args.splits.split(",") if s.strip()]
