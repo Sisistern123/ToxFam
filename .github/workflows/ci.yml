@@ -1,0 +1,32 @@
+name: CI
+
+# Lint + test on pushes to main and on every pull request. Single job: torch is
+# a base dependency (installed regardless) and the suite is hermetic and fast, so
+# a matrix / lint-test split would only add wall-clock without added signal.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v8
+        with:
+          enable-cache: true
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: uv sync --frozen
+
+      # Lint the maintained code only; scripts/external_tools/ and example
+      # notebooks intentionally keep dense, non-conforming code.
+      - name: Lint
+        run: uv run ruff check src tests paper
+
+      - name: Test
+        run: uv run pytest

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 from typer.testing import CliRunner
 
@@ -72,3 +74,113 @@ def test_eval_binary_requires_model_dir():
     """eval binary without a model dir should fail."""
     result = runner.invoke(app, ["eval", "binary"])
     assert result.exit_code != 0
+
+
+# ---------------------------------------------------------------------------
+# Dispatch tests: the commands are thin delegators whose bodies lazily import
+# their target and forward args. `--help`-only tests keep a renamed import
+# target or a mis-forwarded kwarg green, so exercise the actual wiring by
+# patching each delegate ON ITS SOURCE MODULE (lazy imports re-read it at call
+# time) and asserting the forwarded call.
+# ---------------------------------------------------------------------------
+
+
+class _Recorder:
+    """Callable that records the (args, kwargs) it was invoked with."""
+
+    def __init__(self, ret=None):
+        self.args = None
+        self.kwargs = None
+        self.called = False
+        self._ret = ret
+
+    def __call__(self, *args, **kwargs):
+        self.called = True
+        self.args = args
+        self.kwargs = kwargs
+        return self._ret
+
+
+def test_dataset_enum_matches_registry():
+    """The CLI Dataset enum must stay in sync with the runner's registry."""
+    from toxfam.cli import Dataset
+    from toxfam.evaluation.runner import list_datasets
+
+    assert {d.value for d in Dataset} == set(list_datasets())
+
+
+def test_predict_forwards_flags(tmp_path, monkeypatch):
+    """predict forwards its 9 params, incl. the --embeddings -> embeddings_h5 rename."""
+    rec = _Recorder(ret=[])
+    monkeypatch.setattr("toxfam.prediction.run_prediction", rec)
+
+    model_dir = tmp_path / "model"  # --model-dir has exists=True
+    model_dir.mkdir()
+
+    result = runner.invoke(
+        app,
+        ["predict", "in.tsv", "--model-dir", str(model_dir),
+         "--top-k", "5", "--toxicity-only"],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert rec.called
+    assert rec.args[0] == Path("in.tsv")
+    assert rec.args[1] == model_dir
+    assert rec.kwargs["top_k"] == 5
+    assert rec.kwargs["toxicity_only"] is True
+    assert rec.kwargs["embeddings_h5"] is None  # not supplied -> None (rename intact)
+    assert rec.kwargs["standard_model_dir"] is None
+
+
+@pytest.mark.parametrize(
+    "sub,target",
+    [
+        ("hbi", "run_hbi_evaluation"),
+        ("compare", "compare_methods"),
+    ],
+)
+def test_eval_single_arg_delegators(sub, target, monkeypatch):
+    """eval hbi/compare forward the dataset name (enum .value) positionally."""
+    rec = _Recorder()
+    monkeypatch.setattr(f"toxfam.evaluation.runner.{target}", rec)
+
+    result = runner.invoke(app, ["eval", sub, "test_set"])
+
+    assert result.exit_code == 0, result.output
+    assert rec.args == ("test_set",)
+
+
+def test_eval_model_forwards_dataset_and_dir(monkeypatch):
+    """eval model forwards dataset name + model_dir Path."""
+    rec = _Recorder()
+    monkeypatch.setattr("toxfam.evaluation.runner.run_model_evaluation", rec)
+
+    result = runner.invoke(app, ["eval", "model", "test_set", "--model-dir", "foo"])
+
+    assert result.exit_code == 0, result.output
+    assert rec.args == ("test_set", Path("foo"))
+
+
+def test_eval_eat_forwards_metric(monkeypatch):
+    """eval eat forwards the dataset name and the metric enum .value."""
+    rec = _Recorder()
+    monkeypatch.setattr("toxfam.evaluation.runner.run_eat_evaluation", rec)
+
+    result = runner.invoke(app, ["eval", "eat", "test_set", "--metric", "euclidean"])
+
+    assert result.exit_code == 0, result.output
+    assert rec.args == ("test_set",)
+    assert rec.kwargs == {"metric": "euclidean"}
+
+
+def test_eval_rejects_invalid_dataset():
+    """An unknown dataset is rejected at parse time (exit 2), before any import."""
+    result = runner.invoke(app, ["eval", "hbi", "bogus"])
+    assert result.exit_code == 2
+
+
+def test_eval_eat_rejects_invalid_metric():
+    """An unknown --metric value is rejected at parse time."""
+    result = runner.invoke(app, ["eval", "eat", "test_set", "--metric", "manhattan"])
+    assert result.exit_code == 2

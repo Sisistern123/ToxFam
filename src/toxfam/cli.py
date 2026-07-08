@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from enum import Enum
 from pathlib import Path
 from typing import (
     Annotated,
@@ -15,7 +16,33 @@ app = typer.Typer(
     help="Animal toxin protein family classification using MLP on ProtT5 embeddings.",
     no_args_is_help=True,
     context_settings={"help_option_names": ["-h", "--help"]},
+    # Suppress Typer's local-variable dump on uncaught exceptions — command bodies
+    # hold live tensors / DataFrames / models that would flood the terminal; the
+    # final traceback line (the actionable one) is still shown.
+    pretty_exceptions_show_locals=False,
 )
+
+
+class Dataset(str, Enum):
+    """The evaluation datasets accepted by `toxfam eval`.
+
+    Typing the CLI ``dataset`` argument as this enum gives parse-time validation,
+    a choices list in ``--help``, and shell completion. Kept in sync with
+    ``toxfam.evaluation.runner.DATASETS`` by a test; the runners keep their own
+    ValueError as defense-in-depth.
+    """
+
+    test_set = "test_set"
+    val_set = "val_set"
+    non_metazoan = "non_metazoan"
+    unreviewed = "unreviewed"
+
+
+class EatMetric(str, Enum):
+    """Distance metric for `toxfam eval eat`."""
+
+    cosine = "cosine"
+    euclidean = "euclidean"
 
 
 # ---------- toxfam download-data ----------
@@ -86,6 +113,7 @@ def download_data(
     them with `toxfam taxonomy`. Existing files are skipped unless --force
     is set.
     """
+    import os
     import tempfile
     import zipfile
 
@@ -124,8 +152,16 @@ def download_data(
                     zf.extractall(extract_dir)
                 tmp_path.unlink()
             else:
+                # Stream to a sibling .part file and atomically rename on success,
+                # so an interrupted download can't leave a truncated file that the
+                # skip-if-exists check above would treat as complete.
                 dest = target_dir / rel_path
-                _download_with_progress(url, dest, asset_name)
+                tmp_dest = dest.with_name(dest.name + ".part")
+                try:
+                    _download_with_progress(url, tmp_dest, asset_name)
+                    os.replace(tmp_dest, dest)
+                finally:
+                    tmp_dest.unlink(missing_ok=True)
         except Exception as e:
             typer.echo(f"  FAILED: {e}", err=True)
             raise typer.Exit(code=1)
@@ -370,10 +406,8 @@ app.add_typer(eval_app, name="eval")
 @eval_app.command("hbi")
 def eval_hbi(
     dataset: Annotated[
-        str,
-        typer.Argument(
-            help="Dataset to evaluate: test_set, val_set, non_metazoan, unreviewed"
-        ),
+        Dataset,
+        typer.Argument(help="Dataset to evaluate"),
     ],
 ) -> None:
     """Run HBI (homology-based inference) on a dataset.
@@ -384,21 +418,19 @@ def eval_hbi(
     """
     from toxfam.evaluation.runner import run_hbi_evaluation
 
-    run_hbi_evaluation(dataset)
+    run_hbi_evaluation(dataset.value)
 
 
 @eval_app.command("eat")
 def eval_eat(
     dataset: Annotated[
-        str,
-        typer.Argument(
-            help="Dataset to evaluate: test_set, val_set, non_metazoan, unreviewed"
-        ),
+        Dataset,
+        typer.Argument(help="Dataset to evaluate"),
     ],
     metric: Annotated[
-        str,
-        typer.Option(help="Distance metric: cosine (default) or euclidean"),
-    ] = "cosine",
+        EatMetric,
+        typer.Option(help="Distance metric (cosine selected on val_set)"),
+    ] = EatMetric.cosine,
 ) -> None:
     """Run EAT (embedding-based annotation transfer) on a dataset.
 
@@ -408,16 +440,14 @@ def eval_eat(
     """
     from toxfam.evaluation.runner import run_eat_evaluation
 
-    run_eat_evaluation(dataset, metric=metric)
+    run_eat_evaluation(dataset.value, metric=metric.value)
 
 
 @eval_app.command("model")
 def eval_model(
     dataset: Annotated[
-        str,
-        typer.Argument(
-            help="Dataset to evaluate: test_set, val_set, non_metazoan, unreviewed"
-        ),
+        Dataset,
+        typer.Argument(help="Dataset to evaluate"),
     ],
     model_dir: Annotated[
         Path,
@@ -434,13 +464,13 @@ def eval_model(
     """
     from toxfam.evaluation.runner import run_model_evaluation
 
-    run_model_evaluation(dataset, model_dir)
+    run_model_evaluation(dataset.value, model_dir)
 
 
 @eval_app.command("compare")
 def eval_compare(
     dataset: Annotated[
-        str,
+        Dataset,
         typer.Argument(help="Dataset to compare methods for"),
     ],
 ) -> None:
@@ -452,7 +482,7 @@ def eval_compare(
     """
     from toxfam.evaluation.runner import compare_methods
 
-    compare_methods(dataset)
+    compare_methods(dataset.value)
 
 
 @eval_app.command("binary")
