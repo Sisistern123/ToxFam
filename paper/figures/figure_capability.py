@@ -32,7 +32,7 @@ from paper.figures._common import (
     apply_style, fmt_pm, load_preds, panel_label, save_fig, sequence_lengths,
 )
 from toxfam.evaluation.hbi import NO_HIT_LABEL
-from toxfam.evaluation.manuscript import (
+from paper.stats import (
     band_separation_length, bootstrap_accuracy_ci, bootstrap_label_metric_ci, correctness,
     length_support_mask, local_linear_accuracy, local_linear_band, overall_mcc, toxin_mask,
 )

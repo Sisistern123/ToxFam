@@ -13,7 +13,7 @@ import pandas as pd
 from rich.console import Console
 
 from paper.figures._common import apply_style, load_preds, save_fig, test_set_class_list
-from toxfam.evaluation.manuscript import macro_f1_conventions
+from paper.stats import macro_f1_conventions
 
 console = Console()
 

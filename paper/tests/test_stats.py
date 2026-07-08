@@ -1,11 +1,11 @@
-"""Tests for toxfam.evaluation.manuscript — manuscript statistics."""
+"""Tests for paper.stats — manuscript statistics."""
 from __future__ import annotations
 
 import numpy as np
 import pandas as pd
 import pytest
 
-from toxfam.evaluation.manuscript import (
+from paper.stats import (
     accuracy_by_identity_bins,
     accuracy_by_length_bins,
     adjudication_summary,
@@ -316,7 +316,7 @@ def test_adjudication_summary_counts(tmp_path):
 
 # ---------- MCC-based evaluation + bootstrap CIs ----------
 
-from toxfam.evaluation.manuscript import (  # noqa: E402
+from paper.stats import (  # noqa: E402
     bootstrap_accuracy_ci,
     bootstrap_label_metric_ci,
     macro_mcc_by_support,

@@ -20,7 +20,7 @@ import numpy as np
 from paper.figures._common import (
     DOUBLE_COL, METHOD_DARK, METHODS, apply_style, load_preds, save_fig, test_set_class_list,
 )
-from toxfam.evaluation.manuscript import per_family_mcc_difference
+from paper.stats import per_family_mcc_difference
 
 MARKER_S = 30  # uniform marker size; family support now lives in the y-axis labels
 

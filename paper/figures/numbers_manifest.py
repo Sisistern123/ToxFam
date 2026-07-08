@@ -12,7 +12,7 @@ from rich.console import Console
 from paper.figures._common import (
     FIG_DIR, LEN_BINS, MCC_CI_N_BOOT, load_preds, sequence_lengths, test_set_class_list,
 )
-from toxfam.evaluation.manuscript import (
+from paper.stats import (
     accuracy_by_identity_bins, accuracy_by_length_bins, adjudication_summary, aligned_correctness,
     bootstrap_label_metric_ci, macro_mcc_by_support, mcnemar_test, micro_mcc,
     overall_mcc, paired_bootstrap_accuracy_diff, subset_accuracy, toxin_mask,

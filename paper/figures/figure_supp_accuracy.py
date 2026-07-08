@@ -13,7 +13,7 @@ import numpy as np
 from paper.figures._common import (
     METHOD_ORDER, METHODS, SINGLE_COL, apply_style, fmt_pm, load_preds, panel_label, save_fig,
 )
-from toxfam.evaluation.manuscript import bootstrap_accuracy_ci, correctness, toxin_mask
+from paper.stats import bootstrap_accuracy_ci, correctness, toxin_mask
 
 
 def _acc_panel(ax, preds, mask_fn, ylim, title, letter, *, prior=None):
