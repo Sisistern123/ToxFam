@@ -342,7 +342,7 @@ def cluster_per_family_and_collect(
             )
 
     rep_seqs_all, rep_seqs_tox = [], []
-    for family_dir in os.listdir(mmseqs_dir):
+    for family_dir in sorted(os.listdir(mmseqs_dir)):
         full_path = mmseqs_dir / family_dir
         rep_fasta = full_path / "cluster_rep_seq.fasta"
         if not rep_fasta.exists():
@@ -370,11 +370,23 @@ def cluster_per_family_and_collect(
             df["Protein families"].map(df["Protein families"].value_counts()) >= 10,
             "other",
         )
+    # Sort so representatives/{all,tox}.{csv,fasta} are stable artifacts rather
+    # than a record of this machine's directory order.
+    rep_df_all = rep_df_all.sort_values("identifier", kind="stable").reset_index(
+        drop=True
+    )
+    rep_df_tox = rep_df_tox.sort_values("identifier", kind="stable").reset_index(
+        drop=True
+    )
     return rep_df_all, rep_df_tox
 
 
 def multilabel_stratified_splits(rep_df_all: pd.DataFrame):
-    df = rep_df_all.copy()
+    # The splitter below selects rows positionally, so random_state pins which
+    # *positions* land in each split, not which proteins. Sort by identifier so
+    # the assignment is a function of the protein set alone, whatever order the
+    # caller assembled its rows in.
+    df = rep_df_all.sort_values("identifier", kind="stable").reset_index(drop=True)
     df["fam_list"] = df["Protein families"].apply(
         lambda x: x.split(",") if isinstance(x, str) else []
     )

@@ -36,6 +36,28 @@ def test_splits_are_deterministic():
         assert sorted(sa["identifier"]) == sorted(sb["identifier"])
 
 
+def test_splits_are_invariant_under_row_permutation():
+    """The split must be a function of protein identity, not row order.
+
+    The splitter selects rows positionally (``df.iloc[idx]``), so ``random_state``
+    pins which *positions* land in each split, never which proteins. Callers
+    assemble the representative frame from ``os.listdir``, whose order is a
+    filesystem detail. Feeding the same proteins in a different order must not
+    move a single one between splits.
+    """
+    df = _sample_reps()
+    expected = [
+        set(part["identifier"]) for part in multilabel_stratified_splits(df.copy())
+    ]
+
+    for seed in range(5):
+        shuffled = df.sample(frac=1.0, random_state=seed).reset_index(drop=True)
+        got = [
+            set(part["identifier"]) for part in multilabel_stratified_splits(shuffled)
+        ]
+        assert got == expected, f"split moved under row permutation (seed={seed})"
+
+
 def test_splits_partition_all_rows_disjointly():
     df = _sample_reps()
     train_df, val_df, test_df = multilabel_stratified_splits(df.copy())
