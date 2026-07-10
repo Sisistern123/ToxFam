@@ -44,8 +44,38 @@ def main() -> None:
     parser.add_argument(
         "--tag", default=DEFAULT_TAG, help="GitHub release tag (default: %(default)s)"
     )
+    parser.add_argument(
+        "--notes-file",
+        type=Path,
+        default=None,
+        help="markdown file with the release notes (split manifest hash, provenance)",
+    )
+    parser.add_argument(
+        "--replace",
+        action="store_true",
+        help="destroy an existing release AND its tag before recreating it "
+        "(breaks reproducibility for every checkout pinned to that tag)",
+    )
     args = parser.parse_args()
     tag: str = args.tag
+
+    # Overwriting a published tag makes every commit that pins it unreproducible:
+    # the assets it downloads are silently replaced by different data. New artifacts
+    # belong on a new tag.
+    exists = (
+        subprocess.run(
+            ["gh", "release", "view", tag, "--repo", REPO], capture_output=True
+        ).returncode
+        == 0
+    )
+    if exists and not args.replace:
+        print(
+            f"ERROR: release '{tag}' already exists. Publish new data under a new tag "
+            f"(and bump RELEASE_TAG in src/toxfam/cli.py) rather than overwriting it, "
+            f"or pass --replace if you really mean to destroy the existing tag.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
 
     # Verify source files
     sources = {
@@ -81,12 +111,12 @@ def main() -> None:
                 zf.write(file, file.relative_to(EVAL_DIR))
 
     try:
-        # Delete old release (ignore errors if it doesn't exist)
-        print(f"  deleting old release '{tag}' ...")
-        subprocess.run(
-            ["gh", "release", "delete", tag, "--yes", "--cleanup-tag"],
-            capture_output=True,
-        )
+        if exists and args.replace:
+            print(f"  --replace given: deleting existing release '{tag}' ...")
+            subprocess.run(
+                ["gh", "release", "delete", tag, "--yes", "--cleanup-tag"],
+                capture_output=True,
+            )
 
         # Create new release
         print(f"  creating release '{tag}' ...")
@@ -105,9 +135,11 @@ def main() -> None:
                 str(sp6_zip),
                 str(eval_zip),
                 "--title",
-                "Data v1",
+                f"Data {tag.removeprefix('data-')}",
                 "--notes",
-                "Download with `uv run toxfam download-data`.",
+                args.notes_file.read_text()
+                if args.notes_file
+                else "Download with `uv run toxfam download-data`.",
             ],
             check=True,
         )

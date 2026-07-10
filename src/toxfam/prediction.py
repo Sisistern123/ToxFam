@@ -54,6 +54,22 @@ def _read_input(input_tsv: str | Path) -> pd.DataFrame:
     return df
 
 
+def _is_split_dataset(spec: str | Path) -> bool:
+    """True when ``spec`` names a dataset carved out of the train/val/test split.
+
+    Predicting on ``test_set``/``val_set`` reads the split, so the checkpoint must be
+    pinned to it. Predicting on a user-supplied TSV, or on an external dataset such as
+    ``non_metazoan``, involves no split and needs no manifest -- which is what lets the
+    Colab notebook run against a pip-installed package with no repo checkout.
+    """
+    from toxfam.data.registry import DATASETS
+
+    name = str(spec)
+    if Path(spec).exists() or name not in DATASETS:
+        return False
+    return DATASETS[name].get("source") == "training_data"
+
+
 def _resolve_input(spec: str | Path) -> tuple[pd.DataFrame, Path | None]:
     """Resolve the input spec to (DataFrame, default embeddings H5).
 
@@ -326,6 +342,16 @@ def run_prediction(
     """
     model_dir = Path(model_dir)
     output = Path(output)
+
+    # test_set / val_set come from the split, so the checkpoint must be pinned to it.
+    # Any other input carries no split and needs no manifest.
+    if _is_split_dataset(input_tsv):
+        from toxfam.data.split_manifest import verify_split_provenance
+
+        verify_split_provenance(model_dir)
+        if standard_model_dir is not None:
+            verify_split_provenance(standard_model_dir)
+
     df, default_h5 = _resolve_input(input_tsv)
     if embeddings_h5 is None and default_h5 is not None:
         embeddings_h5 = default_h5

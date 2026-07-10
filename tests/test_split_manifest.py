@@ -228,6 +228,37 @@ def test_download_verification_accepts_a_csv_whose_only_difference_is_split(
         _verify_training_csv_against_manifest(csv)
 
 
+def test_split_guard_applies_only_to_split_derived_datasets(tmp_path):
+    """`predict test_set` reads the split and must verify; `predict my.tsv` must not."""
+    from toxfam.prediction import _is_split_dataset
+
+    assert _is_split_dataset("test_set") is True
+    assert _is_split_dataset("val_set") is True
+    # External datasets carry their own labels; no split involved.
+    assert _is_split_dataset("non_metazoan") is False
+    assert _is_split_dataset("unreviewed") is False
+    # A user-supplied file, even one named like a dataset.
+    p = tmp_path / "test_set"
+    p.write_text("identifier\nP1\n")
+    assert _is_split_dataset(p) is False
+    assert _is_split_dataset("whatever.tsv") is False
+
+
+def test_released_models_carry_the_provenance_stamp():
+    """package_models.py must ship models/split_provenance.json, or every released
+    checkpoint is refused by `eval` as unpinned."""
+    import importlib.util
+
+    from toxfam._paths import get_project_root
+
+    path = get_project_root() / "scripts" / "package_models.py"
+    spec = importlib.util.spec_from_file_location("_pkg_models", path)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+
+    assert "models/split_provenance.json" in mod.KEEP_FILES
+
+
 def test_repo_manifest_is_loadable_and_covers_the_representative_set():
     df = load_manifest()
     assert len(df) == 65_179

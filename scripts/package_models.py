@@ -45,6 +45,9 @@ KEEP_FILES = (
     "class_indices.json",
     "config.yaml",
     "models/best_model_calibrated.pt",
+    # Records the split manifest the checkpoint was calibrated against. `eval` and
+    # `predict test_set/val_set` refuse a checkpoint without it.
+    "models/split_provenance.json",
 )
 
 
@@ -63,14 +66,38 @@ def build_zip(dest: Path, runs: tuple[str, ...] = RUNS) -> None:
     print(f"  built {dest.name} ({size_mb:.2f} MB)")
 
 
-def upload(tag: str, zip_path: Path) -> None:
-    """Recreate the release at *tag* with *zip_path* as its only asset."""
+def _release_exists(tag: str) -> bool:
+    r = subprocess.run(
+        ["gh", "release", "view", tag, "--repo", REPO], capture_output=True
+    )
+    return r.returncode == 0
+
+
+def upload(tag: str, zip_path: Path, *, notes: str, replace: bool = False) -> None:
+    """Create the release at *tag* with *zip_path* as its only asset.
+
+    Refuses to touch an existing tag unless ``replace`` is set. Overwriting a
+    published tag rewrites history for every checkout pinned to it: the old
+    checkpoints become unfetchable and any commit referencing them stops being
+    reproducible. New artifacts belong on a new tag.
+    """
     try:
-        print(f"  deleting old release '{tag}' (if any) ...")
-        subprocess.run(
-            ["gh", "release", "delete", tag, "--yes", "--cleanup-tag"],
-            capture_output=True,
-        )
+        if _release_exists(tag):
+            if not replace:
+                print(
+                    f"ERROR: release '{tag}' already exists. Publish new artifacts "
+                    f"under a new tag (e.g. {tag[:-1]}{int(tag[-1]) + 1}) rather than "
+                    f"overwriting it, or pass --replace if you really mean to destroy "
+                    f"the existing tag and its assets.",
+                    file=sys.stderr,
+                )
+                sys.exit(1)
+            print(f"  --replace given: deleting existing release '{tag}' ...")
+            subprocess.run(
+                ["gh", "release", "delete", tag, "--yes", "--cleanup-tag"],
+                capture_output=True,
+            )
+
         print(f"  creating release '{tag}' ...")
         subprocess.run(
             [
@@ -82,10 +109,9 @@ def upload(tag: str, zip_path: Path) -> None:
                 "--repo",
                 REPO,
                 "--title",
-                "Models v1",
+                f"Models {tag.removeprefix('models-')}",
                 "--notes",
-                "Trained ToxFam models (standard + combined) for the Colab "
-                "prediction notebook. Slimmed to inference-required files.",
+                notes,
             ],
             check=True,
         )
@@ -120,6 +146,18 @@ def main() -> None:
         help="only build models.zip locally, do not touch the GitHub release",
     )
     parser.add_argument(
+        "--notes-file",
+        type=Path,
+        default=None,
+        help="markdown file with the release notes (metrics, split manifest hash)",
+    )
+    parser.add_argument(
+        "--replace",
+        action="store_true",
+        help="destroy an existing release AND its tag before recreating it "
+        "(breaks reproducibility for anything pinned to that tag)",
+    )
+    parser.add_argument(
         "-o",
         "--output",
         type=Path,
@@ -137,11 +175,20 @@ def main() -> None:
         print(f"models.zip written to {dest}")
         return
 
+    notes = (
+        args.notes_file.read_text()
+        if args.notes_file
+        else (
+            "Trained ToxFam models (standard + combined) for the Colab "
+            "prediction notebook. Slimmed to inference-required files."
+        )
+    )
+
     tmp_dir = Path(tempfile.mkdtemp())
     try:
         zip_path = tmp_dir / "models.zip"
         build_zip(zip_path, runs)
-        upload(args.tag, zip_path)
+        upload(args.tag, zip_path, notes=notes, replace=args.replace)
     finally:
         shutil.rmtree(tmp_dir, ignore_errors=True)
 

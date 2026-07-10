@@ -268,8 +268,13 @@ as a reviewable diff.
   **when it saves the calibrated checkpoint**, not at run start. A run that dies before
   calibration leaves no stamp, so the older checkpoint it failed to replace is refused
   rather than silently reused.
-- `load_calibrated_model()` (the single choke point for both `eval` and `predict`)
-  refuses any checkpoint whose stamp is missing or disagrees with the manifest on disk.
+- The guard lives with the callers that **score against a split**: `run_model_evaluation`,
+  `run_binary_evaluation_from_dir`, and `run_prediction` when the input is `test_set` /
+  `val_set`. `load_calibrated_model()` deliberately does *not* check — predicting on
+  arbitrary proteins involves no split, and the Colab notebook pip-installs the package,
+  so `get_project_root()` has nothing to find.
+- `scripts/package_models.py` must keep shipping `models/split_provenance.json`, or every
+  released checkpoint is refused by `eval` as unpinned.
 - `eval compare` refuses to tabulate methods whose `predictions.csv` cover different
   protein sets. Row counts can match while membership does not.
 

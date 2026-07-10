@@ -30,7 +30,7 @@ from toxfam.data.registry import (
     load_dataset,
     resolve_embeddings_h5,
 )
-from toxfam.data.split_manifest import apply_manifest
+from toxfam.data.split_manifest import apply_manifest, verify_split_provenance
 from toxfam.evaluation.eat import run_eat_search
 from toxfam.evaluation.hbi import NO_HIT_LABEL, run_hbi_search
 from toxfam.evaluation.metrics import (
@@ -382,6 +382,11 @@ def run_model_evaluation(
     from toxfam.model.inference import run_inference
 
     model_dir = Path(model_dir)
+    # Every eval scores predictions against ground-truth labels, and for
+    # test_set/val_set those labels come from the split. Refuse a checkpoint that
+    # was not trained against the manifest on disk.
+    verify_split_provenance(model_dir)
+
     method_name = f"nn_{model_dir.name}"
     console.print(f"\n[bold]Running model evaluation '{method_name}' on '{dataset}'[/]")
 
@@ -473,10 +478,14 @@ def run_binary_evaluation_from_dir(model_dir: str | Path) -> dict:
     from toxfam.model.inference import load_calibrated_model
 
     model_dir = Path(model_dir)
+    # Scores P(toxic) on the val and test splits, so the checkpoint must be pinned
+    # to the split on disk.
+    verify_split_provenance(model_dir)
+
     config = TrainConfig.from_yaml(model_dir / "config.yaml")
     config = config.model_copy(update={"output_dir": model_dir})
 
-    df = pd.read_csv(config.input_csv)
+    df = apply_manifest(pd.read_csv(config.input_csv))
     train_df, val_df, test_df = analyze_data_splits(df)
 
     h5_paths = [str(p) for p in config.h5_paths]
