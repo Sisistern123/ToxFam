@@ -85,7 +85,7 @@ class EatMetric(str, Enum):
 
 
 GITHUB_REPO = "Sisistern123/ToxFam"
-RELEASE_TAG = "data-v1"
+RELEASE_TAG = "data-v2"
 
 _RAW = "raw"
 _PROCESSED = "processed"
