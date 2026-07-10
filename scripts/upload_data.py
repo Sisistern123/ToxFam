@@ -56,6 +56,14 @@ def main() -> None:
         help="destroy an existing release AND its tag before recreating it "
         "(breaks reproducibility for every checkout pinned to that tag)",
     )
+    parser.add_argument(
+        "--prerelease", action="store_true", help="mark the release as a pre-release"
+    )
+    parser.add_argument(
+        "--target",
+        default=None,
+        help="commit-ish the tag should point at (default: the repo's default branch)",
+    )
     args = parser.parse_args()
     tag: str = args.tag
 
@@ -140,6 +148,8 @@ def main() -> None:
                 args.notes_file.read_text()
                 if args.notes_file
                 else "Download with `uv run toxfam download-data`.",
+                *(["--prerelease"] if args.prerelease else []),
+                *(["--target", args.target] if args.target else []),
             ],
             check=True,
         )

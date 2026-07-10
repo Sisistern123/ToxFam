@@ -73,7 +73,15 @@ def _release_exists(tag: str) -> bool:
     return r.returncode == 0
 
 
-def upload(tag: str, zip_path: Path, *, notes: str, replace: bool = False) -> None:
+def upload(
+    tag: str,
+    zip_path: Path,
+    *,
+    notes: str,
+    replace: bool = False,
+    prerelease: bool = False,
+    target: str | None = None,
+) -> None:
     """Create the release at *tag* with *zip_path* as its only asset.
 
     Refuses to touch an existing tag unless ``replace`` is set. Overwriting a
@@ -112,6 +120,8 @@ def upload(tag: str, zip_path: Path, *, notes: str, replace: bool = False) -> No
                 f"Models {tag.removeprefix('models-')}",
                 "--notes",
                 notes,
+                *(["--prerelease"] if prerelease else []),
+                *(["--target", target] if target else []),
             ],
             check=True,
         )
@@ -158,6 +168,14 @@ def main() -> None:
         "(breaks reproducibility for anything pinned to that tag)",
     )
     parser.add_argument(
+        "--prerelease", action="store_true", help="mark the release as a pre-release"
+    )
+    parser.add_argument(
+        "--target",
+        default=None,
+        help="commit-ish the tag should point at (default: the repo's default branch)",
+    )
+    parser.add_argument(
         "-o",
         "--output",
         type=Path,
@@ -188,7 +206,14 @@ def main() -> None:
     try:
         zip_path = tmp_dir / "models.zip"
         build_zip(zip_path, runs)
-        upload(args.tag, zip_path, notes=notes, replace=args.replace)
+        upload(
+            args.tag,
+            zip_path,
+            notes=notes,
+            replace=args.replace,
+            prerelease=args.prerelease,
+            target=args.target,
+        )
     finally:
         shutil.rmtree(tmp_dir, ignore_errors=True)
 
