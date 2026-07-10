@@ -139,13 +139,29 @@ def _load_tax_vectors(
         return None
 
     console.print(f"   Loading taxonomy vectors from {resolved.name}")
+    missing = 0
     with h5py.File(resolved, "r") as tf:
         tax_list = []
         for ident in identifiers:
             if ident in tf:
                 tax_list.append(torch.tensor(tf[ident][:], dtype=torch.float32))
             else:
+                missing += 1
                 tax_list.append(torch.zeros(tax_dim, dtype=torch.float32))
+
+    # A zero vector is a live prediction with one branch of the model switched off.
+    # Silently filling them turns "the combined model" into "the combined model with
+    # taxonomy ablated" without saying so.
+    if missing:
+        console.print(
+            f"   [bold yellow]{missing} of {len(identifiers)} proteins are absent from "
+            f"{resolved.name} and fall back to a zero taxonomy vector[/]"
+        )
+        if missing == len(identifiers):
+            console.print(
+                "   [bold red]Every protein got a zero taxonomy vector — this model's "
+                "taxonomy branch contributes nothing to these predictions.[/]"
+            )
     return torch.stack(tax_list)
 
 

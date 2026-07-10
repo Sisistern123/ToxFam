@@ -204,24 +204,9 @@ def _build_tax_h5(df_pool: pd.DataFrame, work_dir: Path) -> Path:
     embedding values) rather than the full shared embeddings file — keeping the
     output scoped to the pool instead of zero-filling every other protein.
     """
-    from toxfam.data.taxonomy import run_multi_hot_taxonomy_pipeline
+    from toxfam.data.taxonomy import build_taxonomy_h5
 
-    tax_csv = work_dir / "tax_input.csv"
-    df_pool[["identifier", ORGANISM_COL]].to_csv(tax_csv, index=False)
-
-    pool_keys_h5 = work_dir / "tax_pool_keys.h5"
-    with h5py.File(pool_keys_h5, "w") as f:
-        for ident in df_pool["identifier"]:
-            f.create_dataset(str(ident), data=[])
-
-    tax_h5 = work_dir / "taxonomy.h5"
-    run_multi_hot_taxonomy_pipeline(
-        input_csv=tax_csv,
-        input_h5_path=pool_keys_h5,
-        output_h5_path=tax_h5,
-        id_col="identifier",
-    )
-    return tax_h5
+    return build_taxonomy_h5(df_pool, work_dir)
 
 
 def _report_taxonomy_coverage(

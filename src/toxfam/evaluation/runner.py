@@ -16,7 +16,9 @@ produces a side-by-side comparison table.
 from __future__ import annotations
 
 import json
+import shutil
 import subprocess
+import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -42,6 +44,8 @@ from toxfam.evaluation.metrics import (
 from toxfam.visualization.plots import plot_confusion_matrix
 
 console = Console()
+
+ORGANISM_COL = "Organism (ID)"
 
 # The dataset registry + loaders live in toxfam.data.registry so `toxfam predict`
 # can resolve a dataset name without importing this evaluation/plotting module.
@@ -374,6 +378,37 @@ def run_eat_evaluation(dataset: str, *, metric: str = "cosine") -> MetricsResult
 # ---------------------------------------------------------------------------
 
 
+def _needs_built_taxonomy(model_dir: Path, df: pd.DataFrame) -> bool:
+    """True when a combined model needs taxonomy vectors this dataset's H5 lacks.
+
+    Returns False for single-branch models, and for datasets the model's training
+    taxonomy H5 already covers (test_set / val_set) — those keep using the stored
+    vectors, so their numbers are unaffected.
+    """
+    import h5py
+
+    from toxfam.model.inference import _resolve_tax_h5
+    from toxfam.model.model_config import ModelConfig
+
+    cfg = ModelConfig.load(model_dir / "model_config.json")
+    if cfg.architecture != "MultiInputMLP":
+        return False
+
+    if ORGANISM_COL not in df.columns:
+        console.print(
+            f"   [bold red]{model_dir.name} is a combined model but '{ORGANISM_COL}' is "
+            "absent from this dataset — its taxonomy branch will contribute nothing.[/]"
+        )
+        return False
+
+    resolved = _resolve_tax_h5(model_dir)
+    if resolved is None:
+        return True
+    with h5py.File(resolved, "r") as f:
+        covered = set(f.keys())
+    return bool(set(df["identifier"]) - covered)
+
+
 def run_model_evaluation(
     dataset: str,
     model_dir: str | Path,
@@ -416,8 +451,25 @@ def run_model_evaluation(
     if len(df) < n_before:
         console.print(f"   Filtered to {len(df)}/{n_before} sequences with embeddings")
 
-    # Run inference
-    inference_df = run_inference(df, h5_path, model_dir)
+    # Run inference. A combined (two-branch) model needs taxonomy vectors for *these*
+    # proteins. The training taxonomy H5 only covers the 65,179 training reps, so on any
+    # other dataset every protein would silently fall back to a zero vector and we would
+    # be scoring a taxonomy-ablated model. Build the vectors from the dataset's own
+    # organism IDs, exactly as `toxfam predict` does.
+    tax_h5 = None
+    tmp_tax_dir = None
+    if _needs_built_taxonomy(model_dir, df):
+        from toxfam.data.taxonomy import build_taxonomy_h5
+
+        tmp_tax_dir = Path(tempfile.mkdtemp(prefix="toxfam_eval_tax_"))
+        console.print("   Building taxonomy vectors from the dataset's organism IDs")
+        tax_h5 = build_taxonomy_h5(df, tmp_tax_dir)
+
+    try:
+        inference_df = run_inference(df, h5_path, model_dir, tax_h5_path=tax_h5)
+    finally:
+        if tmp_tax_dir is not None:
+            shutil.rmtree(tmp_tax_dir, ignore_errors=True)
 
     # Compute metrics
     task = _get_task(dataset)
