@@ -1,0 +1,13 @@
+{
+  "sha256": "959e4d5bf53954a094a2b0f367a5034f1f90d3af32090fd80be31740160452e8",
+  "n_proteins": 65179,
+  "counts": {
+    "train": 45621,
+    "val": 9779,
+    "test": 9779
+  },
+  "seed": 42,
+  "min_seq_id": 0.9,
+  "generated_at": "2026-07-09T12:19:26.855426+00:00",
+  "git_commit": "341109d"
+}

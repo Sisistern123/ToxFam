@@ -30,6 +30,7 @@ from toxfam.data.registry import (
     load_dataset,
     resolve_embeddings_h5,
 )
+from toxfam.data.split_manifest import apply_manifest
 from toxfam.evaluation.eat import run_eat_search
 from toxfam.evaluation.hbi import NO_HIT_LABEL, run_hbi_search
 from toxfam.evaluation.metrics import (
@@ -273,7 +274,7 @@ def run_eat_evaluation(dataset: str, *, metric: str = "cosine") -> MetricsResult
     # disjoint from val/test (the Split column partitions them), so EAT never looks
     # a query up against itself.
     ref_h5 = proc / "embeddings.h5"
-    train_df = pd.read_csv(proc / "training_data.csv")
+    train_df = apply_manifest(pd.read_csv(proc / "training_data.csv"))
     train_df = train_df[train_df["Split"] == "train"].reset_index(drop=True)
     # NB: do NOT collapse train-only family labels to "other" here. run_eat_search
     # derives the toxic/non-toxin mask for p_toxic from these labels, and collapsing
@@ -509,6 +510,33 @@ def run_binary_evaluation_from_dir(model_dir: str | Path) -> dict:
 # ---------------------------------------------------------------------------
 
 
+def _assert_methods_scored_same_proteins(scored_ids: dict[str, set[str]]) -> None:
+    """Refuse to tabulate methods that were run against different protein sets.
+
+    Comparing row counts is not enough: two methods evaluated on two different
+    versions of the "test set" both report 9779 samples while sharing a fraction of
+    their proteins. Only set equality catches a stale benchmark directory.
+    """
+    if len(scored_ids) < 2:
+        return
+
+    reference_method, reference = next(iter(scored_ids.items()))
+    for method, ids in scored_ids.items():
+        if ids == reference:
+            continue
+        shared = len(ids & reference)
+        raise ValueError(
+            f"'{method}' and '{reference_method}' were evaluated on different protein "
+            f"sets, so their metrics are not comparable.\n"
+            f"  {method}: {len(ids)} proteins\n"
+            f"  {reference_method}: {len(reference)} proteins\n"
+            f"  in common: {shared}\n"
+            "A benchmark directory is stale. Re-run every method on the current split, "
+            "e.g. 'toxfam eval hbi <dataset>' and 'toxfam eval model <dataset> "
+            "--model-dir ...', then compare again."
+        )
+
+
 def compare_methods(dataset: str) -> pd.DataFrame:
     """Compare all methods that have been run for a dataset."""
     dataset_dir = benchmark_dir() / dataset
@@ -521,6 +549,7 @@ def compare_methods(dataset: str) -> pd.DataFrame:
 
     results: dict[str, MetricsResult] = {}
     summary_rows: list[dict] = []
+    scored_ids: dict[str, set[str]] = {}
 
     for method_dir in sorted(dataset_dir.iterdir()):
         metrics_path = method_dir / "metrics.json"
@@ -555,11 +584,12 @@ def compare_methods(dataset: str) -> pd.DataFrame:
             n_samples=0,
         )
 
-        # Load predictions to get n_samples
+        # Load predictions to get n_samples + the identifiers actually scored
         preds_path = method_dir / "predictions.csv"
         if preds_path.exists():
-            n = len(pd.read_csv(preds_path))
-            m.n_samples = n
+            preds = pd.read_csv(preds_path)
+            m.n_samples = len(preds)
+            scored_ids[method_name] = set(preds["identifier"])
 
         results[method_name] = m
         summary_rows.append(
@@ -577,6 +607,7 @@ def compare_methods(dataset: str) -> pd.DataFrame:
         console.print("[yellow]No method results found.[/]")
         return pd.DataFrame()
 
+    _assert_methods_scored_same_proteins(scored_ids)
     print_metrics_table(results)
 
     # Save comparison

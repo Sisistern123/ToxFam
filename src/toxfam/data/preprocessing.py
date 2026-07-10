@@ -30,8 +30,12 @@ from sklearn.preprocessing import MultiLabelBinarizer
 from toxfam._paths import get_project_root, intermediate_dir, processed_dir, raw_dir
 from toxfam.data._fasta import parse_fasta, write_fasta
 from toxfam.data.normalization import normalize_protein_families
+from toxfam.data.split_manifest import diff_against_manifest, write_manifest
 
 console = Console()
+
+# Seed for the two stratified shuffle splits. Recorded in the split manifest.
+SPLIT_SEED = 42
 
 
 # ---------- Utilities ----------
@@ -394,14 +398,14 @@ def multilabel_stratified_splits(rep_df_all: pd.DataFrame):
     Y = mlb.fit_transform(df["fam_list"])
 
     msss1 = MultilabelStratifiedShuffleSplit(
-        n_splits=1, test_size=0.30, random_state=42
+        n_splits=1, test_size=0.30, random_state=SPLIT_SEED
     )
     train_idx, valtest_idx = next(msss1.split(df, Y))
     train_df, df_valtest = df.iloc[train_idx], df.iloc[valtest_idx]
     Y_valtest = Y[valtest_idx]
 
     msss2 = MultilabelStratifiedShuffleSplit(
-        n_splits=1, test_size=0.50, random_state=42
+        n_splits=1, test_size=0.50, random_state=SPLIT_SEED
     )
     val_idx, test_idx = next(msss2.split(df_valtest, Y_valtest))
     train_df = train_df.reset_index(drop=True)
@@ -513,6 +517,22 @@ def run_preprocessing_pipeline(
     training_data = pd.concat([train_df, val_df, test_df], ignore_index=True)
     proc.mkdir(parents=True, exist_ok=True)
     training_data.to_csv(proc / "training_data.csv", index=False)
+
+    # Persist the assignment to the git-tracked manifest. Downstream code reads the
+    # split from there, never from the CSV above, so a re-downloaded training_data.csv
+    # cannot move it. Report a moved split loudly: it invalidates every checkpoint.
+    moved = diff_against_manifest(training_data)
+    digest = write_manifest(training_data, seed=SPLIT_SEED, min_seq_id=min_seq_id)
+    if moved and (moved["reassigned"] or moved["added"] or moved["removed"]):
+        console.print(
+            f"   [bold yellow]Split manifest changed[/] "
+            f"({moved['reassigned']} reassigned, +{moved['added']} / "
+            f"-{moved['removed']} proteins).\n"
+            "   [yellow]Every existing checkpoint is now invalid — retrain before "
+            "evaluating. Commit data/splits/split_manifest.csv.[/]"
+        )
+    else:
+        console.print(f"   Split manifest unchanged ({digest[:12]})")
 
     train_all_df = build_train_all_members(data, train_df)
     train_all_df.to_csv(proc / "hbi_train_all.csv", index=False)

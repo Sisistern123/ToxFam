@@ -52,5 +52,10 @@ def evaluation_data_dir() -> Path:
     return data_dir() / "evaluation"
 
 
+def splits_dir() -> Path:
+    """Git-tracked split manifest (unlike the other data/ subdirectories)."""
+    return data_dir() / "splits"
+
+
 def benchmark_dir() -> Path:
     return get_project_root() / "benchmark"

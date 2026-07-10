@@ -17,6 +17,7 @@ import torch
 import yaml
 from rich.console import Console
 
+from toxfam.data.split_manifest import verify_split_provenance
 from toxfam.device import get_device
 from toxfam.model.model_config import ModelConfig
 
@@ -35,6 +36,10 @@ def load_calibrated_model(
     Reads ``model_config.json`` to reconstruct the architecture, then loads
     weights from ``models/best_model_calibrated.pt``.
 
+    Refuses a checkpoint that is not pinned to the train/val/test split manifest on
+    disk. This is the single choke point for both ``eval`` and ``predict``, so no
+    caller can score a model against a split it did not train on.
+
     Returns (model, model_config, idx_to_label).
     """
     from toxfam.model.calibration import ModelWithTemperature
@@ -42,6 +47,8 @@ def load_calibrated_model(
     model_dir = Path(model_dir)
     if device is None:
         device = get_device()
+
+    verify_split_provenance(model_dir)
 
     # Load architecture config
     config_path = model_dir / "model_config.json"

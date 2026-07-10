@@ -18,6 +18,7 @@ from toxfam.data.normalization import (
     ensure_identifier_column,
     normalize_protein_families,
 )
+from toxfam.data.split_manifest import apply_manifest
 
 console = Console()
 
@@ -91,6 +92,11 @@ def load_dataset(dataset: str) -> pd.DataFrame:
             )
         df = pd.read_csv(training_csv)
         df = ensure_identifier_column(df)
+        # The split comes from the git-tracked manifest, not from the CSV's own
+        # Split column: the CSV is a release artifact that `download-data --force`
+        # can replace, and a replacement carrying a different split must not be
+        # able to silently redefine what "test_set" means.
+        df = apply_manifest(df)
         df = df[df["Split"] == cfg["split"]].reset_index(drop=True)
         console.print(f"   Loaded {len(df)} sequences from {cfg['split']} split")
         return df

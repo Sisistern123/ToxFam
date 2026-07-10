@@ -16,6 +16,7 @@ except ImportError:
 
 from toxfam.config import TrainConfig
 from toxfam.data.dataset import ToxDataset, analyze_data_splits
+from toxfam.data.split_manifest import apply_manifest, write_split_provenance
 from toxfam.device import get_device
 from toxfam.model.calibration import ModelWithTemperature
 from toxfam.training.strategies import (
@@ -90,7 +91,9 @@ def run_training(config: TrainConfig) -> None:
     # 1. Load Data
     console.print("Loading data...")
     strategy = config.training_strategy
-    df = pd.read_csv(config.input_csv)
+    # Split comes from the git-tracked manifest, never the CSV's own Split column,
+    # so training and evaluation cannot disagree about what "test" means.
+    df = apply_manifest(pd.read_csv(config.input_csv))
     train_df, val_df, test_df = analyze_data_splits(df)
 
     label_col = "Protein families"
@@ -226,7 +229,12 @@ def run_training(config: TrainConfig) -> None:
     scaled_model.set_temperature(val_selector)
     calibrated_path = models_dir / "best_model_calibrated.pt"
     torch.save(scaled_model.state_dict(), calibrated_path)
+    # Bind the checkpoint to the split it trained on, here rather than at run start:
+    # a run that dies before calibration leaves the previous checkpoint in place, and
+    # must not leave a stamp claiming that checkpoint matches the current split.
+    digest = write_split_provenance(out_root)
     console.print(f"Saved calibrated model to {calibrated_path}")
+    console.print(f"Pinned to split manifest [dim]{digest[:12]}[/]")
 
     # Log calibrated model as a wandb artifact
     if _use_wandb:

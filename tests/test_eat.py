@@ -135,7 +135,9 @@ def test_cosine_uses_angle_not_magnitude(tmp_path):
     assert cos["eat_prediction"] == "alpha"  # closest by angle (parallel)
 
 
-def test_run_eat_evaluation_keeps_nontoxin_for_p_toxic(tmp_path, monkeypatch):
+def test_run_eat_evaluation_keeps_nontoxin_for_p_toxic(
+    tmp_path, monkeypatch, fake_split_manifest
+):
     """Regression: the train-only 'nontox' family must NOT be collapsed to 'other'
     before the toxic mask is derived. If it were, datasets whose queries lack the
     'nontox' label (e.g. non_metazoan) would get a degenerate constant p_toxic=1.0.
@@ -164,6 +166,8 @@ def test_run_eat_evaluation_keeps_nontoxin_for_p_toxic(tmp_path, monkeypatch):
             "Split": [r[2] for r in rows],
         }
     ).to_csv(proc / "training_data.csv", index=False)
+    # The split is read from the manifest, not from the CSV's Split column.
+    fake_split_manifest({r[0]: r[2] for r in rows})
     with h5py.File(proc / "embeddings.h5", "w") as f:
         for ident, _family, _split, emb in rows:
             f.create_dataset(ident, data=np.asarray(emb, dtype=np.float32))

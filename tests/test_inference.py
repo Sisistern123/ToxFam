@@ -16,6 +16,7 @@ import numpy as np
 import pandas as pd
 import torch
 
+from toxfam.data.split_manifest import write_split_provenance
 from toxfam.model.calibration import ModelWithTemperature
 from toxfam.model.inference import (
     _load_embeddings,
@@ -47,6 +48,8 @@ def _make_model_dir(tmp_path):
     torch.save(scaled.state_dict(), model_dir / "models" / "best_model_calibrated.pt")
 
     (model_dir / "class_indices.json").write_text(json.dumps(LABELS))
+    # Bind it to the split manifest, as a real calibration step would.
+    write_split_provenance(model_dir)
     return model_dir
 
 

@@ -21,7 +21,7 @@ from toxfam.training.orchestrator import run_training
 
 
 @pytest.mark.slow
-def test_run_training_standard_smoke(tmp_path, monkeypatch):
+def test_run_training_standard_smoke(tmp_path, monkeypatch, fake_split_manifest):
     # Keep the test hermetic: skip the optional wandb login/logging path entirely.
     monkeypatch.setattr("toxfam.training.orchestrator.wandb", None)
 
@@ -40,6 +40,7 @@ def test_run_training_standard_smoke(tmp_path, monkeypatch):
 
     csv_path = tmp_path / "training_data.csv"
     df.to_csv(csv_path, index=False)
+    fake_split_manifest(dict(zip(df["identifier"], df["Split"])))
 
     h5_path = tmp_path / "embeddings.h5"
     with h5py.File(h5_path, "w") as f:

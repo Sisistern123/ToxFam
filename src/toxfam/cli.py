@@ -205,7 +205,45 @@ def download_data(
             err_console.print(f"  FAILED: {e}", style="red")
             raise typer.Exit(code=1)
 
+    _verify_training_csv_against_manifest(processed_dir() / "training_data.csv")
     console.print("Done.")
+
+
+def _verify_training_csv_against_manifest(training_csv: Path) -> None:
+    """Check the downloaded release CSV describes the proteins the manifest pins.
+
+    The split itself is always read from the git-tracked manifest, so a release CSV
+    cannot redefine it. But a CSV describing a *different protein set* means the
+    release and the checkout disagree about the dataset, and every downstream
+    command would fail later and less clearly than here.
+    """
+    import pandas as pd
+
+    from toxfam.data.split_manifest import SplitManifestError, load_manifest
+
+    if not training_csv.exists():
+        return
+    try:
+        manifest_ids = set(load_manifest()["identifier"])
+    except SplitManifestError as e:
+        err_console.print(f"  [yellow]Could not verify split manifest: {e}[/]")
+        return
+
+    csv_ids = set(pd.read_csv(training_csv, usecols=["identifier"])["identifier"])
+    if csv_ids == manifest_ids:
+        return
+
+    err_console.print(
+        f"  [red]{training_csv.name} does not match data/splits/split_manifest.csv[/]\n"
+        f"    release CSV: {len(csv_ids)} proteins\n"
+        f"    manifest:    {len(manifest_ids)} proteins\n"
+        f"    only in CSV: {len(csv_ids - manifest_ids)}, "
+        f"only in manifest: {len(manifest_ids - csv_ids)}\n"
+        "  The data release and this checkout describe different protein sets. "
+        "Check out the commit matching the release, or re-run 'toxfam preprocess'.",
+        style="red",
+    )
+    raise typer.Exit(code=1)
 
 
 # ---------- Step 1: toxfam preprocess ----------
