@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import pandas as pd
 
-from toxfam.data.preprocessing import multilabel_stratified_splits
+from toxfam.data.preprocessing import _cluster_cache_key, multilabel_stratified_splits
 
 
 def _sample_reps() -> pd.DataFrame:
@@ -72,6 +72,29 @@ def test_splits_partition_all_rows_disjointly():
     assert val & test == set()
     # ...and collectively cover exactly the input.
     assert train | val | test == set(df["identifier"])
+
+
+def test_cluster_cache_key_depends_on_min_seq_id(tmp_path):
+    """`preprocess --min-seq-id 0.5` must not reuse clusters built at 0.9.
+
+    The cache used to be keyed on md5(input.fasta) plus "does cluster_rep_seq.fasta
+    exist", so a changed cutoff silently reused the old clusters while the console
+    printed the new one.
+    """
+    fasta = tmp_path / "input.fasta"
+    fasta.write_text(">P001\nMKTA\n")
+
+    assert _cluster_cache_key(fasta, 0.9) != _cluster_cache_key(fasta, 0.5)
+    assert _cluster_cache_key(fasta, 0.9) == _cluster_cache_key(fasta, 0.9)
+
+
+def test_cluster_cache_key_depends_on_fasta_content(tmp_path):
+    fasta = tmp_path / "input.fasta"
+    fasta.write_text(">P001\nMKTA\n")
+    before = _cluster_cache_key(fasta, 0.9)
+    fasta.write_text(">P001\nMKTAYIAK\n")
+
+    assert _cluster_cache_key(fasta, 0.9) != before
 
 
 def test_multilabel_family_string_roundtrips():

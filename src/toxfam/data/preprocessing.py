@@ -279,6 +279,16 @@ def run_signalp6_step(
 # ---------- MMseqs2 & splitting ----------
 
 
+def _cluster_cache_key(family_fa: Path, min_seq_id: float) -> str:
+    """Cache key for one family's clustering: its input FASTA *and* the identity cutoff.
+
+    ``min_seq_id`` belongs in the key. Keyed on the FASTA alone, ``preprocess
+    --min-seq-id 0.5`` silently reuses clusters built at 0.9 while printing 0.5.
+    """
+    digest = hashlib.md5(family_fa.read_bytes()).hexdigest()
+    return f"{digest}|min_seq_id={min_seq_id}"
+
+
 def cluster_per_family_and_collect(
     data: pd.DataFrame, min_seq_id: float = 0.9
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
@@ -307,15 +317,13 @@ def cluster_per_family_and_collect(
             fam_mm_dir.mkdir(parents=True, exist_ok=True)
             family_fa = fam_mm_dir / "input.fasta"
             rep_fasta = fam_mm_dir / "cluster_rep_seq.fasta"
-            old_hash = (
-                hashlib.md5(family_fa.read_bytes()).hexdigest()
-                if family_fa.exists()
-                else None
-            )
-            write_fasta(group, family_fa)
-            new_hash = hashlib.md5(family_fa.read_bytes()).hexdigest()
+            key_file = fam_mm_dir / "cluster_key.txt"
 
-            if old_hash == new_hash and rep_fasta.exists():
+            cached_key = key_file.read_text().strip() if key_file.exists() else None
+            write_fasta(group, family_fa)
+            cache_key = _cluster_cache_key(family_fa, min_seq_id)
+
+            if cached_key == cache_key and rep_fasta.exists():
                 progress.advance(task)
                 continue
 
@@ -335,6 +343,11 @@ def cluster_per_family_and_collect(
             except (OSError, RuntimeError, subprocess.CalledProcessError) as e:
                 console.print(f"[red]MMseqs easy-cluster failed for {safe}: {e}[/]")
                 failures.append((str(family_fa), str(cluster_prefix), str(tmp_dir)))
+            else:
+                # Record the key only once the clustering actually produced output, so a
+                # failed run cannot leave a fresh input.fasta that reads as cached.
+                if rep_fasta.exists():
+                    key_file.write_text(cache_key + "\n")
 
             progress.advance(task)
 
