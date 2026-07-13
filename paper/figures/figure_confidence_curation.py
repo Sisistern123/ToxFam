@@ -28,7 +28,7 @@ from paper.figures._common import (
     load_preds,
     save_fig,
 )
-from toxfam._paths import processed_dir
+from toxfam.data.split_manifest import load_manifest
 
 ADJ_CSV = adjudication_csv()
 
@@ -45,7 +45,11 @@ def _load():
     correct = (d["actual_label"] == d["predicted_label"]).to_numpy()
     ca = d["confidence"].to_numpy()
     adj = pd.read_csv(ADJ_CSV)
-    split = pd.read_csv(processed_dir() / "training_data.csv").set_index("identifier")["Split"]
+    # The split comes from the git-tracked manifest, never from training_data.csv's own
+    # Split column: a `download-data --force` can replace that CSV, and when it did, the
+    # is_test flags here silently became a lookup against a split neither the model nor
+    # the adjudicated proteins had ever been assigned under.
+    split = load_manifest().set_index("identifier")["Split"]
     adj["is_test"] = adj["identifier"].map(split).eq("test").to_numpy()
     a = adj["assessment"].str.lower()
     verdict = {k: {"conf": adj.loc[a == k, "confidence"].to_numpy(),
