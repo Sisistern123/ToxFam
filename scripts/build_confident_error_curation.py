@@ -51,7 +51,13 @@ from toxfam.model.inference import run_inference
 console = Console()
 
 
-def _write_provenance(out_dir: Path, model_dir: Path, splits: list[str], threshold: float) -> None:
+def _write_provenance(
+    out_dir: Path,
+    model_dir: Path,
+    splits: list[str],
+    threshold: float,
+    prefill_from: str | None = None,
+) -> None:
     """Record which split and which checkpoint produced this sheet.
 
     The previous sheet could not answer "which split is this row's `split` column from?".
@@ -76,6 +82,7 @@ def _write_provenance(out_dir: Path, model_dir: Path, splits: list[str], thresho
                 "model_dir": str(model_dir),
                 "splits": splits,
                 "confidence_threshold": threshold,
+                "prefilled_from": prefill_from,
                 "git_commit": commit,
             },
             indent=2,
@@ -104,6 +111,39 @@ def predictions_for_split(td: pd.DataFrame, split: str, model_dir: Path, h5: Pat
     return out
 
 
+def _prefill_verdicts(blind: pd.DataFrame, ce: pd.DataFrame, prior_csv: Path) -> pd.DataFrame:
+    """Carry verdicts over from an earlier curation round, by identifier.
+
+    A verdict answers one specific question — "Swiss-Prot says X, the model says Y; who
+    is right?" — so it only transfers while *both* labels are unchanged. A different
+    checkpoint can predict a different family for the same protein, and the old answer
+    would then be attached to a question nobody asked. Such rows are left blank for the
+    curator rather than carried over, and the count is printed.
+    """
+    prior = pd.read_csv(prior_csv)
+    ask = ce.set_index("identifier")[["actual_label", "predicted_label"]]
+
+    same = prior.join(ask, on="identifier", how="inner", rsuffix="_now")
+    unchanged = (
+        same["actual_label"].eq(same["actual_label_now"])
+        & same["predicted_label"].eq(same["predicted_label_now"])
+    )
+    carried = same[unchanged].set_index("identifier")
+    stale = int((~unchanged).sum())
+
+    for col in ("verdict", "assessment", "assessment_note"):
+        filled = blind["identifier"].map(carried[col])
+        blind[col] = filled.fillna("")
+
+    console.print(
+        f"[yellow]pre-filled[/] {len(carried)} verdict(s) from {prior_csv.name} "
+        f"({len(blind) - len(carried)} left for the curator)"
+        + (f"; [red]{stale} refused[/] — the label or the prediction changed since"
+           if stale else "")
+    )
+    return blind
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--splits", default="train,val,test",
@@ -117,6 +157,11 @@ def main() -> None:
                          "(test+val kept in full); e.g. 0.3333 for one third")
     ap.add_argument("--train-subsample-bins", type=int, default=10,
                     help="number of equal-width confidence bins for stratified train subsampling")
+    ap.add_argument("--prefill-from", default=None,
+                    help="CSV of verdicts from an earlier curation round; rows whose "
+                         "identifier reappears here are pre-filled so the curator does "
+                         "not re-answer them (see _prefill_verdicts for when a verdict "
+                         "is refused)")
     ap.add_argument("--model-dir", default=None)
     ap.add_argument("--out-dir", default=None)
     args = ap.parse_args()
@@ -185,11 +230,13 @@ def main() -> None:
                               "predicted_label": "model_predicted_family"}))
     for c in ("verdict", "assessment", "assessment_note"):
         blind[c] = ""
+    if args.prefill_from:
+        blind = _prefill_verdicts(blind, ce, Path(args.prefill_from))
     blind = blind.sample(frac=1.0, random_state=args.seed).reset_index(drop=True)
     blind.insert(0, "curation_id", [f"CE{i + 1:03d}" for i in range(len(blind))])
     blind.to_csv(out_dir / "confident_errors_to_curate.tsv", sep="\t", index=False)
 
-    _write_provenance(out_dir, model_dir, splits, args.threshold)
+    _write_provenance(out_dir, model_dir, splits, args.threshold, args.prefill_from)
 
     console.print(
         f"\n[green]wrote[/] {len(ce)} confident errors (conf >= {args.threshold}, "

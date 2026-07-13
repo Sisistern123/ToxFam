@@ -11,5 +11,6 @@
     "test"
   ],
   "confidence_threshold": 0.8,
-  "git_commit": "da8a55d"
+  "prefilled_from": "paper/data/model_test_wrong_conf_annotated.csv",
+  "git_commit": "e236807"
 }
