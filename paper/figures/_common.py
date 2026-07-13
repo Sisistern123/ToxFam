@@ -21,7 +21,12 @@ import pandas as pd
 from rich.console import Console
 
 from paper._paths import figures_output_dir
-from toxfam._paths import benchmark_dir, processed_dir
+from toxfam._paths import (
+    benchmark_dir,
+    evaluation_data_dir,
+    get_project_root,
+    processed_dir,
+)
 
 console = Console()
 
@@ -75,6 +80,44 @@ def load_preds(dataset: str, method: str) -> pd.DataFrame:
             f"to produce benchmark/{dataset}/{method}/predictions.csv."
         )
     return pd.read_csv(path)
+
+
+def load_predict(dataset: str) -> pd.DataFrame:
+    """Load a `toxfam predict` run: top-k families + p_toxic, no ground-truth labels.
+
+    Distinct from load_preds(), which loads a labelled `toxfam eval` benchmark. The
+    non-metazoan and unreviewed sets are scored through predict because neither is a
+    benchmark: predict builds the taxonomy vectors from each set's own organism IDs,
+    so the combined model's taxonomy branch is live rather than zero-filled.
+    """
+    path = benchmark_dir() / dataset / "predict" / "predictions_combined.tsv"
+    if not path.exists():
+        raise FileNotFoundError(
+            f"predict output not found: {path}\n"
+            f"Regenerate it with 'uv run toxfam predict {dataset} "
+            f"--model-dir model/model_output/combined_run "
+            f"-o benchmark/{dataset}/predict/predictions.tsv'."
+        )
+    return pd.read_csv(path, sep="\t")
+
+
+def unreviewed_families() -> pd.Series:
+    """Raw UniProt "Protein families" for the unreviewed set, indexed by identifier.
+
+    Deliberately raw: the caller collapses to the model's vocabulary via
+    paper.stats, so the normalization rules live in one place.
+    """
+    path = evaluation_data_dir() / "unreviewed" / "unreviewed.tsv"
+    df = pd.read_csv(path, sep="\t")
+    return df.set_index("Entry")["Protein families"]
+
+
+def model_vocab() -> set[str]:
+    """The combined model's family label space, from its class_indices.json."""
+    import json
+
+    path = get_project_root() / "model" / "model_output" / "combined_run" / "class_indices.json"
+    return set(json.loads(path.read_text()).values())
 
 
 def test_set_class_list() -> list[str]:

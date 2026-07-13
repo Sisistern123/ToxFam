@@ -8,15 +8,18 @@
 #   1. uv run toxfam train configs/standard.yaml   # -> model/model_output/standard_run
 #   2. uv run toxfam train configs/combined.yaml   # -> model/model_output/combined_run
 #   3. uv run toxfam eval {hbi,eat,model} test_set # -> benchmark/test_set/...
-#   4. make figures                                # render everything
+#   4. uv run toxfam predict {non_metazoan,unreviewed} \
+#        --model-dir model/model_output/combined_run \
+#        -o benchmark/<set>/predict/predictions.tsv  # -> the two supp generalisation figs
+#   5. make figures                                # render everything
 #
 # Individual figures are `make fig-<name>`; `make figures` builds all of them.
 
 PY := uv run python -m paper.figures
 
 .PHONY: figures numbers fig-pipeline fig-capability fig-confidence-curation \
-        fig-supp-accuracy fig-supp-perfamily fig-supplementary unreviewed-predictions \
-        coverage
+        fig-supp-accuracy fig-supp-perfamily fig-supp-nonmetazoan fig-supp-unreviewed \
+        fig-supplementary unreviewed-predictions coverage
 
 ## Ad-hoc test-coverage report (no CI gate; run occasionally).
 coverage:
@@ -24,7 +27,8 @@ coverage:
 
 ## Build every manuscript figure + the results-numbers manifest.
 figures: numbers fig-pipeline fig-capability fig-confidence-curation \
-         fig-supp-accuracy fig-supp-perfamily fig-supplementary
+         fig-supp-accuracy fig-supp-perfamily fig-supp-nonmetazoan \
+         fig-supp-unreviewed fig-supplementary
 
 ## Emit paper/figures/output/results_numbers.{json,tex} (every cited number).
 numbers:
@@ -44,6 +48,16 @@ fig-supp-accuracy:
 
 fig-supp-perfamily:
 	$(PY).figure_supp_perfamily
+
+## The two generalisation figures read `toxfam predict` output, not `toxfam eval`:
+## neither set is a labelled benchmark, and predict builds the taxonomy vectors from
+## each set's own organism IDs so the combined model's taxonomy branch is live.
+## Produce their inputs first (see the chain in the header).
+fig-supp-nonmetazoan:
+	$(PY).figure_supp_nonmetazoan
+
+fig-supp-unreviewed:
+	$(PY).figure_supp_unreviewed
 
 fig-supplementary:
 	$(PY).supplementary

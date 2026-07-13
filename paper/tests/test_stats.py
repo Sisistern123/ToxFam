@@ -19,11 +19,13 @@ from paper.stats import (
     macro_f1_by_support,
     macro_f1_conventions,
     mcnemar_test,
+    nonmetazoan_toxicity_recall,
     paired_bootstrap_accuracy_diff,
     per_family_f1_difference,
     rolling_accuracy_vs_length,
     subset_accuracy,
     toxin_mask,
+    unreviewed_annotation_summary,
 )
 
 
@@ -505,3 +507,67 @@ def test_accuracy_by_identity_bins_with_ci():
         labels=["<0.4", "0.4-0.6", "0.6-0.8", ">0.8"],
     )
     assert "diff_ci_low" not in plain.columns
+
+
+# --- generalisation stats (non-metazoan recall, unreviewed annotation summary) ------
+
+
+def test_nonmetazoan_toxicity_recall_counts_only_at_or_above_threshold():
+    preds = pd.DataFrame({"p_toxic": [0.05, 0.10, 0.50, 0.90]})
+    s = nonmetazoan_toxicity_recall(preds, threshold=0.5)
+    assert s["n"] == 4
+    assert s["n_flagged"] == 2          # 0.50 is inclusive
+    assert s["recall"] == pytest.approx(0.5)
+    assert s["median_p_toxic"] == pytest.approx(0.30)
+
+
+def _unreviewed_fixture():
+    # 5 proteins: two with an in-vocab family, one out-of-vocab, two unannotated.
+    preds = pd.DataFrame({
+        "identifier": ["A", "B", "C", "D", "E"],
+        "pred_1": ["Conotoxin family", "nontox", "Conotoxin family", "Melittin family", "other"],
+        "pred_2": ["Melittin family", "Conotoxin family", "nontox", "nontox", "nontox"],
+        "pred_3": ["nontox", "Melittin family", "Melittin family", "Conotoxin family", "Melittin family"],
+    })
+    families = pd.Series(
+        ["Conotoxin family", "Conotoxin family", "Wildly Unknown family", None, None],
+        index=preds.index,
+    )
+    vocab = {"Conotoxin family", "Melittin family", "nontox", "other"}
+    return preds, families, vocab
+
+
+def test_unreviewed_annotation_summary_ranks_and_coverage():
+    preds, families, vocab = _unreviewed_fixture()
+    s = unreviewed_annotation_summary(preds, families, vocab=vocab, top_k=3)
+
+    assert s["n"] == 5
+    assert s["n_unannotated"] == 2                 # D and E carry no family
+    assert s["frac_unannotated"] == pytest.approx(0.4)
+
+    # C's family is outside the model's vocabulary -> collapsed to "other".
+    assert s["n_out_of_vocab"] == 1
+    assert s["n_out_of_vocab_families"] == 1
+
+    # Only A and B are comparable: C is "other", D/E are unannotated.
+    assert s["n_comparable"] == 2
+    assert s["rank_counts"]["top_1"] == 1          # A: pred_1 matches
+    assert s["rank_counts"]["top_2"] == 1          # B: pred_2 matches
+    assert s["rank_counts"]["not_in_top_k"] == 0
+    assert s["top_1"] == pytest.approx(0.5)
+    assert s["top_k"] == pytest.approx(1.0)
+
+
+def test_unreviewed_annotation_summary_excludes_other_from_agreement():
+    """An entry whose UniProt family collapses to "other" must never count as agreement.
+
+    Agreeing with the catch-all class says nothing about naming the right family, and
+    counting it would silently inflate top-1.
+    """
+    preds, families, vocab = _unreviewed_fixture()
+    # C's collapsed family is "other" and its pred_1 is *also* "other" for E-like rows;
+    # force the pathological case: make C predict "other" first.
+    preds.loc[preds["identifier"] == "C", "pred_1"] = "other"
+    s = unreviewed_annotation_summary(preds, families, vocab=vocab, top_k=3)
+    assert s["n_comparable"] == 2                  # C still excluded
+    assert s["rank_counts"]["top_1"] == 1          # only A, not C
