@@ -6,8 +6,10 @@
   },
   "model_dir": "/Users/selin/PycharmProjects/ToxFam/model/model_output/combined_run",
   "splits": [
+    "train",
+    "val",
     "test"
   ],
   "confidence_threshold": 0.8,
-  "git_commit": "f6f1143"
+  "git_commit": "da8a55d"
 }
