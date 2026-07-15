@@ -3,89 +3,89 @@
   "non_toxin_prior": 0.9473,
   "toxin_only_n": 515,
   "toxin_only_acc": {
-    "nn_combined": 0.9242718446601942,
-    "nn_standard": 0.912621359223301,
-    "hbi": 0.8543689320388349
+    "nn_combined": 0.9067961165048544,
+    "nn_standard": 0.8679611650485437,
+    "hbi": 0.8388349514563107
   },
   "all_class_acc": {
-    "nn_combined": 0.9859903875651908,
-    "nn_standard": 0.9843542284487167,
-    "hbi": 0.981490949994887
+    "nn_combined": 0.9836384088352592,
+    "nn_standard": 0.9647203190510277,
+    "hbi": 0.9811841701605482
   },
   "mcnemar": {
-    "b01": 127,
-    "b10": 83,
-    "n_discordant": 210,
-    "chi2": 8.804761904761905,
-    "p_value": 0.0030044534906600267,
+    "b01": 123,
+    "b10": 99,
+    "n_discordant": 222,
+    "chi2": 2.3828828828828827,
+    "p_value": 0.12267098143734588,
     "method": "chi2_continuity"
   },
   "paired_bootstrap": {
-    "diff": 0.004499437570303799,
-    "ci_low": 0.0016361591164740785,
-    "ci_high": 0.007464975968912935,
+    "diff": 0.0024542386747110623,
+    "ci_low": -0.0005112997238981842,
+    "ci_high": 0.005419777073320309,
     "n": 9779
   },
   "no_hit": {
-    "n": 74,
-    "n_toxin": 10,
-    "nn_acc": 0.9459459459459459
+    "n": 71,
+    "n_toxin": 8,
+    "nn_acc": 0.9014084507042254
   },
   "mcc": {
     "hbi": {
-      "overall": 0.8282635300035441,
-      "micro": 0.9810038697315946
+      "overall": 0.822146903539903,
+      "micro": 0.9806890167437204
     },
     "nn_standard": {
-      "overall": 0.8618390141483393,
-      "micro": 0.9839424976184197
+      "overall": 0.7390589521696558,
+      "micro": 0.9637919063944758
     },
     "nn_combined": {
-      "overall": 0.8744356366742104,
-      "micro": 0.9856217135537484
+      "overall": 0.8549922965408435,
+      "micro": 0.9832078406467134
     }
   },
   "mcc_ci_nn_combined": {
-    "point": 0.8744356366742104,
-    "ci_low": 0.853614481966993,
-    "ci_high": 0.8944995720941655,
-    "two_se": 0.02069834692395141,
+    "point": 0.8549922965408435,
+    "ci_low": 0.8330384420117417,
+    "ci_high": 0.8754060747853603,
+    "two_se": 0.02188266774758226,
     "n": 9779
   },
   "family_capability": {
     "hbi": {
       "accuracy": {
-        "point": 0.981490949994887,
-        "two_se": 0.0026596753478033554,
+        "point": 0.9811841701605482,
+        "two_se": 0.0026786067794125263,
         "n": 9779
       },
       "mcc": {
-        "point": 0.8282635300035441,
-        "two_se": 0.023805181435212826,
+        "point": 0.822146903539903,
+        "two_se": 0.025145698168351282,
         "n": 9779
       }
     },
     "eat": {
       "accuracy": {
-        "point": 0.9853768278965129,
-        "two_se": 0.0024446235681067144,
+        "point": 0.9840474486143778,
+        "two_se": 0.0025318404582273892,
         "n": 9779
       },
       "mcc": {
-        "point": 0.8583026416977778,
-        "two_se": 0.022818754499323156,
+        "point": 0.8434900864853954,
+        "two_se": 0.02436551875142649,
         "n": 9779
       }
     },
     "nn_combined": {
       "accuracy": {
-        "point": 0.9859903875651908,
-        "two_se": 0.0024206103586360715,
+        "point": 0.9836384088352592,
+        "two_se": 0.0025484538427219703,
         "n": 9779
       },
       "mcc": {
-        "point": 0.8744356366742104,
-        "two_se": 0.02069834692395141,
+        "point": 0.8549922965408435,
+        "two_se": 0.02188266774758226,
         "n": 9779
       }
     }
@@ -93,96 +93,207 @@
   "macro_mcc_by_support": [
     {
       "group": "support>5",
-      "macro_mcc_a": 0.88042455234679,
-      "macro_mcc_b": 0.841576320748855,
+      "macro_mcc_a": 0.8516278549975943,
+      "macro_mcc_b": 0.8303278164244529,
       "n_families": 17,
       "n_sequences": 457
     },
     {
       "group": "support<=5",
-      "macro_mcc_a": 0.7233552941091548,
-      "macro_mcc_b": 0.8647190634472273,
+      "macro_mcc_a": 0.6993585995118312,
+      "macro_mcc_b": 0.7984178194856733,
       "n_families": 20,
       "n_sequences": 58
     }
   ],
-  "adjudication": {
-    "n": 63,
+  "curation": {
+    "n": 255,
     "assessment": {
-      "partial": 10,
-      "incorrect": 20,
-      "correct": 33
-    },
-    "assessment_category": {
-      "family_related": 4,
-      "false_positive_nonspecific": 8,
-      "family_correct": 31,
-      "false_positive_homolog": 5,
-      "other_correct": 2,
-      "false_positive_analog": 3,
-      "false_positive_spurious": 1,
-      "family_wrong": 1,
-      "false_negative": 3,
-      "family_adjacent": 5
+      "incorrect": 88,
+      "correct": 129,
+      "partial": 38
     },
     "verdict": {
-      "tox": 46,
-      "nontox": 17
+      "nontox": 69,
+      "tox": 186
     },
-    "n_annotation_gaps": 38,
+    "fp_category": {
+      "endogenous_protease_inhibitor": 10,
+      "endogenous_hormone": 19,
+      "endogenous_immune_other": 2,
+      "structural": 2,
+      "reproductive": 3,
+      "endogenous_enzyme": 9,
+      "true_antimicrobial": 19,
+      "endogenous_carrier": 2,
+      "uncharacterized": 3
+    },
+    "by_split": {
+      "train": 88,
+      "val": 82,
+      "test": 85
+    },
+    "n_annotation_gaps": 145,
     "annotation_gap_ids": [
-      "A0A6P3CW73",
-      "P34179",
-      "Q4VRI5",
-      "O42190",
-      "C0HJC1",
-      "C0HK43",
-      "I7GQA7",
-      "P0DSK0",
-      "P48650",
-      "P70088",
-      "Q45Z46",
-      "B2ZBB8",
-      "B4ESA2",
-      "C0HJV8",
-      "C0HK47",
-      "P0C1M6",
-      "P0C7R6",
-      "P0DMJ2",
-      "P0DMX0",
-      "P0DQU7",
-      "P0DX34",
-      "P0DX64",
-      "P10117",
+      "B8XH44",
+      "A7X3V7",
+      "L0GB04",
+      "Q94424",
+      "P0DSJ1",
+      "P0CH87",
+      "P0DJ03",
+      "R4JNJ5",
+      "P17726",
       "P24293",
-      "P81548",
       "Q6T6T5",
-      "C0HJW4",
-      "B5KL30",
-      "Q9BMK4",
-      "Q9I8F8",
-      "P04567",
-      "P0DMZ9",
-      "P0DPL1",
-      "P56685",
-      "Q2ES48",
-      "Q9W716",
+      "B5L5M7",
+      "P0C8L2",
+      "P0DSI7",
+      "P0DV70",
+      "P0DSJ5",
+      "Q75S48",
+      "P0C1Q4",
+      "C0HKB9",
+      "Q95P88",
+      "A0A8K1YTT4",
+      "C0HJC1",
+      "P86821",
+      "P82417",
+      "P0DMJ2",
+      "F8J2F3",
+      "Q90W97",
+      "P0CF01",
+      "P0DME8",
+      "P0DQZ7",
+      "Q68Y22",
+      "E0XKJ8",
+      "Q6Q252",
+      "Q9GQW4",
+      "P0DMF3",
+      "P20250",
+      "A0A182GL09",
+      "P83718",
+      "P48650",
+      "D3TS87",
+      "Q8UUI2",
+      "P83663",
+      "P80424",
+      "Q8JGT9",
+      "Q6T6S5",
+      "Q6TS00",
+      "P0C7S8",
+      "P0DPT0",
+      "A0A348G5W1",
+      "A7SRR3",
+      "P0DRL4",
+      "A0A059UEE4",
+      "P0DMF8",
+      "B6RLX2",
+      "P84651",
+      "P14615",
+      "Q5GQ85",
+      "Q8WQK0",
+      "A0A1D3IXJ5",
+      "B2ZBB8",
+      "P16895",
+      "P0DRK4",
+      "P0DMJ5",
+      "P08873",
+      "B5KL31",
       "X5IFZ1",
-      "Q07932"
+      "P81547",
+      "P82656",
+      "P0DQZ9",
+      "B5KL41",
+      "Q9BMK4",
+      "Q9U6R6",
+      "Q172F2",
+      "P0DQQ8",
+      "Q7YWB0",
+      "C1JAR9",
+      "P0DQT6",
+      "A0A059U8Y9",
+      "A0A1S4GYH9",
+      "Q9I8F8",
+      "Q7M4I6",
+      "C0HK72",
+      "P0DSJ9",
+      "Q9W716",
+      "P56685",
+      "B5L5R7",
+      "P0DRJ4",
+      "P86286",
+      "P20249",
+      "P0DV62",
+      "P04096",
+      "C0HK44",
+      "Q2ES49",
+      "Q9I845",
+      "P0DRK6",
+      "P20253",
+      "C0HJF6",
+      "P81162",
+      "B5KL37",
+      "P84015",
+      "P0DSM0",
+      "L0GAZ8",
+      "Q8T0W4",
+      "R4JJN6",
+      "I7GQA7",
+      "C0HJV8",
+      "P0DJ46",
+      "A8E2V9",
+      "P0DX33",
+      "A0A0E3SVB8",
+      "A3FMN3",
+      "E5L0E5",
+      "U3KRG1",
+      "A7X401",
+      "Q75WH5",
+      "P00621",
+      "P82422",
+      "C0HL84",
+      "P28504",
+      "Q07932",
+      "C0HL58",
+      "C0HK45",
+      "P84953",
+      "P81478",
+      "P00601",
+      "P84950",
+      "P56686",
+      "Q75WG7",
+      "Q5Y4U5",
+      "P0DRB9",
+      "Q7PN86",
+      "A0A090BX51",
+      "P82971",
+      "Q06B75",
+      "P0DY17",
+      "D2Y2Q6",
+      "C0HM26",
+      "A0A0M3KKW3",
+      "A6P331",
+      "A9CM07",
+      "L0GCI6",
+      "A0A0K8RJV9",
+      "Q7M4I3",
+      "C5J886",
+      "A8Y7P0"
     ]
   },
   "hbi_binary": {
-    "n": 9201,
-    "subset": "common_9201",
+    "n": 1423,
+    "subset": "common_1423",
     "mcc": {
-      "point": 0.9048994652313,
-      "two_se": 0.020528408375462357,
-      "n": 9201
+      "point": 0.896004123765824,
+      "two_se": 0.05776450353973333,
+      "n": 1423
     },
     "paired_vs_toxfam_mcc": {
-      "diff": 0.004989758824854478,
-      "ci_low": -0.017099400239825768,
-      "ci_high": 0.026724430307764505
+      "diff": 0.00844847288296404,
+      "ci_low": -0.05301641427557713,
+      "ci_high": 0.0705919333086158
     },
     "note": "binary call = transferred-label class; no score, hence no ROC-AUC/PR-AUC"
   },
@@ -197,46 +308,46 @@
     ],
     "hbi": {
       "0-30": {
-        "accuracy": 0.5645161290322581,
-        "n": 62
+        "accuracy": 0.5694444444444444,
+        "n": 72
       },
       "30-50": {
-        "accuracy": 0.9,
-        "n": 110
+        "accuracy": 0.90625,
+        "n": 128
       },
       "50-75": {
-        "accuracy": 0.9037433155080213,
-        "n": 187
+        "accuracy": 0.9,
+        "n": 160
       },
       "75-150": {
-        "accuracy": 0.8723404255319149,
-        "n": 94
+        "accuracy": 0.8235294117647058,
+        "n": 85
       },
       "150-5000": {
-        "accuracy": 0.8870967741935484,
-        "n": 62
+        "accuracy": 0.8714285714285714,
+        "n": 70
       }
     },
     "nn_combined": {
       "0-30": {
-        "accuracy": 0.9032258064516129,
-        "n": 62
+        "accuracy": 0.8472222222222222,
+        "n": 72
       },
       "30-50": {
-        "accuracy": 0.9090909090909091,
-        "n": 110
+        "accuracy": 0.890625,
+        "n": 128
       },
       "50-75": {
-        "accuracy": 0.9251336898395722,
-        "n": 187
+        "accuracy": 0.95625,
+        "n": 160
       },
       "75-150": {
-        "accuracy": 0.9361702127659575,
-        "n": 94
+        "accuracy": 0.9058823529411765,
+        "n": 85
       },
       "150-5000": {
-        "accuracy": 0.9516129032258065,
-        "n": 62
+        "accuracy": 0.8857142857142857,
+        "n": 70
       }
     }
   },
@@ -252,73 +363,49 @@
     "records": [
       {
         "bin": "<0.3",
-        "n": 11,
-        "hbi_acc": 0.7272727272727273,
-        "toxfam_acc": 0.7272727272727273,
-        "diff": 0.0,
+        "n": 5,
+        "hbi_acc": 0.4,
+        "toxfam_acc": 0.6,
+        "diff": 0.19999999999999996,
         "diff_ci_low": 0.0,
-        "diff_ci_high": 0.0
+        "diff_ci_high": 0.6000000000000001
       },
       {
         "bin": "0.3-0.4",
-        "n": 10,
-        "hbi_acc": 0.5,
-        "toxfam_acc": 0.6,
-        "diff": 0.09999999999999998,
-        "diff_ci_low": 0.0,
-        "diff_ci_high": 0.30000000000000004
+        "n": 9,
+        "hbi_acc": 0.3333333333333333,
+        "toxfam_acc": 0.6666666666666666,
+        "diff": 0.3333333333333333,
+        "diff_ci_low": -0.11111111111111116,
+        "diff_ci_high": 0.7777777777777777
       },
       {
         "bin": "0.4-0.6",
-        "n": 69,
-        "hbi_acc": 0.7246376811594203,
-        "toxfam_acc": 0.7681159420289855,
-        "diff": 0.04347826086956519,
-        "diff_ci_low": -0.08695652173913038,
-        "diff_ci_high": 0.17391304347826086
+        "n": 81,
+        "hbi_acc": 0.7407407407407407,
+        "toxfam_acc": 0.7777777777777778,
+        "diff": 0.03703703703703709,
+        "diff_ci_low": -0.061728395061728336,
+        "diff_ci_high": 0.1358024691358024
       },
       {
         "bin": "0.6-0.8",
-        "n": 151,
-        "hbi_acc": 0.8874172185430463,
-        "toxfam_acc": 0.9337748344370861,
-        "diff": 0.04635761589403975,
-        "diff_ci_low": 0.0,
-        "diff_ci_high": 0.09933774834437081
+        "n": 140,
+        "hbi_acc": 0.8285714285714286,
+        "toxfam_acc": 0.9,
+        "diff": 0.0714285714285714,
+        "diff_ci_low": 0.0071428571428571175,
+        "diff_ci_high": 0.1428571428571428
       },
       {
         "bin": ">0.8",
-        "n": 264,
-        "hbi_acc": 0.9204545454545454,
-        "toxfam_acc": 0.9848484848484849,
-        "diff": 0.06439393939393945,
-        "diff_ci_low": 0.03409090909090906,
-        "diff_ci_high": 0.09848484848484851
+        "n": 272,
+        "hbi_acc": 0.9227941176470589,
+        "toxfam_acc": 0.9632352941176471,
+        "diff": 0.0404411764705882,
+        "diff_ci_low": 0.011029411764705843,
+        "diff_ci_high": 0.07352941176470584
       }
     ]
-  },
-  "binary_head": {
-    "nn_combined": {
-      "roc_auc": 0.9948130984120596,
-      "pr_auc": 0.9494065698143599,
-      "mcc": 0.8873994657279257,
-      "f1": 0.8908765652951699,
-      "accuracy": 0.9875242867368852,
-      "optimized_threshold": 0.19549256563186646
-    },
-    "nn_standard": {
-      "roc_auc": 0.9924573880309204,
-      "pr_auc": 0.942923851792633,
-      "mcc": 0.8777280918354345,
-      "f1": 0.8812056737588653,
-      "accuracy": 0.9862971673995296,
-      "optimized_threshold": 0.08921712636947632
-    }
-  },
-  "non_metazoan_scope_boundary": {
-    "n": 702,
-    "recognized_as_toxic": 110,
-    "recognition_rate": 0.1567,
-    "note": "all entries are non-metazoan toxins; low rate = ToxFam is metazoan-specific."
   }
 }
