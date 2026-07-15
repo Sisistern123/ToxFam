@@ -134,12 +134,7 @@ def run_hbi_evaluation(dataset: str) -> MetricsResult:
     df = load_dataset(dataset)
     proc = processed_dir()
     output_dir = benchmark_dir() / dataset / "hbi"
-
-    # Build query FASTA
-    tmp_dir = output_dir / "tmp"
-    tmp_dir.mkdir(parents=True, exist_ok=True)
-    query_fasta = tmp_dir / "query.fasta"
-    write_fasta(df, query_fasta)
+    output_dir.mkdir(parents=True, exist_ok=True)
 
     # Load HBI reference and harmonize labels
     train_df = pd.read_csv(proc / "hbi_train_all.csv")
@@ -152,13 +147,20 @@ def run_hbi_evaluation(dataset: str) -> MetricsResult:
             {lbl: "other" for lbl in only_in_train}
         )
 
-    # Run search
-    hbi_result = run_hbi_search(
-        query_fasta=query_fasta,
-        target_fasta=proc / "hbi_train_all.fasta",
-        target_labels_df=train_df,
-        work_dir=tmp_dir,
-    )
+    # MMseqs2's databases and search scratch run to ~20 GB for a 9,779-query search and
+    # are pure intermediates — the labels come back in `hbi_result`, and nothing below
+    # reads them. Kept under output_dir (same filesystem, so no cross-volume copy on a
+    # machine whose /tmp is a small separate volume) and removed when the search returns.
+    with tempfile.TemporaryDirectory(dir=output_dir, prefix="mmseqs_") as tmp:
+        tmp_dir = Path(tmp)
+        query_fasta = tmp_dir / "query.fasta"
+        write_fasta(df, query_fasta)
+        hbi_result = run_hbi_search(
+            query_fasta=query_fasta,
+            target_fasta=proc / "hbi_train_all.fasta",
+            target_labels_df=train_df,
+            work_dir=tmp_dir,
+        )
     console.print(
         f"   Coverage: {hbi_result.coverage:.1%} "
         f"({hbi_result.n_with_hits}/{hbi_result.n_queries})"
