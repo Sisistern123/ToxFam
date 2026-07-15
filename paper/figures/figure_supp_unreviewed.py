@@ -55,15 +55,12 @@ def main() -> None:
         color=[METHODS["nn_combined_run"][1], GREY],
         edgecolor="white",
     )
-    for b, v in zip(bars, counts, strict=True):
-        axa.text(
-            b.get_x() + b.get_width() / 2,
-            v + s["n"] * 0.015,
-            f"{v:,}\n({v / s['n']:.0%})",
-            ha="center",
-            va="bottom",
-            fontsize=7,
-        )
+    axa.bar_label(
+        bars,
+        labels=[f"{v:,}\n({v / s['n']:.0%})" for v in counts],
+        padding=2,
+        fontsize=7,
+    )
     axa.set_ylim(0, max(counts) * 1.25)
     axa.set_ylabel("Proteins")
     axa.set_title(f"Annotation coverage (n={s['n']:,})")
@@ -76,15 +73,7 @@ def main() -> None:
     # Luminance-ordered good->bad (never green/red: the deuteranopia failure case).
     colors = [ADJUDICATION["correct"], "#3C7DBF", "#8FB8DC", ADJUDICATION["incorrect"]]
     bars = axb.bar(labels, vals, color=colors, edgecolor="white")
-    for b, v in zip(bars, vals, strict=True):
-        axb.text(
-            b.get_x() + b.get_width() / 2,
-            v + max(vals) * 0.015,
-            f"{v:,}",
-            ha="center",
-            va="bottom",
-            fontsize=7,
-        )
+    axb.bar_label(bars, labels=[f"{v:,}" for v in vals], padding=2, fontsize=7)
     axb.set_ylim(0, max(vals) * 1.18)
     axb.set_ylabel("Annotated proteins")
     axb.set_title(

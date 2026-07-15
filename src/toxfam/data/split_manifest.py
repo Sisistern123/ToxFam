@@ -36,6 +36,7 @@ from pathlib import Path
 
 import pandas as pd
 
+from toxfam._git import git_commit_short
 from toxfam._paths import splits_dir
 
 SPLIT_VALUES = ("train", "val", "test")
@@ -45,22 +46,6 @@ PROVENANCE_FILENAME = "split_provenance.json"
 
 class SplitManifestError(RuntimeError):
     """The split manifest is missing, incomplete, or disagrees with a checkpoint."""
-
-
-def _git_commit_short() -> str:
-    """Local copy: keeps the light ``data`` layer independent of ``evaluation``."""
-    import subprocess
-
-    try:
-        return (
-            subprocess.check_output(
-                ["git", "rev-parse", "--short", "HEAD"], stderr=subprocess.DEVNULL
-            )
-            .decode()
-            .strip()
-        )
-    except Exception:
-        return "unknown"
 
 
 # ---------- Paths ----------
@@ -174,7 +159,7 @@ def write_manifest(
                 "seed": seed,
                 "min_seq_id": min_seq_id,
                 "generated_at": datetime.now(timezone.utc).isoformat(),
-                "git_commit": _git_commit_short(),
+                "git_commit": git_commit_short(),
             },
             indent=2,
         )

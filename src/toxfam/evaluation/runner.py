@@ -16,8 +16,6 @@ produces a side-by-side comparison table.
 from __future__ import annotations
 
 import json
-import shutil
-import subprocess
 import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
@@ -25,8 +23,10 @@ from pathlib import Path
 import pandas as pd
 from rich.console import Console
 
+from toxfam._git import git_commit_short, git_dirty
 from toxfam._paths import benchmark_dir, processed_dir
 from toxfam.data._fasta import write_fasta
+from toxfam.data.normalization import ORGANISM_COL
 from toxfam.data.registry import (
     DATASETS,
     load_dataset,
@@ -45,8 +45,6 @@ from toxfam.visualization.plots import plot_confusion_matrix
 
 console = Console()
 
-ORGANISM_COL = "Organism (ID)"
-
 # The dataset registry + loaders live in toxfam.data.registry so `toxfam predict`
 # can resolve a dataset name without importing this evaluation/plotting module.
 # DATASETS, load_dataset and resolve_embeddings_h5 are used by the runners below.
@@ -59,35 +57,6 @@ def _get_task(dataset: str) -> str:
 # ---------------------------------------------------------------------------
 # Save run results (standard format)
 # ---------------------------------------------------------------------------
-
-
-def git_commit_short() -> str:
-    try:
-        return (
-            subprocess.check_output(
-                ["git", "rev-parse", "--short", "HEAD"],
-                stderr=subprocess.DEVNULL,
-            )
-            .decode()
-            .strip()
-        )
-    except Exception:
-        return "unknown"
-
-
-def git_dirty() -> bool:
-    """True if the working tree has uncommitted changes.
-
-    A bare short SHA silently hides that results were produced from a modified
-    tree; this flags it so provenance is not misleading.
-    """
-    try:
-        out = subprocess.check_output(
-            ["git", "status", "--porcelain"], stderr=subprocess.DEVNULL
-        )
-        return bool(out.strip())
-    except Exception:
-        return False
 
 
 def _environment() -> dict:
@@ -405,8 +374,7 @@ def _needs_built_taxonomy(model_dir: Path, df: pd.DataFrame) -> bool:
     if resolved is None:
         return True
     with h5py.File(resolved, "r") as f:
-        covered = set(f.keys())
-    return bool(set(df["identifier"]) - covered)
+        return any(ident not in f for ident in df["identifier"])
 
 
 def run_model_evaluation(
@@ -456,20 +424,15 @@ def run_model_evaluation(
     # other dataset every protein would silently fall back to a zero vector and we would
     # be scoring a taxonomy-ablated model. Build the vectors from the dataset's own
     # organism IDs, exactly as `toxfam predict` does.
-    tax_h5 = None
-    tmp_tax_dir = None
-    if _needs_built_taxonomy(model_dir, df):
-        from toxfam.data.taxonomy import build_taxonomy_h5
+    with tempfile.TemporaryDirectory(prefix="toxfam_eval_tax_") as tmp_tax_dir:
+        tax_h5 = None
+        if _needs_built_taxonomy(model_dir, df):
+            from toxfam.data.taxonomy import build_taxonomy_h5
 
-        tmp_tax_dir = Path(tempfile.mkdtemp(prefix="toxfam_eval_tax_"))
-        console.print("   Building taxonomy vectors from the dataset's organism IDs")
-        tax_h5 = build_taxonomy_h5(df, tmp_tax_dir)
+            console.print("   Building taxonomy vectors from the dataset's organism IDs")
+            tax_h5 = build_taxonomy_h5(df, Path(tmp_tax_dir))
 
-    try:
         inference_df = run_inference(df, h5_path, model_dir, tax_h5_path=tax_h5)
-    finally:
-        if tmp_tax_dir is not None:
-            shutil.rmtree(tmp_tax_dir, ignore_errors=True)
 
     # Compute metrics
     task = _get_task(dataset)

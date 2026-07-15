@@ -28,6 +28,8 @@ from rich.progress import (
     TextColumn,
 )
 
+from toxfam.data.normalization import ORGANISM_COL
+
 logger = logging.getLogger(__name__)
 console = Console()
 
@@ -384,9 +386,6 @@ def run_multi_hot_taxonomy_pipeline(
             console.print(f"  First 10 unmatched IDs: {unmatched_ids[:10]}")
 
     console.print(f"Output: [cyan]{output_h5_path}[/]")
-
-
-ORGANISM_COL = "Organism (ID)"
 
 
 def build_taxonomy_h5(

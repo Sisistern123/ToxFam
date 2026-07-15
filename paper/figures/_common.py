@@ -20,11 +20,10 @@ import numpy as np
 import pandas as pd
 from rich.console import Console
 
-from paper._paths import figures_output_dir
+from paper._paths import figures_output_dir, model_run_dir
 from toxfam._paths import (
     benchmark_dir,
     evaluation_data_dir,
-    get_project_root,
     processed_dir,
 )
 
@@ -116,7 +115,7 @@ def model_vocab() -> set[str]:
     """The combined model's family label space, from its class_indices.json."""
     import json
 
-    path = get_project_root() / "model" / "model_output" / "combined_run" / "class_indices.json"
+    path = model_run_dir() / "class_indices.json"
     return set(json.loads(path.read_text()).values())
 
 

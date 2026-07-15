@@ -25,17 +25,23 @@ Requires the `gh` CLI (https://cli.github.com) to be installed and authenticated
 from __future__ import annotations
 
 import argparse
-import shutil
-import subprocess
 import sys
 import tempfile
 import zipfile
 from pathlib import Path
 
+# Sibling import: works both when run as `uv run scripts/package_models.py` and when
+# the file is loaded by path (importlib), which does not put scripts/ on sys.path.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from _gh_release import (  # noqa: E402
+    add_release_args,
+    create_release,
+    guard_existing_tag,
+)
+
 ROOT = Path(__file__).resolve().parent.parent
 MODEL_OUTPUT = ROOT / "model" / "model_output"
 
-REPO = "Sisistern123/ToxFam"
 DEFAULT_TAG = "models-v1"
 
 # Runs to bundle and the per-run files inference needs.
@@ -66,77 +72,6 @@ def build_zip(dest: Path, runs: tuple[str, ...] = RUNS) -> None:
     print(f"  built {dest.name} ({size_mb:.2f} MB)")
 
 
-def _release_exists(tag: str) -> bool:
-    r = subprocess.run(
-        ["gh", "release", "view", tag, "--repo", REPO], capture_output=True
-    )
-    return r.returncode == 0
-
-
-def upload(
-    tag: str,
-    zip_path: Path,
-    *,
-    notes: str,
-    replace: bool = False,
-    prerelease: bool = False,
-    target: str | None = None,
-) -> None:
-    """Create the release at *tag* with *zip_path* as its only asset.
-
-    Refuses to touch an existing tag unless ``replace`` is set. Overwriting a
-    published tag rewrites history for every checkout pinned to it: the old
-    checkpoints become unfetchable and any commit referencing them stops being
-    reproducible. New artifacts belong on a new tag.
-    """
-    try:
-        if _release_exists(tag):
-            if not replace:
-                print(
-                    f"ERROR: release '{tag}' already exists. Publish new artifacts "
-                    f"under a new tag (e.g. {tag[:-1]}{int(tag[-1]) + 1}) rather than "
-                    f"overwriting it, or pass --replace if you really mean to destroy "
-                    f"the existing tag and its assets.",
-                    file=sys.stderr,
-                )
-                sys.exit(1)
-            print(f"  --replace given: deleting existing release '{tag}' ...")
-            subprocess.run(
-                ["gh", "release", "delete", tag, "--yes", "--cleanup-tag"],
-                capture_output=True,
-            )
-
-        print(f"  creating release '{tag}' ...")
-        subprocess.run(
-            [
-                "gh",
-                "release",
-                "create",
-                tag,
-                str(zip_path),
-                "--repo",
-                REPO,
-                "--title",
-                f"Models {tag.removeprefix('models-')}",
-                "--notes",
-                notes,
-                *(["--prerelease"] if prerelease else []),
-                *(["--target", target] if target else []),
-            ],
-            check=True,
-        )
-        print("Done.")
-    except FileNotFoundError:
-        print(
-            "ERROR: `gh` CLI not found. Install from https://cli.github.com",
-            file=sys.stderr,
-        )
-        sys.exit(1)
-    except subprocess.CalledProcessError as e:
-        print(f"FAILED: {e}", file=sys.stderr)
-        sys.exit(1)
-
-
 def main() -> None:
     parser = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
@@ -155,25 +90,10 @@ def main() -> None:
         action="store_true",
         help="only build models.zip locally, do not touch the GitHub release",
     )
-    parser.add_argument(
-        "--notes-file",
-        type=Path,
-        default=None,
-        help="markdown file with the release notes (metrics, split manifest hash)",
-    )
-    parser.add_argument(
-        "--replace",
-        action="store_true",
-        help="destroy an existing release AND its tag before recreating it "
-        "(breaks reproducibility for anything pinned to that tag)",
-    )
-    parser.add_argument(
-        "--prerelease", action="store_true", help="mark the release as a pre-release"
-    )
-    parser.add_argument(
-        "--target",
-        default=None,
-        help="commit-ish the tag should point at (default: the repo's default branch)",
+    add_release_args(
+        parser,
+        notes_help="markdown file with the release notes "
+        "(metrics, split manifest hash)",
     )
     parser.add_argument(
         "-o",
@@ -202,20 +122,29 @@ def main() -> None:
         )
     )
 
-    tmp_dir = Path(tempfile.mkdtemp())
-    try:
-        zip_path = tmp_dir / "models.zip"
+    tag: str = args.tag
+    next_tag = (
+        f"{tag[:-1]}{int(tag[-1]) + 1}" if tag[-1:].isdigit() else "a new version"
+    )
+    exists = guard_existing_tag(
+        tag,
+        replace=args.replace,
+        remediation=f"Publish new artifacts under a new tag (e.g. {next_tag})",
+    )
+
+    with tempfile.TemporaryDirectory() as tmp:
+        zip_path = Path(tmp) / "models.zip"
         build_zip(zip_path, runs)
-        upload(
-            args.tag,
-            zip_path,
+        create_release(
+            tag,
+            [zip_path],
+            title=f"Models {tag.removeprefix('models-')}",
             notes=notes,
+            exists=exists,
             replace=args.replace,
             prerelease=args.prerelease,
             target=args.target,
         )
-    finally:
-        shutil.rmtree(tmp_dir, ignore_errors=True)
 
 
 if __name__ == "__main__":

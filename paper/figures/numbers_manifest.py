@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 from rich.console import Console
 
-from paper._paths import adjudication_csv, manuscript_tex_target
+from paper._paths import adjudication_csv, manuscript_tex_target, model_run_dir
 from paper.figures._common import (
     FIG_DIR,
     LEN_BINS,
@@ -226,7 +226,7 @@ def main() -> None:
     # Binary toxic/non-toxic head metrics (gitignored artifact; include if present).
     binary = {}
     for model_name, run in (("nn_combined", "combined_run"), ("nn_standard", "standard_run")):
-        bpath = get_project_root() / "model" / "model_output" / run / "metrics" / "binary_metrics.json"
+        bpath = model_run_dir(run) / "metrics" / "binary_metrics.json"
         if bpath.exists():
             bm = json.loads(bpath.read_text())
             td = bm.get("test_default", {})

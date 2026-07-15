@@ -33,6 +33,15 @@ def paper_data_dir() -> Path:
     return paper_root() / "data"
 
 
+def model_run_dir(run: str = "combined_run") -> Path:
+    """A training run's output directory (gitignored; produced by ``toxfam train``).
+
+    Same rationale as :func:`adjudication_csv`: the figure scripts resolve run
+    artifacts through here rather than each spelling out ``model/model_output/...``.
+    """
+    return get_project_root() / "model" / "model_output" / run
+
+
 def adjudication_csv() -> Path:
     """Hand-curated confident-error adjudication table (the former ``ADJ_CSV``).
 

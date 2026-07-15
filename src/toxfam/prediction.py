@@ -28,13 +28,11 @@ import h5py
 import pandas as pd
 from rich.console import Console
 
-from toxfam.data.normalization import ensure_identifier_column
+from toxfam.data.normalization import ORGANISM_COL, ensure_identifier_column
 from toxfam.model.inference import run_topk_inference
 from toxfam.model.model_config import ModelConfig
 
 console = Console()
-
-ORGANISM_COL = "Organism (ID)"
 
 
 # ---------------------------------------------------------------------------
@@ -193,22 +191,6 @@ def _ensure_embeddings(
     return work_h5
 
 
-def _build_tax_h5(df_pool: pd.DataFrame, work_dir: Path) -> Path:
-    """Build a per-run taxonomy H5 for ``df_pool`` from its organism IDs.
-
-    Uses the same multi-hot pipeline as ``toxfam taxonomy`` so the encoding
-    (50 TAXA, fixed order) matches what the combined model was trained on.
-
-    The pipeline emits one vector per key in its ``input_h5``, so we feed it a
-    keys-only H5 of exactly this pool's identifiers (the pipeline never reads the
-    embedding values) rather than the full shared embeddings file — keeping the
-    output scoped to the pool instead of zero-filling every other protein.
-    """
-    from toxfam.data.taxonomy import build_taxonomy_h5
-
-    return build_taxonomy_h5(df_pool, work_dir)
-
-
 def _report_taxonomy_coverage(
     df_pool: pd.DataFrame, tax_h5: Path, output_path: Path
 ) -> None:
@@ -282,7 +264,9 @@ def _predict_pool(
     toxicity_only: bool,
 ) -> pd.DataFrame:
     """Run inference on one pool and attach the binary toxicity call."""
-    tax_h5 = _build_tax_h5(df_pool, work_dir) if is_combined else None
+    from toxfam.data.taxonomy import build_taxonomy_h5
+
+    tax_h5 = build_taxonomy_h5(df_pool, work_dir) if is_combined else None
     if tax_h5 is not None:
         _report_taxonomy_coverage(df_pool, tax_h5, output_path)
     preds = run_topk_inference(

@@ -34,11 +34,13 @@ Always prints the full count matrix (splits x {0.8, 0.9}) before writing.
 from __future__ import annotations
 
 import argparse
+import json
 from pathlib import Path
 
 import pandas as pd
 from rich.console import Console
 
+from toxfam._git import git_commit_short
 from toxfam._paths import get_project_root, processed_dir
 from toxfam.data.split_manifest import (
     apply_manifest,
@@ -64,16 +66,6 @@ def _write_provenance(
     It had been labelled from a training_data.csv that a later `download-data --force`
     had replaced, so 81 rows read "test" when 18 of them were.
     """
-    import json
-    import subprocess
-
-    try:
-        commit = subprocess.check_output(
-            ["git", "rev-parse", "--short", "HEAD"], stderr=subprocess.DEVNULL
-        ).decode().strip()
-    except Exception:
-        commit = "unknown"
-
     (out_dir / "curation_provenance.json").write_text(
         json.dumps(
             {
@@ -83,7 +75,7 @@ def _write_provenance(
                 "splits": splits,
                 "confidence_threshold": threshold,
                 "prefilled_from": prefill_from,
-                "git_commit": commit,
+                "git_commit": git_commit_short(),
             },
             indent=2,
         )
