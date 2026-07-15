@@ -509,20 +509,65 @@ def binary_reliability(
             "bin_proportion": props, "ece": float(ece)}
 
 
-def adjudication_summary(csv_path: str | Path) -> dict:
-    """Summarize Ivan's confident-error adjudication CSV for Figure 3 Panel B."""
-    df = pd.read_csv(csv_path)
-    required = {"identifier", "verdict", "actual_label", "assessment", "assessment_category"}
+def load_curated_verdicts(curated_path: str | Path, key_path: str | Path) -> pd.DataFrame:
+    """Join the returned curation sheet to its un-blinding key.
+
+    The sheet is deliberately blind — it carries no ``split`` or ``confidence``, so a
+    curator cannot be swayed by either. The key restores both. Joining in one place
+    keeps the figure and the manuscript numbers reading the same frame.
+    """
+    df = pd.read_csv(curated_path, sep="\t")
+    key = pd.read_csv(key_path, sep="\t")
+    required = {"identifier", "swissprot_side", "verdict", "assessment"}
     missing = required - set(df.columns)
     if missing:
-        raise ValueError(f"adjudication CSV missing required columns: {sorted(missing)}")
-    gaps = df[(df["actual_label"].fillna("").str.lower().isin(NONTOXIN_LABELS))
-              & (df["verdict"].fillna("").str.lower() == "tox")]
+        raise ValueError(f"curated sheet missing required columns: {sorted(missing)}")
+    key_required = {"identifier", "split", "actual_label", "confidence"}
+    missing = key_required - set(key.columns)
+    if missing:
+        raise ValueError(f"curation key missing required columns: {sorted(missing)}")
+
+    unanswered = int(df["verdict"].isna().sum())
+    if unanswered:
+        raise ValueError(
+            f"{unanswered} of {len(df)} rows have no verdict. The sheet is only "
+            "usable once curation is complete."
+        )
+
+    merged = df.merge(key, on="identifier", how="left", validate="one_to_one")
+    if merged["split"].isna().any():
+        orphans = merged.loc[merged["split"].isna(), "identifier"].tolist()[:5]
+        raise ValueError(
+            f"{merged['split'].isna().sum()} curated protein(s) are absent from the "
+            f"key (e.g. {orphans}). Sheet and key disagree — regenerate both."
+        )
+    merged["assessment"] = merged["assessment"].str.strip().str.lower()
+    merged["verdict"] = merged["verdict"].str.strip().str.lower()
+    return merged
+
+
+def curation_summary(curated_path: str | Path, key_path: str | Path) -> dict:
+    """Summarise the expert verdicts on the model's confident errors.
+
+    Supersedes the earlier n=63 adjudication, which was judged against a split since
+    shown to be contaminated. ``n_annotation_gaps`` counts proteins SwissProt files as
+    non-toxin that the curator confirmed *are* toxins — the model was right and the
+    database is incomplete, so these are not errors at all.
+    """
+    df = load_curated_verdicts(curated_path, key_path)
+    gaps = df[
+        df["actual_label"].fillna("").str.lower().isin(NONTOXIN_LABELS)
+        & df["verdict"].eq("tox")
+    ]
+    fps = df[df["verdict"].eq("nontox")]
     return {
         "n": int(len(df)),
-        "assessment": dict(Counter(df["assessment"].fillna("unknown").str.strip())),
-        "assessment_category": dict(Counter(df["assessment_category"].fillna("unknown").str.strip())),
-        "verdict": dict(Counter(df["verdict"].fillna("unknown").str.strip())),
+        "assessment": dict(Counter(df["assessment"])),
+        "verdict": dict(Counter(df["verdict"])),
+        "fp_category": dict(Counter(fps["fp_category"].fillna("unknown").str.strip()))
+        if "fp_category" in df.columns
+        else {},
+        "by_split": dict(Counter(df["split"])),
         "n_annotation_gaps": int(len(gaps)),
         "annotation_gap_ids": gaps["identifier"].tolist(),
     }

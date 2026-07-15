@@ -8,12 +8,13 @@ import pytest
 from paper.stats import (
     accuracy_by_identity_bins,
     accuracy_by_length_bins,
-    adjudication_summary,
     aligned_correctness,
     band_separation_length,
     binary_reliability,
     correctness,
+    curation_summary,
     length_support_mask,
+    load_curated_verdicts,
     local_linear_accuracy,
     local_linear_band,
     macro_f1_by_support,
@@ -301,19 +302,61 @@ def test_binary_reliability_known_nonzero_ece():
     assert out["bin_confidence"][1] == pytest.approx(0.9)
 
 
-def test_adjudication_summary_counts(tmp_path):
-    csv = tmp_path / "adj.csv"
-    csv.write_text(
-        "identifier,verdict,actual_label,predicted_label,assessment,assessment_category\n"
-        "p1,tox,nontox,Phospholipase family,correct,family_correct\n"
-        "p2,nontox,nontox,other,incorrect,false_positive_nonspecific\n"
-        "p3,tox,nontox,Venom Kunitz-type family,partial,family_adjacent\n"
+def _curation_pair(tmp_path, *, verdicts="tox\tcorrect\n\tincorrect\n"):
+    curated = tmp_path / "curated.tsv"
+    key = tmp_path / "key.tsv"
+    curated.write_text(
+        "identifier\tswissprot_side\tverdict\tassessment\tfp_category\n"
+        "p1\tnontoxin\ttox\tcorrect\t\n"
+        "p2\tnontoxin\tnontox\tincorrect\ttrue_antimicrobial\n"
+        "p3\tnontoxin\ttox\tpartial\t\n"
     )
-    s = adjudication_summary(csv)
+    key.write_text(
+        "identifier\tsplit\tactual_label\tpredicted_label\tconfidence\n"
+        "p1\ttest\tnontox\tPhospholipase family\t0.91\n"
+        "p2\tval\tnontox\tother\t0.85\n"
+        "p3\ttest\tnontox\tVenom Kunitz-type family\t0.99\n"
+    )
+    return curated, key
+
+
+def test_curation_summary_counts(tmp_path):
+    curated, key = _curation_pair(tmp_path)
+    s = curation_summary(curated, key)
     assert s["n"] == 3
     assert s["assessment"]["correct"] == 1
     assert s["assessment"]["incorrect"] == 1
+    assert s["verdict"] == {"tox": 2, "nontox": 1}
+    assert s["by_split"] == {"test": 2, "val": 1}
+    assert s["fp_category"] == {"true_antimicrobial": 1}
     assert s["n_annotation_gaps"] == 2  # nontox-labelled & verdict tox (p1,p3)
+
+
+def test_load_curated_verdicts_attaches_split_and_confidence(tmp_path):
+    curated, key = _curation_pair(tmp_path)
+    df = load_curated_verdicts(curated, key)
+    assert list(df["split"]) == ["test", "val", "test"]
+    assert df.loc[df["identifier"] == "p3", "confidence"].iloc[0] == pytest.approx(0.99)
+
+
+def test_load_curated_verdicts_rejects_an_unanswered_sheet(tmp_path):
+    curated, key = _curation_pair(tmp_path)
+    curated.write_text(
+        "identifier\tswissprot_side\tverdict\tassessment\tfp_category\n"
+        "p1\tnontoxin\t\t\t\n"
+    )
+    with pytest.raises(ValueError, match="no verdict"):
+        load_curated_verdicts(curated, key)
+
+
+def test_load_curated_verdicts_rejects_sheet_key_mismatch(tmp_path):
+    curated, key = _curation_pair(tmp_path)
+    key.write_text(
+        "identifier\tsplit\tactual_label\tpredicted_label\tconfidence\n"
+        "p1\ttest\tnontox\tPhospholipase family\t0.91\n"
+    )
+    with pytest.raises(ValueError, match="absent from the"):
+        load_curated_verdicts(curated, key)
 
 
 # ---------- MCC-based evaluation + bootstrap CIs ----------

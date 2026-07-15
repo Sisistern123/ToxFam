@@ -36,20 +36,32 @@ def paper_data_dir() -> Path:
 def model_run_dir(run: str = "combined_run") -> Path:
     """A training run's output directory (gitignored; produced by ``toxfam train``).
 
-    Same rationale as :func:`adjudication_csv`: the figure scripts resolve run
+    Same rationale as :func:`curated_verdicts_tsv`: the figure scripts resolve run
     artifacts through here rather than each spelling out ``model/model_output/...``.
     """
     return get_project_root() / "model" / "model_output" / run
 
 
-def adjudication_csv() -> Path:
-    """Hand-curated confident-error adjudication table (the former ``ADJ_CSV``).
+def curation_dir() -> Path:
+    """Blind confident-error curation sheet, its key, and the returned verdicts."""
+    return paper_data_dir() / "curation"
 
-    Single source of truth: both ``numbers_manifest`` and
-    ``figure_confidence_curation`` resolve the adjudication CSV through here
-    instead of duplicating a hardcoded ``analysis/...`` constant.
+
+def curated_verdicts_tsv() -> Path:
+    """Expert verdicts for the confident errors (the sheet, returned filled in).
+
+    Supersedes the earlier ``model_test_wrong_conf_annotated.csv`` (n=63), which was
+    adjudicated against a split that has since been shown to be contaminated. This
+    sheet was generated blind from the pinned manifest by
+    ``scripts/build_confident_error_curation.py``; ``confident_errors_key.tsv``
+    un-blinds it (split + calibrated confidence).
     """
-    return paper_data_dir() / "model_test_wrong_conf_annotated.csv"
+    return curation_dir() / "confident_errors_curated.tsv"
+
+
+def curation_key_tsv() -> Path:
+    """Un-blinding key for :func:`curated_verdicts_tsv`: split + confidence."""
+    return curation_dir() / "confident_errors_key.tsv"
 
 
 def manuscript_tex_target() -> Path | None:

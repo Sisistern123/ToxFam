@@ -8,7 +8,12 @@ import numpy as np
 import pandas as pd
 from rich.console import Console
 
-from paper._paths import adjudication_csv, manuscript_tex_target, model_run_dir
+from paper._paths import (
+    curated_verdicts_tsv,
+    curation_key_tsv,
+    manuscript_tex_target,
+    model_run_dir,
+)
 from paper.figures._common import (
     FIG_DIR,
     LEN_BINS,
@@ -20,9 +25,9 @@ from paper.figures._common import (
 from paper.stats import (
     accuracy_by_identity_bins,
     accuracy_by_length_bins,
-    adjudication_summary,
     aligned_correctness,
     bootstrap_label_metric_ci,
+    curation_summary,
     macro_mcc_by_support,
     mcnemar_test,
     micro_mcc,
@@ -34,8 +39,6 @@ from paper.stats import (
 from toxfam._paths import benchmark_dir, get_project_root
 from toxfam.evaluation.hbi import NO_HIT_LABEL
 from toxfam.evaluation.metrics import is_nontoxin
-
-ADJ_CSV = adjudication_csv()
 
 console = Console()
 
@@ -143,7 +146,7 @@ def main() -> None:
             for m, d in [("hbi", hbi), ("eat", eat), ("nn_combined", nn)]
         },
         "macro_mcc_by_support": macro_mcc_by_support(nn, hbi, class_list=classes).to_dict("records"),
-        "adjudication": adjudication_summary(ADJ_CSV),
+        "curation": curation_summary(curated_verdicts_tsv(), curation_key_tsv()),
     }
 
     # HBI binary toxic/non-toxic call: toxic iff the transferred family is a toxin
