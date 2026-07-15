@@ -88,8 +88,13 @@ def load_predict(dataset: str) -> pd.DataFrame:
     non-metazoan and unreviewed sets are scored through predict because neither is a
     benchmark: predict builds the taxonomy vectors from each set's own organism IDs,
     so the combined model's taxonomy branch is live rather than zero-filled.
+
+    Reads the single-model output name. `predict --model-dir <combined>` writes the
+    -o path verbatim; only the two-model form (--standard-model-dir) suffixes it
+    with _combined/_standard. Both sets have an organism ID for every protein, so
+    the single-model form covers all of them and needs no standard fallback.
     """
-    path = benchmark_dir() / dataset / "predict" / "predictions_combined.tsv"
+    path = benchmark_dir() / dataset / "predict" / "predictions.tsv"
     if not path.exists():
         raise FileNotFoundError(
             f"predict output not found: {path}\n"
