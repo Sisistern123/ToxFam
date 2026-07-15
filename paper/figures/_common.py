@@ -69,6 +69,12 @@ LEN_BINS = [0, 30, 50, 75, 150, 5000]
 # and numbers_manifest so the figure and the numbers manifest report matching CIs.
 MCC_CI_N_BOOT = 2000
 
+# Minimum share of the test split that the committed external-tool score snapshot must
+# cover before its numbers are quotable. Mirrors compare.py's MIN_COVERAGE: a snapshot
+# from an older split still intersects, just to a smaller and meaningless subset.
+# ToxDL 2.0 sets the real floor at ~92% (proteins with no AlphaFold model score NA).
+EXT_SCORES_MIN_COVERAGE = 0.90
+
 
 def load_preds(dataset: str, method: str) -> pd.DataFrame:
     path = benchmark_dir() / dataset / method / "predictions.csv"

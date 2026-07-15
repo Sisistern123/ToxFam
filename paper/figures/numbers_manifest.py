@@ -15,6 +15,7 @@ from paper._paths import (
     model_run_dir,
 )
 from paper.figures._common import (
+    EXT_SCORES_MIN_COVERAGE,
     FIG_DIR,
     LEN_BINS,
     MCC_CI_N_BOOT,
@@ -152,14 +153,28 @@ def main() -> None:
     # HBI binary toxic/non-toxic call: toxic iff the transferred family is a toxin
     # family ('no hit' and the non-toxin class -> non-toxic). HBI emits no score, so it
     # has no ROC-AUC/PR-AUC; only the discrete-call MCC is defined. Evaluated on the same
-    # common subset (n=9,201) as the external-tool binary comparison so the MCC is
-    # directly comparable to the score-based methods (read from the committed snapshot).
+    # common subset as the external-tool binary comparison so the MCC is directly
+    # comparable to the score-based methods (read from the committed snapshot).
     scores_dir = get_project_root() / "scripts" / "external_tools" / "results" / "scores"
     common_ids = None
     for sm in ("toxfam_embtax", "eat", "toxinpred3", "toxdl2"):
         s = pd.read_csv(scores_dir / sm / "test_scores.csv")
         ids = set(s.loc[pd.to_numeric(s["score"], errors="coerce").notna(), "identifier"])
         common_ids = ids if common_ids is None else (common_ids & ids)
+    # The snapshot is committed, the test split comes from the manifest, and nothing ties
+    # them together: a snapshot produced against an older split silently intersects down
+    # to whatever the two happen to share, and the MCC below is then reported on that
+    # accidental overlap with no warning. That is exactly what happened — a data-v1-era
+    # snapshot against this split left n=1,423 of 9,779. Refuse instead.
+    coverage = len(common_ids & set(hbi["identifier"])) / len(hbi)
+    if coverage < EXT_SCORES_MIN_COVERAGE:
+        raise SystemExit(
+            f"External-tool scores under {scores_dir} cover only {coverage:.1%} of the "
+            f"{len(hbi):,} test proteins (need >={EXT_SCORES_MIN_COVERAGE:.0%}).\n"
+            "The snapshot was produced against a different split. Re-run the tools on the "
+            "current split and refresh the snapshot from benchmark/test_set/*/["
+            "test,val]_scores.csv — see scripts/external_tools/README.md."
+        )
     hbi_c = hbi[hbi["identifier"].isin(common_ids)]
     cids = hbi_c["identifier"].tolist()
     y_true_bin = (~hbi_c["actual_label"].map(is_nontoxin)).to_numpy(dtype=int)
