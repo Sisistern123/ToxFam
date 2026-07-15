@@ -283,17 +283,17 @@
     ]
   },
   "hbi_binary": {
-    "n": 1423,
-    "subset": "common_1423",
+    "n": 9019,
+    "subset": "common_9019",
     "mcc": {
-      "point": 0.896004123765824,
-      "two_se": 0.05776450353973333,
-      "n": 1423
+      "point": 0.8908729978596205,
+      "two_se": 0.02245225619465427,
+      "n": 9019
     },
     "paired_vs_toxfam_mcc": {
-      "diff": 0.00844847288296404,
-      "ci_low": -0.05301641427557713,
-      "ci_high": 0.0705919333086158
+      "diff": 0.024541680777341944,
+      "ci_low": 0.00037496539072550707,
+      "ci_high": 0.04874885646554088
     },
     "note": "binary call = transferred-label class; no score, hence no ROC-AUC/PR-AUC"
   },
