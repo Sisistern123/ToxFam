@@ -49,6 +49,7 @@ class MetricsResult:
     accuracy: float
     mcc: float
     micro_mcc: float
+    macro_mcc: float
     std_error: float
     n_samples: int
     class_list: list[str] = field(repr=False)
@@ -63,6 +64,7 @@ class MetricsResult:
             "Accuracy": self.accuracy,
             "MCC": self.mcc,
             "Micro_MCC": self.micro_mcc,
+            "Macro_MCC": self.macro_mcc,
             "Std_Error": self.std_error,
             "Sample_Size": self.n_samples,
         }
@@ -74,6 +76,7 @@ class MetricsResult:
                 "Test_Accuracy": self.accuracy,
                 "Test_MCC": self.mcc,
                 "Test_Micro_MCC": self.micro_mcc,
+                "Test_Macro_MCC": self.macro_mcc,
                 "Test_Std_Error": self.std_error,
             },
             "classification_report": self.classification_report,
@@ -127,6 +130,18 @@ def calculate_metrics(
 
     micro_mcc = matthews_corrcoef(y_true_bin.ravel(), y_pred_bin.ravel())
 
+    # Macro-MCC: unweighted mean of per-class one-vs-rest MCC over the real
+    # classes (the trailing oov column is excluded, but oov predictions still
+    # count against their true class as misses). Matches the training-path
+    # definition in trainer.py, so model runs and eval runs are comparable.
+    # Unlike micro-MCC, this weights all families equally, so rare families
+    # dominate — the axis on which homology (one hit suffices) tends to lead.
+    per_class_mcc = [
+        matthews_corrcoef(y_true_bin[:, c], y_pred_bin[:, c])
+        for c in range(n_classes)
+    ]
+    macro_mcc = float(np.mean(per_class_mcc)) if per_class_mcc else float("nan")
+
     std_error = (
         np.sqrt((acc * (1 - acc)) / n_samples) if n_samples > 0 else float("nan")
     )
@@ -144,6 +159,7 @@ def calculate_metrics(
         accuracy=acc,
         mcc=mcc,
         micro_mcc=micro_mcc,
+        macro_mcc=macro_mcc,
         std_error=std_error,
         n_samples=n_samples,
         class_list=class_list,

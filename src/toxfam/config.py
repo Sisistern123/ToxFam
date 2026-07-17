@@ -46,6 +46,7 @@ class TrainConfig(BaseModel):
     use_focal_loss: bool = False
     focal_loss_gamma: float = 2.0
     label_smoothing: float = 0.0
+    class_weight_power: float = 1.0
 
     # wandb
     wandb_project: str = "toxfam"

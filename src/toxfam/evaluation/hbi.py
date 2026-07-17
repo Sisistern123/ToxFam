@@ -32,7 +32,11 @@ DEFAULT_SENSITIVITY: float = 9.0
 DEFAULT_EVALUE: float = float("inf")
 DEFAULT_COV_MODE: int = 0
 DEFAULT_MIN_SEQ_ID: float = 0.0
-DEFAULT_MAX_SEQS: int = 100_000
+# HBI keeps only the single best hit per query (min e-value), which always lands
+# well within the first ~1000 candidates. A 1000 vs 100000 cap was verified to
+# transfer an identical best-hit label for all 9779 test queries (0 differences),
+# while the 100000 cap ballooned MMseqs scratch to ~20 GB and could exhaust disk.
+DEFAULT_MAX_SEQS: int = 1_000
 NO_HIT_LABEL: str = "no hit"
 
 

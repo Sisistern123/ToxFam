@@ -95,6 +95,33 @@ def test_calculate_metrics_to_summary_dict():
     d = m.to_summary_dict("test_method")
     assert d["Method"] == "test_method"
     assert "Accuracy" in d
+    assert "Macro_MCC" in d
+
+
+def test_macro_mcc_perfect_and_exposed():
+    """Macro MCC is 1.0 on a perfect prediction and surfaces in both dicts."""
+    y_true = pd.Series(["A", "B", "C", "A", "B", "C"])
+    m = calculate_metrics(y_true, y_true, class_list=["A", "B", "C"])
+    assert m.macro_mcc == pytest.approx(1.0)
+    assert m.to_json_dict()["numeric_metrics"]["Test_Macro_MCC"] == pytest.approx(1.0)
+
+
+def test_macro_mcc_matches_manual_per_class_mean():
+    """Macro MCC equals the unweighted mean of per-class one-vs-rest MCC."""
+    from sklearn.metrics import matthews_corrcoef
+
+    y_true = pd.Series(["A", "A", "B", "B", "C", "C"])
+    y_pred = pd.Series(["A", "B", "B", "B", "C", "A"])
+    classes = ["A", "B", "C"]
+    m = calculate_metrics(y_true, y_pred, class_list=classes)
+
+    per_class = [
+        matthews_corrcoef((y_true == c).to_numpy(), (y_pred == c).to_numpy())
+        for c in classes
+    ]
+    assert m.macro_mcc == pytest.approx(float(np.mean(per_class)))
+    # Macro (equal per-class weight) differs from micro (element weight) here.
+    assert m.macro_mcc != pytest.approx(m.micro_mcc)
 
 
 # ---------- calculate_binary_metrics ----------
