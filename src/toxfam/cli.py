@@ -105,36 +105,40 @@ DATA_ASSETS: list[tuple[str, str, str, str]] = [
 ]
 
 
-def _stale_processed_artifacts(processed: Path) -> set[str]:
-    """Split-derived artifacts that exist locally but disagree with the manifest.
+def _fetch_asset_digests(repo: str, tag: str) -> dict[str, str]:
+    """Map release asset name -> sha256 hex digest, via the GitHub REST API.
 
-    Downloads skip files that already exist, so a stale local copy (e.g. an
-    ``hbi_train_all`` left over from an earlier split) otherwise shadows the
-    correct released copy forever — the exact failure that inflated the HBI
-    baseline. This returns the relative paths to force-refresh so a stale file is
-    overwritten from the release instead of skipped.
-
-    Only artifacts whose *value* depends on the split can go stale this way. The
-    HBI reference is checked with its content invariant (no val/test leakage); the
-    ``.csv`` and ``.fasta`` are refreshed as a pair to stay consistent.
+    Lets ``download-data`` skip a local file only when its bytes match the release,
+    and refresh it otherwise — so a stale local copy (e.g. an ``hbi_train_all``
+    left from an earlier split) can never shadow the correct released one. Returns
+    an empty dict on any failure (offline, rate limit): callers then fall back to
+    skip-if-exists rather than block the download.
     """
-    stale: set[str] = set()
-    ref_csv = processed / "hbi_train_all.csv"
-    if ref_csv.exists():
-        try:
-            from toxfam.data.invariants import reference_disjoint_from_holdout
+    import json
+    import urllib.request
 
-            result = reference_disjoint_from_holdout(ref_csv)
-            if not result.ok:
-                console.print(
-                    f"  [yellow]refreshing stale hbi_train_all — {result.detail}[/]"
-                )
-                stale.update({"hbi_train_all.csv", "hbi_train_all.fasta"})
-        except Exception:
-            # No manifest / cannot check: fall back to the default skip behaviour
-            # rather than block the download.
-            pass
-    return stale
+    url = f"https://api.github.com/repos/{repo}/releases/tags/{tag}"
+    try:
+        with urllib.request.urlopen(url) as resp:
+            data = json.load(resp)
+    except Exception:
+        return {}
+    digests: dict[str, str] = {}
+    for asset in data.get("assets", []):
+        digest = asset.get("digest", "")
+        if digest.startswith("sha256:"):
+            digests[asset["name"]] = digest.split(":", 1)[1]
+    return digests
+
+
+def _sha256_of_file(path: Path) -> str:
+    import hashlib
+
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(1024 * 1024), b""):
+            h.update(chunk)
+    return h.hexdigest()
 
 
 def _download_with_progress(url: str, dest: Path, label: str) -> None:
@@ -178,10 +182,11 @@ def download_data(
     Fetches UniProt TSVs (data/raw/), training splits and ProtT5 embeddings
     (data/processed/), and the SignalP6 per-sequence cache
     (data/intermediate/sp6/). Taxonomy vectors are not included — regenerate
-    them with `toxfam taxonomy`. Existing files are skipped unless --force
-    is set, except a local hbi_train_all that disagrees with the split manifest
-    (val/test leakage): that is always refreshed from the release, so a stale
-    copy can never shadow the correct one.
+    them with `toxfam taxonomy`. An existing local file is skipped only when its
+    bytes match the release's sha256 digest; if they differ (a stale copy from an
+    earlier split, a truncated download) it is refreshed, so a stale file can
+    never shadow the correct release. --force re-downloads everything. (Content
+    correctness for the current split is a separate concern — see `toxfam verify`.)
     """
     import os
     import tempfile
@@ -202,20 +207,32 @@ def download_data(
     }
     base_url = f"https://github.com/{GITHUB_REPO}/releases/download/{tag}"
 
-    # A local file that exists but disagrees with the split manifest must be
-    # overwritten, not skipped — otherwise a stale copy shadows the release.
-    force_refresh: set[str] = set() if force else _stale_processed_artifacts(
-        processed_dir()
-    )
+    # Skip a local file only when its bytes match the release digest; refresh it
+    # otherwise. This is what stops a stale local copy (an hbi_train_all from an
+    # earlier split, a truncated download) from shadowing the correct release
+    # forever. Zip assets are extracted, so they have no single-file digest to
+    # compare and keep the plain skip-if-exists marker. Empty on offline/failure
+    # -> fall back to skip-if-exists.
+    digests: dict[str, str] = {} if force else _fetch_asset_digests(GITHUB_REPO, tag)
 
     for asset_name, dir_key, rel_path, skip_file in DATA_ASSETS:
         target_dir = dirs[dir_key]
         skip_path = target_dir / skip_file
         url = f"{base_url}/{asset_name}"
 
-        if skip_path.exists() and not force and rel_path not in force_refresh:
-            console.print(f"  skip {rel_path} (exists)")
-            continue
+        if skip_path.exists() and not force:
+            expected = digests.get(asset_name)
+            if asset_name.endswith(".zip") or expected is None:
+                # No comparable digest (extracted archive, or metadata unavailable):
+                # preserve the original skip-if-exists behaviour.
+                console.print(f"  skip {rel_path} (exists)")
+                continue
+            if _sha256_of_file(skip_path) == expected:
+                console.print(f"  skip {rel_path} (up to date)")
+                continue
+            console.print(
+                f"  [yellow]refresh {rel_path} — local differs from release[/]"
+            )
 
         try:
             if asset_name.endswith(".zip"):

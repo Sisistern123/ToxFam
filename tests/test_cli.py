@@ -224,48 +224,60 @@ def test_verify_command_registered():
 
 
 def test_train_has_seeds_option():
-    result = runner.invoke(app, ["train", "--help"])
-    assert result.exit_code == 0
-    assert "--seeds" in result.output
+    """`train` exposes --seeds. Checked on the click params, not rendered help
+    text, which wraps by terminal width and is fragile under CI (no TTY)."""
+    from typer.main import get_command
+
+    train_cmd = get_command(app).commands["train"]
+    assert "seeds" in {p.name for p in train_cmd.params}
 
 
-def test_stale_reference_is_marked_for_refresh(tmp_path, fake_split_manifest):
-    """A local HBI reference containing val/test proteins is flagged to refresh."""
-    import pandas as pd
+def test_verify_command_has_dataset_option():
+    from typer.main import get_command
 
-    from toxfam.cli import _stale_processed_artifacts
-
-    fake_split_manifest({"P1": "train", "P2": "train", "P3": "val", "P4": "test"})
-    proc = tmp_path / "processed"
-    proc.mkdir()
-    # P4 is test -> leaks into the reference.
-    pd.DataFrame(
-        {"identifier": ["P1", "P4"], "Protein families": ["fam", "fam"]}
-    ).to_csv(proc / "hbi_train_all.csv", index=False)
-
-    stale = _stale_processed_artifacts(proc)
-    assert stale == {"hbi_train_all.csv", "hbi_train_all.fasta"}
+    verify_cmd = get_command(app).commands["verify"]
+    assert "dataset" in {p.name for p in verify_cmd.params}
 
 
-def test_clean_reference_is_not_refreshed(tmp_path, fake_split_manifest):
-    """A local HBI reference with only train proteins is left as-is (skipped)."""
-    import pandas as pd
+def test_sha256_of_file_matches_hashlib(tmp_path):
+    import hashlib
 
-    from toxfam.cli import _stale_processed_artifacts
+    from toxfam.cli import _sha256_of_file
 
-    fake_split_manifest({"P1": "train", "P2": "train", "P3": "val", "P4": "test"})
-    proc = tmp_path / "processed"
-    proc.mkdir()
-    pd.DataFrame(
-        {"identifier": ["P1", "P2"], "Protein families": ["fam", "fam"]}
-    ).to_csv(proc / "hbi_train_all.csv", index=False)
-
-    assert _stale_processed_artifacts(proc) == set()
+    f = tmp_path / "blob.bin"
+    f.write_bytes(b"toxfam" * 1000)
+    assert _sha256_of_file(f) == hashlib.sha256(b"toxfam" * 1000).hexdigest()
 
 
-def test_no_reference_no_refresh(tmp_path, fake_split_manifest):
-    """No local reference -> nothing to refresh (fresh checkout downloads normally)."""
-    from toxfam.cli import _stale_processed_artifacts
+def test_fetch_asset_digests_parses_sha256_prefix(monkeypatch):
+    """Digests are keyed by asset name with the 'sha256:' prefix stripped."""
+    import io
+    import json
 
-    fake_split_manifest({"P1": "train"})
-    assert _stale_processed_artifacts(tmp_path) == set()
+    from toxfam import cli
+
+    payload = {
+        "assets": [
+            {"name": "hbi_train_all.csv", "digest": "sha256:abc123"},
+            {"name": "weird.bin", "digest": "md5:deadbeef"},  # non-sha256 -> dropped
+            {"name": "no_digest.tsv"},  # missing -> dropped
+        ]
+    }
+
+    def fake_urlopen(url):
+        return io.BytesIO(json.dumps(payload).encode())
+
+    monkeypatch.setattr("urllib.request.urlopen", fake_urlopen)
+    digests = cli._fetch_asset_digests("owner/repo", "data-v2")
+    assert digests == {"hbi_train_all.csv": "abc123"}
+
+
+def test_fetch_asset_digests_empty_on_failure(monkeypatch):
+    """A network/API failure returns {} so download falls back to skip-if-exists."""
+    from toxfam import cli
+
+    def boom(url):
+        raise OSError("offline")
+
+    monkeypatch.setattr("urllib.request.urlopen", boom)
+    assert cli._fetch_asset_digests("owner/repo", "data-v2") == {}
