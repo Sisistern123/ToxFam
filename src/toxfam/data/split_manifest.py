@@ -212,6 +212,91 @@ def apply_manifest(df: pd.DataFrame) -> pd.DataFrame:
     return out.merge(manifest, on="identifier", how="left")
 
 
+# ---------- Generic artifact <-> manifest binding ----------
+#
+# Every expensive artifact derived from the split (embeddings, taxonomy vectors,
+# the HBI reference, benchmark predictions) can silently desync from the manifest
+# — the release ships it, a re-pin moves the split, and nothing notices. Each such
+# artifact gets a ``<artifact>.provenance.json`` sidecar recording the manifest
+# hash it was built against, written at generation time and checked at use.
+
+
+def _provenance_stamp(**extra: object) -> str:
+    """Serialise a provenance payload (manifest hash + timestamp + extras)."""
+    return (
+        json.dumps(
+            {
+                "split_manifest_sha256": manifest_sha256(),
+                "stamped_at": datetime.now(timezone.utc).isoformat(),
+                **extra,
+            },
+            indent=2,
+        )
+        + "\n"
+    )
+
+
+def _check_stamped_sha(stamped: str, *, label: str, missing_hint: str) -> None:
+    """Raise unless ``stamped`` matches the manifest hash on disk."""
+    current = manifest_sha256()
+    if stamped != current:
+        raise SplitManifestError(
+            f"{label} was built against a different train/val/test split than the "
+            f"one on disk.\n"
+            f"  artifact: {stamped[:12]}\n"
+            f"  manifest: {current[:12]}\n" + missing_hint
+        )
+
+
+def sidecar_path(artifact: str | Path) -> Path:
+    """Provenance sidecar for a file artifact: ``<artifact>.provenance.json``."""
+    return Path(str(artifact) + ".provenance.json")
+
+
+def write_provenance(artifact: str | Path, **extra: object) -> str:
+    """Stamp a file artifact with the current manifest hash. Returns the hash."""
+    path = sidecar_path(artifact)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(_provenance_stamp(**extra))
+    return manifest_sha256()
+
+
+def read_provenance(artifact: str | Path) -> dict | None:
+    """Return the sidecar payload for ``artifact``, or None if it has none."""
+    path = sidecar_path(artifact)
+    if not path.exists():
+        return None
+    try:
+        return json.loads(path.read_text())
+    except (json.JSONDecodeError, OSError):
+        return None
+
+
+def verify_provenance(artifact: str | Path, *, label: str | None = None) -> None:
+    """Raise unless ``artifact`` was built against the manifest on disk."""
+    artifact = Path(artifact)
+    name = label or artifact.name
+    path = sidecar_path(artifact)
+    if not path.exists():
+        raise SplitManifestError(
+            f"{name} is not pinned to a split manifest ({path.name} is missing).\n"
+            "It predates provenance stamping or was produced against a different "
+            "split. Regenerate it against the current split before using it."
+        )
+    try:
+        stamped = json.loads(path.read_text())["split_manifest_sha256"]
+    except (json.JSONDecodeError, KeyError, OSError) as e:
+        raise SplitManifestError(f"Could not read provenance from {path}: {e}")
+    _check_stamped_sha(
+        stamped,
+        label=name,
+        missing_hint=(
+            "Using it now would mix data across splits. Regenerate it against the "
+            "current split (see 'toxfam verify' for the full pipeline state)."
+        ),
+    )
+
+
 # ---------- Checkpoint <-> manifest binding ----------
 
 
@@ -222,29 +307,19 @@ def provenance_path(model_dir: str | Path) -> Path:
 def write_split_provenance(model_dir: str | Path) -> str:
     """Stamp a run directory with the manifest hash. Call when saving the
     calibrated checkpoint, so a run that dies earlier leaves no stamp."""
-    digest = manifest_sha256()
     path = provenance_path(model_dir)
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(
-        json.dumps(
-            {
-                "split_manifest_sha256": digest,
-                "stamped_at": datetime.now(timezone.utc).isoformat(),
-            },
-            indent=2,
-        )
-        + "\n"
-    )
-    return digest
+    path.write_text(_provenance_stamp())
+    return manifest_sha256()
 
 
 def verify_split_provenance(model_dir: str | Path) -> None:
     """Raise unless the checkpoint was calibrated against the manifest on disk."""
     path = provenance_path(model_dir)
+    name = Path(model_dir).name
     if not path.exists():
         raise SplitManifestError(
-            f"{Path(model_dir).name} is not pinned to a split manifest "
-            f"({path} is missing).\n"
+            f"{name} is not pinned to a split manifest ({path} is missing).\n"
             "Either it predates split pinning, or its training run died before "
             "calibration and left an older checkpoint in place. Re-run 'toxfam train' "
             "to produce a checkpoint bound to the current split."
@@ -253,15 +328,12 @@ def verify_split_provenance(model_dir: str | Path) -> None:
         stamped = json.loads(path.read_text())["split_manifest_sha256"]
     except (json.JSONDecodeError, KeyError, OSError) as e:
         raise SplitManifestError(f"Could not read split provenance from {path}: {e}")
-
-    current = manifest_sha256()
-    if stamped != current:
-        raise SplitManifestError(
-            f"{Path(model_dir).name} was trained against a different train/val/test "
-            f"split than the one on disk.\n"
-            f"  checkpoint: {stamped[:12]}\n"
-            f"  manifest:   {current[:12]}\n"
+    _check_stamped_sha(
+        stamped,
+        label=f"{name} (checkpoint)",
+        missing_hint=(
             "Evaluating it now would score the model against proteins it may have "
             "trained on. Re-run 'toxfam train' on the current split, or check out the "
             "commit whose data/splits/split_manifest.csv matches this checkpoint."
-        )
+        ),
+    )

@@ -412,6 +412,15 @@ def train(
             readable=True,
         ),
     ],
+    seeds: Annotated[
+        int,
+        typer.Option(
+            "--seeds",
+            help="Train this many seeds and promote the best-on-val as canonical. "
+            "1 (default) is a plain single-seed run. Writes seeds_summary.json.",
+            min=1,
+        ),
+    ] = 1,
 ) -> None:
     """Train a toxin family classifier from a YAML config file.
 
@@ -422,12 +431,17 @@ def train(
     scaling calibration on the validation set. Outputs the best model,
     calibrated model, metrics JSON, predictions CSV, and plots to the
     configured output directory.
+
+    With --seeds N>1, trains N models on different seeds, promotes the one with
+    the highest validation MCC to the canonical output directory, and records
+    per-seed spread in seeds_summary.json — so a single lucky/unlucky seed can no
+    longer set the headline (run-to-run sd is ~0.03).
     """
     from toxfam.config import TrainConfig
-    from toxfam.training.orchestrator import run_training
+    from toxfam.training.orchestrator import run_multiseed_training
 
     cfg = TrainConfig.from_yaml(config)
-    run_training(cfg)
+    run_multiseed_training(cfg, n_seeds=seeds)
 
 
 # ---------- toxfam predict ----------
@@ -643,6 +657,44 @@ def plot_taxonomy() -> None:
     from toxfam.visualization.taxonomy_sunburst import main as _main
 
     _main()
+
+
+@app.command("verify")
+def verify(
+    dataset: Annotated[
+        Optional[str],
+        typer.Option(help="Limit the benchmark scan to one dataset (e.g. test_set)."),
+    ] = None,
+) -> None:
+    """Check the whole pipeline is consistent with the pinned split manifest.
+
+    Verifies that every split-derived artifact (embeddings, taxonomy, the HBI
+    reference, benchmark predictions) was built against the manifest on disk, and
+    that the content invariants hold (no HBI reference leakage, embeddings cover
+    the manifest). Exits non-zero if anything is stale — run this before trusting
+    any benchmark number or regenerating figures.
+    """
+    from rich.table import Table
+
+    from toxfam.data.verify import has_failures, run_checks
+
+    rows = run_checks(dataset)
+    table = Table(title="Pipeline verification", show_lines=False)
+    table.add_column("check", style="bold")
+    table.add_column("status")
+    table.add_column("detail")
+    glyph = {"ok": "[green]✓ ok[/]", "fail": "[red]✗ FAIL[/]", "skip": "[dim]– skip[/]"}
+    for r in rows:
+        table.add_row(r.name, glyph[r.status], r.detail)
+    console.print(table)
+
+    if has_failures(rows):
+        err_console.print(
+            "\n[bold red]Pipeline is NOT consistent with the split manifest.[/] "
+            "Regenerate the flagged artifacts before trusting any number."
+        )
+        raise typer.Exit(code=1)
+    console.print("\n[bold green]All checks passed.[/] Pipeline is consistent.")
 
 
 def main():

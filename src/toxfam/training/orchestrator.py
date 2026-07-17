@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import shutil
+import statistics
 from pathlib import Path
 
 import pandas as pd
@@ -31,8 +33,13 @@ from toxfam.visualization.analysis import analyze_label_distribution_for_split
 
 console = Console()
 
+# Fixed seed order for multi-seed runs, so `--seeds 3` always means {42, 7, 13}
+# and the selection is reproducible.
+SEED_SEQUENCE = (42, 7, 13, 23, 100, 7777, 2024, 1, 88, 314)
 
-def run_training(config: TrainConfig) -> None:
+
+def run_training(config: TrainConfig) -> float:
+    """Train one model per the config. Returns its validation MCC (for seed selection)."""
     out_root = Path(config.output_dir)
     out_root.mkdir(parents=True, exist_ok=True)
 
@@ -171,7 +178,7 @@ def run_training(config: TrainConfig) -> None:
     train_loader = DataLoader(train_ds, batch_size=config.batch_size, shuffle=True)
     val_loader = DataLoader(val_ds, batch_size=config.batch_size, shuffle=False)
 
-    _, w_tensor, _ = get_class_weights(train_ds)
+    _, w_tensor, _ = get_class_weights(train_ds, power=config.class_weight_power)
 
     # 3. Dispatch Strategy
     final_model = None
@@ -295,3 +302,92 @@ def run_training(config: TrainConfig) -> None:
 
     if _use_wandb:
         wandb.finish()
+
+    return float(val_metrics.get("val_mcc", float("nan")))
+
+
+def run_multiseed_training(config: TrainConfig, n_seeds: int) -> None:
+    """Train ``n_seeds`` models on different seeds; promote the best-on-val.
+
+    Each seed trains into ``<output_dir>/seeds/seed_<s>/``. The seed with the
+    highest validation MCC is copied up to ``<output_dir>/`` as the canonical run
+    (so ``eval``/``predict`` find ``models/best_model_calibrated.pt`` +
+    ``split_provenance.json`` unchanged). A ``seeds_summary.json`` records every
+    seed's val/test MCC plus mean±sd — a robustness record, not the published
+    error bar (those come from bootstrap in the figures pipeline).
+
+    ``n_seeds == 1`` short-circuits to a plain single-seed run for back-compat.
+    """
+    if n_seeds < 1:
+        raise ValueError(f"n_seeds must be >= 1, got {n_seeds}")
+    if n_seeds == 1:
+        run_training(config)
+        return
+    if n_seeds > len(SEED_SEQUENCE):
+        raise ValueError(
+            f"n_seeds={n_seeds} exceeds the {len(SEED_SEQUENCE)} predefined seeds."
+        )
+
+    out_root = Path(config.output_dir)
+    seeds = SEED_SEQUENCE[:n_seeds]
+    console.print(f"[bold]Multi-seed training[/] over seeds {list(seeds)}")
+
+    records: list[dict] = []
+    for i, seed in enumerate(seeds, 1):
+        seed_dir = out_root / "seeds" / f"seed_{seed}"
+        console.print(f"\n[bold cyan]═══ Seed {seed} ({i}/{n_seeds}) ═══[/]")
+        # model_copy does not re-validate, so pass output_dir as the Path the
+        # config field expects (a str would break `config.output_dir / ...`).
+        seed_cfg = config.model_copy(update={"seed": seed, "output_dir": seed_dir})
+        val_mcc = run_training(seed_cfg)
+        test_mcc = _read_metric(seed_dir / "metrics" / "test_metrics.json", "test_mcc")
+        records.append({"seed": seed, "dir": str(seed_dir),
+                        "val_mcc": val_mcc, "test_mcc": test_mcc})
+
+    best = max(records, key=lambda r: r["val_mcc"])
+    console.print(
+        f"\n[bold green]Best seed: {best['seed']}[/] "
+        f"(val MCC {best['val_mcc']:.4f}, test MCC {best['test_mcc']:.4f})"
+    )
+    _promote_seed(Path(best["dir"]), out_root)
+
+    val_mccs = [r["val_mcc"] for r in records]
+    test_mccs = [r["test_mcc"] for r in records if r["test_mcc"] == r["test_mcc"]]
+    summary = {
+        "n_seeds": n_seeds,
+        "seeds": list(seeds),
+        "best_seed": best["seed"],
+        "selection_metric": "val_mcc",
+        "per_seed": records,
+        "val_mcc_mean": statistics.mean(val_mccs),
+        "val_mcc_sd": statistics.stdev(val_mccs) if len(val_mccs) > 1 else 0.0,
+        "test_mcc_mean": statistics.mean(test_mccs) if test_mccs else float("nan"),
+        "test_mcc_sd": statistics.stdev(test_mccs) if len(test_mccs) > 1 else 0.0,
+        "note": "Error bars for publication come from bootstrap, not seed sd.",
+    }
+    (out_root / "seeds_summary.json").write_text(json.dumps(summary, indent=2) + "\n")
+    console.print(
+        f"test MCC across seeds: {summary['test_mcc_mean']:.4f} "
+        f"± {summary['test_mcc_sd']:.4f}  → seeds_summary.json"
+    )
+
+
+def _read_metric(path: Path, key: str) -> float:
+    try:
+        return float(json.loads(path.read_text())["numeric_metrics"][key])
+    except (OSError, json.JSONDecodeError, KeyError, ValueError):
+        return float("nan")
+
+
+def _promote_seed(seed_dir: Path, out_root: Path) -> None:
+    """Copy the winning seed's artifacts up to the canonical run directory."""
+    for item in ("models", "metrics", "plots", "predictions", "config.yaml",
+                 "class_indices.json", "model_config.json"):
+        src = seed_dir / item
+        if not src.exists():
+            continue
+        dst = out_root / item
+        if src.is_dir():
+            shutil.copytree(src, dst, dirs_exist_ok=True)
+        else:
+            shutil.copy2(src, dst)

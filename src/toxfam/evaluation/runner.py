@@ -26,15 +26,26 @@ from rich.console import Console
 from toxfam._git import git_commit_short, git_dirty
 from toxfam._paths import benchmark_dir, processed_dir
 from toxfam.data._fasta import write_fasta
+from toxfam.data.invariants import reference_disjoint_from_holdout
 from toxfam.data.normalization import ORGANISM_COL
 from toxfam.data.registry import (
     DATASETS,
     load_dataset,
     resolve_embeddings_h5,
 )
-from toxfam.data.split_manifest import apply_manifest, verify_split_provenance
+from toxfam.data.split_manifest import (
+    SplitManifestError,
+    apply_manifest,
+    verify_split_provenance,
+)
 from toxfam.evaluation.eat import run_eat_search
-from toxfam.evaluation.hbi import NO_HIT_LABEL, run_hbi_search
+from toxfam.evaluation.hbi import (
+    DEFAULT_EVALUE,
+    DEFAULT_MAX_SEQS,
+    DEFAULT_SENSITIVITY,
+    NO_HIT_LABEL,
+    run_hbi_search,
+)
 from toxfam.evaluation.metrics import (
     MetricsResult,
     calculate_binary_metrics,
@@ -80,6 +91,16 @@ def _environment() -> dict:
     }
 
 
+def _current_manifest_sha() -> str | None:
+    """Manifest hash if there is one, else None (non-split eval datasets)."""
+    try:
+        from toxfam.data.split_manifest import manifest_sha256
+
+        return manifest_sha256()
+    except Exception:
+        return None
+
+
 def _save_run(
     predictions_df: pd.DataFrame,
     metrics: MetricsResult,
@@ -108,6 +129,9 @@ def _save_run(
         "git_dirty": git_dirty(),
         "environment": _environment(),
         "n_samples": metrics.n_samples,
+        # Stamp the split these predictions were scored against, so `toxfam verify`
+        # and `eval compare` can detect predictions left over from an old split.
+        "split_manifest_sha256": _current_manifest_sha(),
         "parameters": params,
     }
     with open(output_dir / "run_metadata.json", "w") as f:
@@ -135,6 +159,20 @@ def run_hbi_evaluation(dataset: str) -> MetricsResult:
     proc = processed_dir()
     output_dir = benchmark_dir() / dataset / "hbi"
     output_dir.mkdir(parents=True, exist_ok=True)
+
+    # Guard the HBI reference before searching: it is a split-derived artifact
+    # distributed via release, and a stale copy containing val/test proteins turns
+    # the baseline into a self-match. Check the content invariant directly (the
+    # decisive one) rather than only the provenance stamp, so a mis-stamped or
+    # unstamped-but-contaminated reference is still refused.
+    leak = reference_disjoint_from_holdout(proc / "hbi_train_all.csv")
+    if not leak.ok:
+        raise SplitManifestError(
+            "HBI reference is contaminated relative to the current split:\n"
+            f"  {leak.detail}\n"
+            "Rebuild it from the manifest with 'scripts/rebuild_hbi_reference.py' "
+            "(no re-split), then re-run. See 'toxfam verify'."
+        )
 
     # Load HBI reference and harmonize labels
     train_df = pd.read_csv(proc / "hbi_train_all.csv")
@@ -210,9 +248,9 @@ def run_hbi_evaluation(dataset: str) -> MetricsResult:
         method="hbi",
         dataset=dataset,
         params={
-            "sensitivity": 9.0,
-            "evalue": "inf",
-            "max_seqs": 100_000,
+            "sensitivity": DEFAULT_SENSITIVITY,
+            "evalue": "inf" if DEFAULT_EVALUE == float("inf") else DEFAULT_EVALUE,
+            "max_seqs": DEFAULT_MAX_SEQS,
         },
         output_dir=output_dir,
     )
@@ -606,6 +644,7 @@ def compare_methods(dataset: str) -> pd.DataFrame:
             accuracy=nm["Test_Accuracy"],
             mcc=nm["Test_MCC"],
             micro_mcc=nm["Test_Micro_MCC"],
+            macro_mcc=nm.get("Test_Macro_MCC", float("nan")),
             std_error=nm["Test_Std_Error"],
             n_samples=0,
         )
@@ -624,6 +663,7 @@ def compare_methods(dataset: str) -> pd.DataFrame:
                 "Accuracy": m.accuracy,
                 "MCC": m.mcc,
                 "Micro_MCC": m.micro_mcc,
+                "Macro_MCC": m.macro_mcc,
                 "Std_Error": m.std_error,
                 "Sample_Size": m.n_samples,
             }

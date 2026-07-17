@@ -30,7 +30,11 @@ from sklearn.preprocessing import MultiLabelBinarizer
 from toxfam._paths import get_project_root, intermediate_dir, processed_dir, raw_dir
 from toxfam.data._fasta import parse_fasta, write_fasta
 from toxfam.data.normalization import normalize_protein_families
-from toxfam.data.split_manifest import diff_against_manifest, write_manifest
+from toxfam.data.split_manifest import (
+    diff_against_manifest,
+    write_manifest,
+    write_provenance,
+)
 
 console = Console()
 
@@ -550,6 +554,10 @@ def run_preprocessing_pipeline(
     train_all_df = build_train_all_members(data, train_df)
     train_all_df.to_csv(proc / "hbi_train_all.csv", index=False)
     write_fasta(train_all_df, proc / "hbi_train_all.fasta")
+    # Stamp the HBI reference with the split it was built from, so a stale copy
+    # (or one from an old release) is refused by eval/`toxfam verify` instead of
+    # silently inflating the baseline with val/test self-matches.
+    write_provenance(proc / "hbi_train_all.csv", min_seq_id=min_seq_id)
 
     # -- Summary table --
     console.print()

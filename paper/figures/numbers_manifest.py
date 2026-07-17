@@ -104,7 +104,28 @@ def _emit_latex_macros(out: dict, path) -> None:
     path.write_text("\n".join(header + body) + "\n")
 
 
+def _gate_on_pipeline_verification() -> None:
+    """Refuse to emit numbers if the pipeline is inconsistent with the split.
+
+    Every figure and cited number derives from benchmark predictions; if any are
+    stale relative to the manifest (a contaminated HBI reference, predictions from
+    an old split), the whole manuscript inherits the error. Set
+    ``TOXFAM_SKIP_VERIFY=1`` to override in an emergency (not recommended).
+    """
+    import os
+
+    if os.environ.get("TOXFAM_SKIP_VERIFY") == "1":
+        Console().print(
+            "[yellow]TOXFAM_SKIP_VERIFY=1 — skipping pipeline verification.[/]"
+        )
+        return
+    from toxfam.data.verify import verify_or_raise
+
+    verify_or_raise("test_set")
+
+
 def main() -> None:
+    _gate_on_pipeline_verification()
     classes = test_set_class_list()
     hbi = load_preds("test_set", "hbi")
     eat = load_preds("test_set", "eat")

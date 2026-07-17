@@ -17,7 +17,7 @@
 
 PY := uv run python -m paper.figures
 
-.PHONY: figures numbers fig-pipeline fig-capability fig-confidence-curation \
+.PHONY: figures numbers verify fig-pipeline fig-capability fig-confidence-curation \
         fig-supp-accuracy fig-supp-perfamily fig-supp-nonmetazoan fig-supp-unreviewed \
         fig-supplementary coverage
 
@@ -25,8 +25,15 @@ PY := uv run python -m paper.figures
 coverage:
 	uv run pytest --cov=toxfam --cov-report=term-missing
 
+## Fail loudly if any split-derived artifact is stale relative to the manifest.
+## Every figure derives from benchmark predictions, so this gates figure builds.
+verify:
+	uv run toxfam verify --dataset test_set
+
 ## Build every manuscript figure + the results-numbers manifest.
-figures: numbers fig-pipeline fig-capability fig-confidence-curation \
+## `numbers` self-verifies (see numbers_manifest._gate_on_pipeline_verification);
+## the explicit `verify` prerequisite gives an early, clear failure.
+figures: verify numbers fig-pipeline fig-capability fig-confidence-curation \
          fig-supp-accuracy fig-supp-perfamily fig-supp-nonmetazoan \
          fig-supp-unreviewed fig-supplementary
 
