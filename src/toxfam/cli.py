@@ -105,6 +105,38 @@ DATA_ASSETS: list[tuple[str, str, str, str]] = [
 ]
 
 
+def _stale_processed_artifacts(processed: Path) -> set[str]:
+    """Split-derived artifacts that exist locally but disagree with the manifest.
+
+    Downloads skip files that already exist, so a stale local copy (e.g. an
+    ``hbi_train_all`` left over from an earlier split) otherwise shadows the
+    correct released copy forever — the exact failure that inflated the HBI
+    baseline. This returns the relative paths to force-refresh so a stale file is
+    overwritten from the release instead of skipped.
+
+    Only artifacts whose *value* depends on the split can go stale this way. The
+    HBI reference is checked with its content invariant (no val/test leakage); the
+    ``.csv`` and ``.fasta`` are refreshed as a pair to stay consistent.
+    """
+    stale: set[str] = set()
+    ref_csv = processed / "hbi_train_all.csv"
+    if ref_csv.exists():
+        try:
+            from toxfam.data.invariants import reference_disjoint_from_holdout
+
+            result = reference_disjoint_from_holdout(ref_csv)
+            if not result.ok:
+                console.print(
+                    f"  [yellow]refreshing stale hbi_train_all — {result.detail}[/]"
+                )
+                stale.update({"hbi_train_all.csv", "hbi_train_all.fasta"})
+        except Exception:
+            # No manifest / cannot check: fall back to the default skip behaviour
+            # rather than block the download.
+            pass
+    return stale
+
+
 def _download_with_progress(url: str, dest: Path, label: str) -> None:
     """Download a file with a rich progress bar."""
     import urllib.request
@@ -147,7 +179,9 @@ def download_data(
     (data/processed/), and the SignalP6 per-sequence cache
     (data/intermediate/sp6/). Taxonomy vectors are not included — regenerate
     them with `toxfam taxonomy`. Existing files are skipped unless --force
-    is set.
+    is set, except a local hbi_train_all that disagrees with the split manifest
+    (val/test leakage): that is always refreshed from the release, so a stale
+    copy can never shadow the correct one.
     """
     import os
     import tempfile
@@ -168,12 +202,18 @@ def download_data(
     }
     base_url = f"https://github.com/{GITHUB_REPO}/releases/download/{tag}"
 
+    # A local file that exists but disagrees with the split manifest must be
+    # overwritten, not skipped — otherwise a stale copy shadows the release.
+    force_refresh: set[str] = set() if force else _stale_processed_artifacts(
+        processed_dir()
+    )
+
     for asset_name, dir_key, rel_path, skip_file in DATA_ASSETS:
         target_dir = dirs[dir_key]
         skip_path = target_dir / skip_file
         url = f"{base_url}/{asset_name}"
 
-        if skip_path.exists() and not force:
+        if skip_path.exists() and not force and rel_path not in force_refresh:
             console.print(f"  skip {rel_path} (exists)")
             continue
 

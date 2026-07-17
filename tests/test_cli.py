@@ -216,3 +216,56 @@ def test_version_flag():
     result = runner.invoke(app, ["--version"])
     assert result.exit_code == 0
     assert __version__ in result.output
+
+
+def test_verify_command_registered():
+    result = runner.invoke(app, ["verify", "--help"])
+    assert result.exit_code == 0
+
+
+def test_train_has_seeds_option():
+    result = runner.invoke(app, ["train", "--help"])
+    assert result.exit_code == 0
+    assert "--seeds" in result.output
+
+
+def test_stale_reference_is_marked_for_refresh(tmp_path, fake_split_manifest):
+    """A local HBI reference containing val/test proteins is flagged to refresh."""
+    import pandas as pd
+
+    from toxfam.cli import _stale_processed_artifacts
+
+    fake_split_manifest({"P1": "train", "P2": "train", "P3": "val", "P4": "test"})
+    proc = tmp_path / "processed"
+    proc.mkdir()
+    # P4 is test -> leaks into the reference.
+    pd.DataFrame(
+        {"identifier": ["P1", "P4"], "Protein families": ["fam", "fam"]}
+    ).to_csv(proc / "hbi_train_all.csv", index=False)
+
+    stale = _stale_processed_artifacts(proc)
+    assert stale == {"hbi_train_all.csv", "hbi_train_all.fasta"}
+
+
+def test_clean_reference_is_not_refreshed(tmp_path, fake_split_manifest):
+    """A local HBI reference with only train proteins is left as-is (skipped)."""
+    import pandas as pd
+
+    from toxfam.cli import _stale_processed_artifacts
+
+    fake_split_manifest({"P1": "train", "P2": "train", "P3": "val", "P4": "test"})
+    proc = tmp_path / "processed"
+    proc.mkdir()
+    pd.DataFrame(
+        {"identifier": ["P1", "P2"], "Protein families": ["fam", "fam"]}
+    ).to_csv(proc / "hbi_train_all.csv", index=False)
+
+    assert _stale_processed_artifacts(proc) == set()
+
+
+def test_no_reference_no_refresh(tmp_path, fake_split_manifest):
+    """No local reference -> nothing to refresh (fresh checkout downloads normally)."""
+    from toxfam.cli import _stale_processed_artifacts
+
+    fake_split_manifest({"P1": "train"})
+    assert _stale_processed_artifacts(tmp_path) == set()
