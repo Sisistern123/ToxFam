@@ -86,15 +86,15 @@ def reference_disjoint_from_holdout(
     )
 
 
-def embeddings_cover_manifest(embeddings_h5: Path | None = None) -> InvariantResult:
-    """Every protein in the manifest must have an embedding."""
-    name = "embeddings_cover_manifest"
-    path = embeddings_h5 or (processed_dir() / EMBEDDINGS_H5)
+def _h5_covers_manifest(
+    name: str, path: Path, *, noun: str, ok_detail: str, fix_hint: str
+) -> InvariantResult:
+    """Every manifest protein must have a key in the H5 at ``path``."""
     if not path.exists():
         return InvariantResult(name, ok=True, detail=f"{path.name} absent", skipped=True)
     try:
-        keys = _h5_keys(path)
         man_ids = set(load_manifest()["identifier"])
+        keys = _h5_keys(path)
     except (SplitManifestError, OSError) as e:
         return InvariantResult(name, ok=False, detail=f"could not check: {e}")
 
@@ -104,45 +104,36 @@ def embeddings_cover_manifest(embeddings_h5: Path | None = None) -> InvariantRes
             name,
             ok=False,
             detail=(
-                f"{len(missing):,} manifest proteins have no embedding "
-                f"(e.g. {sorted(missing)[:3]}) — regenerate embeddings."
+                f"{len(missing):,} manifest proteins have no {noun} "
+                f"(e.g. {sorted(missing)[:3]}) — {fix_hint}."
             ),
         )
-    return InvariantResult(
-        name, ok=True, detail=f"all {len(man_ids):,} manifest proteins embedded"
+    return InvariantResult(name, ok=True, detail=f"all {len(man_ids):,} {ok_detail}")
+
+
+def embeddings_cover_manifest(embeddings_h5: Path | None = None) -> InvariantResult:
+    """Every protein in the manifest must have an embedding."""
+    return _h5_covers_manifest(
+        "embeddings_cover_manifest",
+        embeddings_h5 or (processed_dir() / EMBEDDINGS_H5),
+        noun="embedding",
+        ok_detail="manifest proteins embedded",
+        fix_hint="regenerate embeddings",
     )
 
 
-def taxonomy_matches_embeddings(
-    taxonomy_h5: Path | None = None, embeddings_h5: Path | None = None
-) -> InvariantResult:
-    """Taxonomy vectors must cover exactly the manifest proteins that are embedded.
+def taxonomy_matches_embeddings(taxonomy_h5: Path | None = None) -> InvariantResult:
+    """Taxonomy vectors must cover every manifest protein.
 
     Taxonomy is keyed by the same identifiers as the embeddings; a mismatch means
     the two H5s were built against different data.
     """
-    name = "taxonomy_matches_embeddings"
-    tax = taxonomy_h5 or (processed_dir() / TAXONOMY_H5)
-    if not tax.exists():
-        return InvariantResult(name, ok=True, detail=f"{tax.name} absent", skipped=True)
-    try:
-        man_ids = set(load_manifest()["identifier"])
-        tax_keys = _h5_keys(tax)
-    except (SplitManifestError, OSError) as e:
-        return InvariantResult(name, ok=False, detail=f"could not check: {e}")
-
-    missing = man_ids - tax_keys
-    if missing:
-        return InvariantResult(
-            name,
-            ok=False,
-            detail=(
-                f"{len(missing):,} manifest proteins have no taxonomy vector "
-                f"(e.g. {sorted(missing)[:3]}) — regenerate taxonomy."
-            ),
-        )
-    return InvariantResult(
-        name, ok=True, detail=f"all {len(man_ids):,} manifest proteins have taxonomy"
+    return _h5_covers_manifest(
+        "taxonomy_matches_embeddings",
+        taxonomy_h5 or (processed_dir() / TAXONOMY_H5),
+        noun="taxonomy vector",
+        ok_detail="manifest proteins have taxonomy",
+        fix_hint="regenerate taxonomy",
     )
 
 

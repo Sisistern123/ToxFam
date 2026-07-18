@@ -83,7 +83,7 @@ def run_training(config: TrainConfig) -> float:
     import sys
     from datetime import datetime
 
-    from toxfam.evaluation.runner import git_commit_short
+    from toxfam._git import git_commit_short
 
     env_info = {
         "timestamp": datetime.now().isoformat(),

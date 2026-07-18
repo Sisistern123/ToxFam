@@ -540,7 +540,9 @@ def run_preprocessing_pipeline(
     # cannot move it. Report a moved split loudly: it invalidates every checkpoint.
     moved = diff_against_manifest(training_data)
     digest = write_manifest(training_data, seed=SPLIT_SEED, min_seq_id=min_seq_id)
-    if moved and (moved["reassigned"] or moved["added"] or moved["removed"]):
+    if moved is None:
+        console.print(f"   Split manifest created ({digest[:12]})")
+    elif moved["reassigned"] or moved["added"] or moved["removed"]:
         console.print(
             f"   [bold yellow]Split manifest changed[/] "
             f"({moved['reassigned']} reassigned, +{moved['added']} / "
