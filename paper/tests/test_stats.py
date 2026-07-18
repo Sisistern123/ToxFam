@@ -8,22 +8,25 @@ import pytest
 from paper.stats import (
     accuracy_by_identity_bins,
     accuracy_by_length_bins,
-    adjudication_summary,
     aligned_correctness,
     band_separation_length,
     binary_reliability,
     correctness,
+    curation_summary,
     length_support_mask,
+    load_curated_verdicts,
     local_linear_accuracy,
     local_linear_band,
     macro_f1_by_support,
     macro_f1_conventions,
     mcnemar_test,
+    nonmetazoan_toxicity_recall,
     paired_bootstrap_accuracy_diff,
     per_family_f1_difference,
     rolling_accuracy_vs_length,
     subset_accuracy,
     toxin_mask,
+    unreviewed_annotation_summary,
 )
 
 
@@ -299,19 +302,61 @@ def test_binary_reliability_known_nonzero_ece():
     assert out["bin_confidence"][1] == pytest.approx(0.9)
 
 
-def test_adjudication_summary_counts(tmp_path):
-    csv = tmp_path / "adj.csv"
-    csv.write_text(
-        "identifier,verdict,actual_label,predicted_label,assessment,assessment_category\n"
-        "p1,tox,nontox,Phospholipase family,correct,family_correct\n"
-        "p2,nontox,nontox,other,incorrect,false_positive_nonspecific\n"
-        "p3,tox,nontox,Venom Kunitz-type family,partial,family_adjacent\n"
+def _curation_pair(tmp_path, *, verdicts="tox\tcorrect\n\tincorrect\n"):
+    curated = tmp_path / "curated.tsv"
+    key = tmp_path / "key.tsv"
+    curated.write_text(
+        "identifier\tswissprot_side\tverdict\tassessment\tfp_category\n"
+        "p1\tnontoxin\ttox\tcorrect\t\n"
+        "p2\tnontoxin\tnontox\tincorrect\ttrue_antimicrobial\n"
+        "p3\tnontoxin\ttox\tpartial\t\n"
     )
-    s = adjudication_summary(csv)
+    key.write_text(
+        "identifier\tsplit\tactual_label\tpredicted_label\tconfidence\n"
+        "p1\ttest\tnontox\tPhospholipase family\t0.91\n"
+        "p2\tval\tnontox\tother\t0.85\n"
+        "p3\ttest\tnontox\tVenom Kunitz-type family\t0.99\n"
+    )
+    return curated, key
+
+
+def test_curation_summary_counts(tmp_path):
+    curated, key = _curation_pair(tmp_path)
+    s = curation_summary(curated, key)
     assert s["n"] == 3
     assert s["assessment"]["correct"] == 1
     assert s["assessment"]["incorrect"] == 1
+    assert s["verdict"] == {"tox": 2, "nontox": 1}
+    assert s["by_split"] == {"test": 2, "val": 1}
+    assert s["fp_category"] == {"true_antimicrobial": 1}
     assert s["n_annotation_gaps"] == 2  # nontox-labelled & verdict tox (p1,p3)
+
+
+def test_load_curated_verdicts_attaches_split_and_confidence(tmp_path):
+    curated, key = _curation_pair(tmp_path)
+    df = load_curated_verdicts(curated, key)
+    assert list(df["split"]) == ["test", "val", "test"]
+    assert df.loc[df["identifier"] == "p3", "confidence"].iloc[0] == pytest.approx(0.99)
+
+
+def test_load_curated_verdicts_rejects_an_unanswered_sheet(tmp_path):
+    curated, key = _curation_pair(tmp_path)
+    curated.write_text(
+        "identifier\tswissprot_side\tverdict\tassessment\tfp_category\n"
+        "p1\tnontoxin\t\t\t\n"
+    )
+    with pytest.raises(ValueError, match="no verdict"):
+        load_curated_verdicts(curated, key)
+
+
+def test_load_curated_verdicts_rejects_sheet_key_mismatch(tmp_path):
+    curated, key = _curation_pair(tmp_path)
+    key.write_text(
+        "identifier\tsplit\tactual_label\tpredicted_label\tconfidence\n"
+        "p1\ttest\tnontox\tPhospholipase family\t0.91\n"
+    )
+    with pytest.raises(ValueError, match="absent from the"):
+        load_curated_verdicts(curated, key)
 
 
 # ---------- MCC-based evaluation + bootstrap CIs ----------
@@ -505,3 +550,67 @@ def test_accuracy_by_identity_bins_with_ci():
         labels=["<0.4", "0.4-0.6", "0.6-0.8", ">0.8"],
     )
     assert "diff_ci_low" not in plain.columns
+
+
+# --- generalisation stats (non-metazoan recall, unreviewed annotation summary) ------
+
+
+def test_nonmetazoan_toxicity_recall_counts_only_at_or_above_threshold():
+    preds = pd.DataFrame({"p_toxic": [0.05, 0.10, 0.50, 0.90]})
+    s = nonmetazoan_toxicity_recall(preds, threshold=0.5)
+    assert s["n"] == 4
+    assert s["n_flagged"] == 2          # 0.50 is inclusive
+    assert s["recall"] == pytest.approx(0.5)
+    assert s["median_p_toxic"] == pytest.approx(0.30)
+
+
+def _unreviewed_fixture():
+    # 5 proteins: two with an in-vocab family, one out-of-vocab, two unannotated.
+    preds = pd.DataFrame({
+        "identifier": ["A", "B", "C", "D", "E"],
+        "pred_1": ["Conotoxin family", "nontox", "Conotoxin family", "Melittin family", "other"],
+        "pred_2": ["Melittin family", "Conotoxin family", "nontox", "nontox", "nontox"],
+        "pred_3": ["nontox", "Melittin family", "Melittin family", "Conotoxin family", "Melittin family"],
+    })
+    families = pd.Series(
+        ["Conotoxin family", "Conotoxin family", "Wildly Unknown family", None, None],
+        index=preds.index,
+    )
+    vocab = {"Conotoxin family", "Melittin family", "nontox", "other"}
+    return preds, families, vocab
+
+
+def test_unreviewed_annotation_summary_ranks_and_coverage():
+    preds, families, vocab = _unreviewed_fixture()
+    s = unreviewed_annotation_summary(preds, families, vocab=vocab, top_k=3)
+
+    assert s["n"] == 5
+    assert s["n_unannotated"] == 2                 # D and E carry no family
+    assert s["frac_unannotated"] == pytest.approx(0.4)
+
+    # C's family is outside the model's vocabulary -> collapsed to "other".
+    assert s["n_out_of_vocab"] == 1
+    assert s["n_out_of_vocab_families"] == 1
+
+    # Only A and B are comparable: C is "other", D/E are unannotated.
+    assert s["n_comparable"] == 2
+    assert s["rank_counts"]["top_1"] == 1          # A: pred_1 matches
+    assert s["rank_counts"]["top_2"] == 1          # B: pred_2 matches
+    assert s["rank_counts"]["not_in_top_k"] == 0
+    assert s["top_1"] == pytest.approx(0.5)
+    assert s["top_k"] == pytest.approx(1.0)
+
+
+def test_unreviewed_annotation_summary_excludes_other_from_agreement():
+    """An entry whose UniProt family collapses to "other" must never count as agreement.
+
+    Agreeing with the catch-all class says nothing about naming the right family, and
+    counting it would silently inflate top-1.
+    """
+    preds, families, vocab = _unreviewed_fixture()
+    # C's collapsed family is "other" and its pred_1 is *also* "other" for E-like rows;
+    # force the pathological case: make C predict "other" first.
+    preds.loc[preds["identifier"] == "C", "pred_1"] = "other"
+    s = unreviewed_annotation_summary(preds, families, vocab=vocab, top_k=3)
+    assert s["n_comparable"] == 2                  # C still excluded
+    assert s["rank_counts"]["top_1"] == 1          # only A, not C

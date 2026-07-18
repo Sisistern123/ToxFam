@@ -8,8 +8,14 @@ import numpy as np
 import pandas as pd
 from rich.console import Console
 
-from paper._paths import adjudication_csv, manuscript_tex_target
+from paper._paths import (
+    curated_verdicts_tsv,
+    curation_key_tsv,
+    manuscript_tex_target,
+    model_run_dir,
+)
 from paper.figures._common import (
+    EXT_SCORES_MIN_COVERAGE,
     FIG_DIR,
     LEN_BINS,
     MCC_CI_N_BOOT,
@@ -20,9 +26,9 @@ from paper.figures._common import (
 from paper.stats import (
     accuracy_by_identity_bins,
     accuracy_by_length_bins,
-    adjudication_summary,
     aligned_correctness,
     bootstrap_label_metric_ci,
+    curation_summary,
     macro_mcc_by_support,
     mcnemar_test,
     micro_mcc,
@@ -34,8 +40,6 @@ from paper.stats import (
 from toxfam._paths import benchmark_dir, get_project_root
 from toxfam.evaluation.hbi import NO_HIT_LABEL
 from toxfam.evaluation.metrics import is_nontoxin
-
-ADJ_CSV = adjudication_csv()
 
 console = Console()
 
@@ -100,7 +104,28 @@ def _emit_latex_macros(out: dict, path) -> None:
     path.write_text("\n".join(header + body) + "\n")
 
 
+def _gate_on_pipeline_verification() -> None:
+    """Refuse to emit numbers if the pipeline is inconsistent with the split.
+
+    Every figure and cited number derives from benchmark predictions; if any are
+    stale relative to the manifest (a contaminated HBI reference, predictions from
+    an old split), the whole manuscript inherits the error. Set
+    ``TOXFAM_SKIP_VERIFY=1`` to override in an emergency (not recommended).
+    """
+    import os
+
+    if os.environ.get("TOXFAM_SKIP_VERIFY") == "1":
+        Console().print(
+            "[yellow]TOXFAM_SKIP_VERIFY=1 — skipping pipeline verification.[/]"
+        )
+        return
+    from toxfam.data.verify import verify_or_raise
+
+    verify_or_raise("test_set")
+
+
 def main() -> None:
+    _gate_on_pipeline_verification()
     classes = test_set_class_list()
     hbi = load_preds("test_set", "hbi")
     eat = load_preds("test_set", "eat")
@@ -143,20 +168,34 @@ def main() -> None:
             for m, d in [("hbi", hbi), ("eat", eat), ("nn_combined", nn)]
         },
         "macro_mcc_by_support": macro_mcc_by_support(nn, hbi, class_list=classes).to_dict("records"),
-        "adjudication": adjudication_summary(ADJ_CSV),
+        "curation": curation_summary(curated_verdicts_tsv(), curation_key_tsv()),
     }
 
     # HBI binary toxic/non-toxic call: toxic iff the transferred family is a toxin
     # family ('no hit' and the non-toxin class -> non-toxic). HBI emits no score, so it
     # has no ROC-AUC/PR-AUC; only the discrete-call MCC is defined. Evaluated on the same
-    # common subset (n=9,201) as the external-tool binary comparison so the MCC is
-    # directly comparable to the score-based methods (read from the committed snapshot).
+    # common subset as the external-tool binary comparison so the MCC is directly
+    # comparable to the score-based methods (read from the committed snapshot).
     scores_dir = get_project_root() / "scripts" / "external_tools" / "results" / "scores"
     common_ids = None
     for sm in ("toxfam_embtax", "eat", "toxinpred3", "toxdl2"):
         s = pd.read_csv(scores_dir / sm / "test_scores.csv")
         ids = set(s.loc[pd.to_numeric(s["score"], errors="coerce").notna(), "identifier"])
         common_ids = ids if common_ids is None else (common_ids & ids)
+    # The snapshot is committed, the test split comes from the manifest, and nothing ties
+    # them together: a snapshot produced against an older split silently intersects down
+    # to whatever the two happen to share, and the MCC below is then reported on that
+    # accidental overlap with no warning. That is exactly what happened — a data-v1-era
+    # snapshot against this split left n=1,423 of 9,779. Refuse instead.
+    coverage = len(common_ids & set(hbi["identifier"])) / len(hbi)
+    if coverage < EXT_SCORES_MIN_COVERAGE:
+        raise SystemExit(
+            f"External-tool scores under {scores_dir} cover only {coverage:.1%} of the "
+            f"{len(hbi):,} test proteins (need >={EXT_SCORES_MIN_COVERAGE:.0%}).\n"
+            "The snapshot was produced against a different split. Re-run the tools on the "
+            "current split and refresh the snapshot from benchmark/test_set/*/["
+            "test,val]_scores.csv — see scripts/external_tools/README.md."
+        )
     hbi_c = hbi[hbi["identifier"].isin(common_ids)]
     cids = hbi_c["identifier"].tolist()
     y_true_bin = (~hbi_c["actual_label"].map(is_nontoxin)).to_numpy(dtype=int)
@@ -226,7 +265,7 @@ def main() -> None:
     # Binary toxic/non-toxic head metrics (gitignored artifact; include if present).
     binary = {}
     for model_name, run in (("nn_combined", "combined_run"), ("nn_standard", "standard_run")):
-        bpath = get_project_root() / "model" / "model_output" / run / "metrics" / "binary_metrics.json"
+        bpath = model_run_dir(run) / "metrics" / "binary_metrics.json"
         if bpath.exists():
             bm = json.loads(bpath.read_text())
             td = bm.get("test_default", {})

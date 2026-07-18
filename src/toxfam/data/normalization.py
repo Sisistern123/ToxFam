@@ -1,8 +1,15 @@
-"""Protein family label normalization."""
+"""UniProt column conventions and protein family label normalization.
+
+Deliberately dependency-free (pandas only) so any layer can import the column
+names without pulling in taxopy/h5py.
+"""
 
 from __future__ import annotations
 
 import pandas as pd
+
+# UniProt's NCBI taxon ID column, as it appears in the raw TSVs.
+ORGANISM_COL = "Organism (ID)"
 
 # Conotoxin superfamily prefix corrections (matched case-insensitively)
 _CONOTOXIN_REPLACEMENTS = {

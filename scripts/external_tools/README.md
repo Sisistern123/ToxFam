@@ -7,34 +7,40 @@ own metric code so every method is directly comparable.
 ## TL;DR
 
 On the binary toxic/non-toxic task (the only axis where a fair external comparison
-exists — see *Scope*), evaluated on the **canonical 9,779-protein test set** (the
-manuscript's published split), common subset of **9,201** proteins all methods
-scored (477 toxins, 5.18% positive prior):
+exists — see *Scope*), evaluated on the **9,779-protein test set pinned by
+`data/splits/split_manifest.csv`** (sha256 `959e4d5b`), common subset of **9,019**
+proteins all methods scored (453 toxins, 5.02% positive prior):
 
 | Method | ROC-AUC | **PR-AUC** | MCC @ t=0.5 |
 |---|---|---|---|
-| **ToxFam (emb+tax)** | **0.9949** | **0.9553** | **0.8999** |
-| EAT (1-NN ProtT5, ours) | 0.9967 | 0.9491 | 0.8813 |
-| ToxDL 2.0 (2025) | 0.9921 | 0.7976 | 0.8078 |
-| ToxinPred 3.0 (2024) | 0.9217 | 0.5737 | 0.5970 |
+| **ToxFam (emb+tax)** | 0.9930 | **0.9586** | 0.8667 |
+| EAT (1-NN ProtT5, ours) | **0.9945** | 0.9309 | 0.8703 |
+| ToxDL 2.0 (2025) | 0.9909 | 0.7826 | 0.7938 |
+| ToxinPred 3.0 (2024) | 0.9253 | 0.5865 | 0.5967 |
 
 Paired-bootstrap difference vs ToxFam (2000 resamples; ✓ = 95% CI excludes 0):
-- vs **EAT (1-NN ProtT5)**: ΔROC −0.002 (tied), ΔPR +0.006 (tied)
-- vs **ToxinPred 3.0**: ΔROC **+0.073** ✓, ΔPR **+0.381** ✓
-- vs **ToxDL 2.0**: ΔROC +0.003 (tied), ΔPR **+0.155** ✓
+- vs **EAT (1-NN ProtT5)**: ΔROC −0.002 (tied), ΔPR **+0.028** ✓, ΔMCC@0.5 −0.004 (tied)
+- vs **ToxinPred 3.0**: ΔROC **+0.068** ✓, ΔPR **+0.371** ✓, ΔMCC@0.5 **+0.270** ✓
+- vs **ToxDL 2.0**: ΔROC +0.002 (tied), ΔPR **+0.175** ✓, ΔMCC@0.5 **+0.073** ✓
 
 **EAT** (`toxfam eval eat`, cosine 1-NN over the same ProtT5 embeddings, training
 split as a leakage-free reference) is the internal "is the MLP needed for binary
-toxicity?" control: it **ties ToxFam on threshold-free ranking** (ΔROC/ΔPR CIs
-include 0) and dominates the external tools — ToxFam's edge over it is at the
-operating point (MCC@0.5) and on the family task. **ToxFam wins PR-AUC against the
+toxicity?" control: it **ties ToxFam on ROC-AUC and at the operating point**
+(MCC@0.5) and dominates the external tools — ToxFam's edge over it is on PR-AUC
+(+0.028 ✓) and on the family task. **ToxFam wins PR-AUC against the
 external tools, significantly** — and PR-AUC is the metric that
 matters under a ~5% prior (ROC-AUC is near-ceiling for everyone). The result is
 strengthened by a contamination asymmetry (below): ToxinPred 3.0 is a *clean*
 comparator that ToxFam beats decisively, while ToxDL 2.0 has a train/test-overlap
-advantage (it has seen **65% of our test toxins** in training) — and on the
-contamination-excluded clean subset ToxFam beats it on **both** ROC-AUC *and*
-PR-AUC (see *Contamination*).
+advantage (it has seen **61.9% of our test toxins**, 319/515, in training) — and on
+the contamination-excluded clean subset ToxFam's **PR-AUC** lead over it widens to
++0.347 ✓, while the two tie on the near-ceiling ROC-AUC (see *Contamination*).
+
+> **Note:** ToxDL 2.0 is the only method here that needs a predicted **3D structure**
+> (it embeds an AlphaFold2 model with a GCN). **760 of the 9,779** test proteins (62
+> toxic) have no AlphaFold DB entry and are unscorable by it, so it covers
+> **9,019/9,779 (92.2%)** and sets the size of the common subset. The other three
+> methods are sequence-only and score all 9,779.
 
 ## Scope: why only the binary axis
 
@@ -87,36 +93,44 @@ externally, by design:
 
 ## Key decision points & caveats
 
-- **Data snapshot: the canonical 9,779 set (resolved).** The benchmark runs on the
-  published `data-v1` release split (train 45621 / val 9779 / **test 9779 / 515
-  toxins**) — the set the manuscript reports. (An earlier pass used a stale, drifted
-  local `training_data.csv` with a 10,407 test split; swapping in the release CSV
-  fixed it. Same ranking, ToxFam's absolute numbers now match the paper.)
-- **ToxFam baseline = a fresh `configs/combined.yaml` train** into
-  `model/model_output/combined_run`, **retrained on the 9,779 split** so there is no
-  train/test leakage. Standalone on the full 9,779 test: **ROC-AUC 0.9948, PR-AUC
-  0.9494, MCC@0.5 0.8874** — matching the paper's 0.995 / 0.949.
+- **Data snapshot: the split manifest (pinned).** The benchmark runs on the split in
+  `data/splits/split_manifest.csv` (sha256 `959e4d5b`; train 45621 / val 9779 /
+  **test 9779 / 515 toxins**), which is tracked in git — `build_harness.py` reads it
+  through `registry.load_dataset`, never from `training_data.csv`'s own `Split`
+  column, so a re-downloaded release CSV cannot move the ground truth. The scores in
+  `results/scores/` were produced against **this** split; `numbers_manifest.py`
+  refuses to quote them if they cover <90% of it.
+- **ToxFam baseline = `configs/combined.yaml`** in
+  `model/model_output/combined_run` (shipped as `models-v2`, stamped to manifest
+  `959e4d5b`; `build_harness.py` refuses an unstamped or mismatched checkpoint).
+  Standalone on the full 9,779 test: **ROC-AUC 0.9934, PR-AUC 0.9582, MCC@0.5
+  0.8668**.
 - **Contamination of ToxDL 2.0 (the important one).** ToxDL 2.0 trains on
   ToxProt-provenance positives that overlap our UniProt KW-0800 test positives.
   Intersecting its bundled training set (`train.fasta` + `valid.domain`, 15,631
-  accessions) with our test set: **337 of 515 test toxins (65.4%) are in ToxDL 2.0's
-  training data** (850 / 9,779 proteins overall, 8.7%). So its full-set numbers are
+  accessions) with our test set: **319 of 515 test toxins (61.9%) are in ToxDL 2.0's
+  training data** (828 / 9,779 proteins overall, 8.5%). So its full-set numbers are
   an **inflated upper bound**, not OOD generalisation — yet ToxFam still beats it on
-  PR-AUC. **Contamination-excluded clean subset** (drop the 850 seen proteins;
-  common n=8,392, 164 toxins): ToxDL 2.0's PR-AUC collapses 0.798 → 0.557 and ToxFam
-  beats it on **both** ROC-AUC (ΔROC +0.008 ✓, vs a tie on the full set) **and**
-  PR-AUC (ΔPR +0.330 ✓) — proving the win is real, not memorisation. ToxinPred 3.0
-  is *not* ToxProt-trained → a cleaner comparator, beaten by a wide margin
-  throughout (clean-subset ΔPR +0.570 ✓).
+  PR-AUC. **Contamination-excluded clean subset** (drop the 828 seen proteins;
+  8,951 proteins / 196 toxins, common n=8,249): ToxDL 2.0's PR-AUC collapses
+  0.783 → 0.551 while ToxFam's barely moves (0.959 → 0.902), widening ToxFam's lead
+  to **ΔPR +0.347 ✓**; the two tie on the near-ceiling ROC-AUC (ΔROC −0.003, CI
+  includes 0). The PR-AUC gap is the evidence the win is not memorisation.
+  ToxinPred 3.0 is *not* ToxProt-trained → a cleaner comparator, beaten by a wide
+  margin throughout (clean-subset ΔPR +0.533 ✓).
 - **ToxinPred 3.0 domain shift.** Peptide-oriented tool applied to full-length
   proteins; it over-calls (precision 0.34), which depresses its PR-AUC.
-- **578 proteins (38 toxic) had no AlphaFold structure** on the 9,779 set, so they
-  are unscorable by ToxDL 2.0 (94.1% coverage); recorded NA and excluded from the
-  common subset so all three compare on the same 9,201. (`compare.py` `MIN_COVERAGE`
-  is 0.90 to admit this complete-but-94%-coverage run; the gate exists to exclude
-  *incomplete* runs.) Those excluded toxins are not a random sample (they merely lack
-  an AlphaFold model), so every method's common-subset score shifts slightly and
-  equally versus the full set (compare `metrics_full.csv` vs `metrics_common.csv`).
+- **760 proteins (62 toxic) had no AlphaFold structure** on the 9,779 set, so they
+  are unscorable by ToxDL 2.0 (**92.2% coverage**) — it is the only method here that
+  needs a predicted 3D structure, since it embeds an AlphaFold2 model with a GCN;
+  without one there is no graph and no prediction. Recorded NA (`has_structure=0`)
+  and excluded from the common subset so all four compare on the same 9,019.
+  (`compare.py` `MIN_COVERAGE` is 0.90 to admit this complete-but-92%-coverage run;
+  the gate exists to exclude *incomplete* runs — and it is what caught the stale
+  pre-manifest scores at 15.4%.) Those excluded toxins are not a random sample (they
+  merely lack an AlphaFold model), so every method's common-subset score shifts
+  slightly and equally versus the full set (compare `metrics_full.csv` vs
+  `metrics_common.csv`).
 - **AlphaFold DB is now v6, not v4** (the v4 URL in older recipes is stale); the
   ToxDL 2.0 downloader tries v6→v5→v4. Flagged for any future structure-based tool.
 
@@ -124,10 +138,10 @@ externally, by design:
 
 `results/comparison/` (full 9,779) and `results/comparison_clean/` (clean subset):
 - `metrics_full.csv` — per method on its own scored subset (with coverage).
-- `metrics_common.csv` — all methods on the common subset (full: 9,201; clean:
-  8,392). Carries `mcc` (at each method's operating threshold) and `mcc_at_0.5`
-  (matched 0.5 threshold; the headline MCC on the full set: ToxFam 0.900 /
-  ToxDL2 0.808 / ToxinPred3 0.597). Note: ToxDL 2.0 has no val scores so it uses its
+- `metrics_common.csv` — all methods on the common subset (full: 9,019; clean:
+  8,249). Carries `mcc` (at each method's operating threshold) and `mcc_at_0.5`
+  (matched 0.5 threshold; the headline MCC on the full set: ToxFam 0.867 /
+  EAT 0.870 / ToxDL2 0.794 / ToxinPred3 0.597). Note: ToxDL 2.0 has no val scores so it uses its
   native 0.5 threshold; the others use Youden@val (threshold-free ROC/PR is the headline).
 - `paired_vs_toxfam.csv` — paired-bootstrap ΔROC / ΔPR vs ToxFam, with 95% CIs.
 - `roc_pr.png` — ROC + Precision-Recall overlay on the common subset.

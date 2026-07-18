@@ -20,12 +20,19 @@ Requires the `gh` CLI (https://cli.github.com) to be installed and authenticated
 from __future__ import annotations
 
 import argparse
-import shutil
-import subprocess
 import sys
 import tempfile
 import zipfile
 from pathlib import Path
+
+# Sibling import: works both when run as `uv run scripts/upload_data.py` and when
+# the file is loaded by path (importlib), which does not put scripts/ on sys.path.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from _gh_release import (  # noqa: E402
+    add_release_args,
+    create_release,
+    guard_existing_tag,
+)
 
 ROOT = Path(__file__).resolve().parent.parent
 RAW = ROOT / "data" / "raw"
@@ -33,7 +40,6 @@ PROCESSED = ROOT / "data" / "processed"
 SP6_DIR = ROOT / "data" / "intermediate" / "sp6"
 EVAL_DIR = ROOT / "data" / "evaluation"
 
-REPO = "Sisistern123/ToxFam"
 DEFAULT_TAG = "data-v1"
 
 
@@ -44,8 +50,20 @@ def main() -> None:
     parser.add_argument(
         "--tag", default=DEFAULT_TAG, help="GitHub release tag (default: %(default)s)"
     )
+    add_release_args(
+        parser,
+        notes_help="markdown file with the release notes "
+        "(split manifest hash, provenance)",
+    )
     args = parser.parse_args()
     tag: str = args.tag
+
+    exists = guard_existing_tag(
+        tag,
+        replace=args.replace,
+        remediation="Publish new data under a new tag (and bump RELEASE_TAG in "
+        "src/toxfam/cli.py)",
+    )
 
     # Verify source files
     sources = {
@@ -64,65 +82,44 @@ def main() -> None:
             sys.exit(1)
 
     # Build zips
-    tmp_dir = Path(tempfile.mkdtemp())
+    with tempfile.TemporaryDirectory() as tmp:
+        tmp_dir = Path(tmp)
 
-    sp6_zip = tmp_dir / "sp6_cache.zip"
-    print("  zipping sp6 cache ...")
-    with zipfile.ZipFile(sp6_zip, "w", zipfile.ZIP_DEFLATED) as zf:
-        for file in sorted(SP6_DIR.rglob("*")):
-            if file.is_file() and "_batch" not in file.parts:
-                zf.write(file, file.relative_to(SP6_DIR))
+        sp6_zip = tmp_dir / "sp6_cache.zip"
+        print("  zipping sp6 cache ...")
+        with zipfile.ZipFile(sp6_zip, "w", zipfile.ZIP_DEFLATED) as zf:
+            for file in sorted(SP6_DIR.rglob("*")):
+                if file.is_file() and "_batch" not in file.parts:
+                    zf.write(file, file.relative_to(SP6_DIR))
 
-    eval_zip = tmp_dir / "evaluation_data.zip"
-    print("  zipping evaluation data ...")
-    with zipfile.ZipFile(eval_zip, "w", zipfile.ZIP_DEFLATED) as zf:
-        for file in sorted(EVAL_DIR.rglob("*")):
-            if file.is_file():
-                zf.write(file, file.relative_to(EVAL_DIR))
+        eval_zip = tmp_dir / "evaluation_data.zip"
+        print("  zipping evaluation data ...")
+        with zipfile.ZipFile(eval_zip, "w", zipfile.ZIP_DEFLATED) as zf:
+            for file in sorted(EVAL_DIR.rglob("*")):
+                if file.is_file():
+                    zf.write(file, file.relative_to(EVAL_DIR))
 
-    try:
-        # Delete old release (ignore errors if it doesn't exist)
-        print(f"  deleting old release '{tag}' ...")
-        subprocess.run(
-            ["gh", "release", "delete", tag, "--yes", "--cleanup-tag"],
-            capture_output=True,
-        )
-
-        # Create new release
-        print(f"  creating release '{tag}' ...")
-        subprocess.run(
+        create_release(
+            tag,
             [
-                "gh",
-                "release",
-                "create",
-                tag,
-                str(RAW / "0800.tsv"),
-                str(RAW / "nontox.tsv"),
-                str(PROCESSED / "training_data.csv"),
-                str(PROCESSED / "embeddings.h5"),
-                str(PROCESSED / "hbi_train_all.csv"),
-                str(PROCESSED / "hbi_train_all.fasta"),
-                str(sp6_zip),
-                str(eval_zip),
-                "--title",
-                "Data v1",
-                "--notes",
-                "Download with `uv run toxfam download-data`.",
+                RAW / "0800.tsv",
+                RAW / "nontox.tsv",
+                PROCESSED / "training_data.csv",
+                PROCESSED / "embeddings.h5",
+                PROCESSED / "hbi_train_all.csv",
+                PROCESSED / "hbi_train_all.fasta",
+                sp6_zip,
+                eval_zip,
             ],
-            check=True,
+            title=f"Data {tag.removeprefix('data-')}",
+            notes=args.notes_file.read_text()
+            if args.notes_file
+            else "Download with `uv run toxfam download-data`.",
+            exists=exists,
+            replace=args.replace,
+            prerelease=args.prerelease,
+            target=args.target,
         )
-        print("Done.")
-    except FileNotFoundError:
-        print(
-            "ERROR: `gh` CLI not found. Install from https://cli.github.com",
-            file=sys.stderr,
-        )
-        sys.exit(1)
-    except subprocess.CalledProcessError as e:
-        print(f"FAILED: {e}", file=sys.stderr)
-        sys.exit(1)
-    finally:
-        shutil.rmtree(tmp_dir, ignore_errors=True)
 
 
 if __name__ == "__main__":

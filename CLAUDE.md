@@ -205,6 +205,9 @@ data/
 │   ├── taxonomy_vectors.h5     # Multi-hot taxonomy vectors (50-dim)
 │   ├── hbi_train_all.csv       # All cluster members of training reps (for HBI search)
 │   └── hbi_train_all.fasta     # Same in FASTA format (MMseqs2 target database)
+├── splits/                     # Split manifest (GIT-TRACKED — the split lives here)
+│   ├── split_manifest.csv      # identifier,Split for all 65,179 representatives
+│   └── split_manifest.json     # sha256, counts, seed, min_seq_id, commit
 └── evaluation/                 # Evaluation-specific input data (git-tracked)
     ├── non_metazoan/           # Non-metazoan reviewed protein data
     └── unreviewed/             # Unreviewed metazoan protein data
@@ -247,6 +250,37 @@ benchmark/                      # Evaluation results only (gitignored, regenerat
 - Family labels are in the `Protein families` column
 - Split assignments are in the `Split` column (`train`/`val`/`test`)
 - HDF5 files are keyed by protein identifier, each entry is a 1D float array
+
+## The Split Manifest (read before touching preprocessing or eval)
+
+`data/splits/split_manifest.csv` is the **single source of truth** for the
+train/val/test assignment, and it is tracked in git so any change to the split lands
+as a reviewable diff.
+
+- The stratified splitter selects rows *positionally*. `random_state=42` pins which
+  positions land in test, never which proteins. `multilabel_stratified_splits` therefore
+  sorts by `identifier` first — never remove that sort.
+- `training_data.csv` still carries a `Split` column for human inspection, but **nothing
+  reads it**. `registry.load_dataset`, `evaluation.runner` (EAT reference) and
+  `training.orchestrator` all call `split_manifest.apply_manifest()` instead, so a
+  re-downloaded release CSV cannot move the split.
+- `toxfam train` stamps `<run_dir>/models/split_provenance.json` with the manifest hash
+  **when it saves the calibrated checkpoint**, not at run start. A run that dies before
+  calibration leaves no stamp, so the older checkpoint it failed to replace is refused
+  rather than silently reused.
+- The guard lives with the callers that **score against a split**: `run_model_evaluation`,
+  `run_binary_evaluation_from_dir`, and `run_prediction` when the input is `test_set` /
+  `val_set`. `load_calibrated_model()` deliberately does *not* check — predicting on
+  arbitrary proteins involves no split, and the Colab notebook pip-installs the package,
+  so `get_project_root()` has nothing to find.
+- `scripts/package_models.py` must keep shipping `models/split_provenance.json`, or every
+  released checkpoint is refused by `eval` as unpinned.
+- `eval compare` refuses to tabulate methods whose `predictions.csv` cover different
+  protein sets. Row counts can match while membership does not.
+
+Regenerating the split (`toxfam preprocess` on changed data, a different `--min-seq-id`,
+or a new MMseqs version) is legal and prints a loud summary — but it invalidates every
+existing checkpoint, and `data/splits/split_manifest.csv` must be committed.
 
 ## Important Details
 

@@ -16,22 +16,36 @@ produces a side-by-side comparison table.
 from __future__ import annotations
 
 import json
-import subprocess
+import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
 
 import pandas as pd
 from rich.console import Console
 
+from toxfam._git import git_commit_short, git_dirty
 from toxfam._paths import benchmark_dir, processed_dir
 from toxfam.data._fasta import write_fasta
+from toxfam.data.invariants import reference_disjoint_from_holdout
+from toxfam.data.normalization import ORGANISM_COL
 from toxfam.data.registry import (
     DATASETS,
     load_dataset,
     resolve_embeddings_h5,
 )
+from toxfam.data.split_manifest import (
+    SplitManifestError,
+    apply_manifest,
+    verify_split_provenance,
+)
 from toxfam.evaluation.eat import run_eat_search
-from toxfam.evaluation.hbi import NO_HIT_LABEL, run_hbi_search
+from toxfam.evaluation.hbi import (
+    DEFAULT_EVALUE,
+    DEFAULT_MAX_SEQS,
+    DEFAULT_SENSITIVITY,
+    NO_HIT_LABEL,
+    run_hbi_search,
+)
 from toxfam.evaluation.metrics import (
     MetricsResult,
     calculate_binary_metrics,
@@ -56,35 +70,6 @@ def _get_task(dataset: str) -> str:
 # ---------------------------------------------------------------------------
 
 
-def git_commit_short() -> str:
-    try:
-        return (
-            subprocess.check_output(
-                ["git", "rev-parse", "--short", "HEAD"],
-                stderr=subprocess.DEVNULL,
-            )
-            .decode()
-            .strip()
-        )
-    except Exception:
-        return "unknown"
-
-
-def git_dirty() -> bool:
-    """True if the working tree has uncommitted changes.
-
-    A bare short SHA silently hides that results were produced from a modified
-    tree; this flags it so provenance is not misleading.
-    """
-    try:
-        out = subprocess.check_output(
-            ["git", "status", "--porcelain"], stderr=subprocess.DEVNULL
-        )
-        return bool(out.strip())
-    except Exception:
-        return False
-
-
 def _environment() -> dict:
     """Key Python + package versions for reproducibility (best-effort)."""
     import platform
@@ -104,6 +89,16 @@ def _environment() -> dict:
         "scikit-learn": _v("scikit-learn"),
         "numpy": _v("numpy"),
     }
+
+
+def _current_manifest_sha() -> str | None:
+    """Manifest hash if there is one, else None (non-split eval datasets)."""
+    try:
+        from toxfam.data.split_manifest import manifest_sha256
+
+        return manifest_sha256()
+    except Exception:
+        return None
 
 
 def _save_run(
@@ -134,6 +129,9 @@ def _save_run(
         "git_dirty": git_dirty(),
         "environment": _environment(),
         "n_samples": metrics.n_samples,
+        # Stamp the split these predictions were scored against, so `toxfam verify`
+        # and `eval compare` can detect predictions left over from an old split.
+        "split_manifest_sha256": _current_manifest_sha(),
         "parameters": params,
     }
     with open(output_dir / "run_metadata.json", "w") as f:
@@ -160,12 +158,21 @@ def run_hbi_evaluation(dataset: str) -> MetricsResult:
     df = load_dataset(dataset)
     proc = processed_dir()
     output_dir = benchmark_dir() / dataset / "hbi"
+    output_dir.mkdir(parents=True, exist_ok=True)
 
-    # Build query FASTA
-    tmp_dir = output_dir / "tmp"
-    tmp_dir.mkdir(parents=True, exist_ok=True)
-    query_fasta = tmp_dir / "query.fasta"
-    write_fasta(df, query_fasta)
+    # Guard the HBI reference before searching: it is a split-derived artifact
+    # distributed via release, and a stale copy containing val/test proteins turns
+    # the baseline into a self-match. Check the content invariant directly (the
+    # decisive one) rather than only the provenance stamp, so a mis-stamped or
+    # unstamped-but-contaminated reference is still refused.
+    leak = reference_disjoint_from_holdout(proc / "hbi_train_all.csv")
+    if not leak.ok:
+        raise SplitManifestError(
+            "HBI reference is contaminated relative to the current split:\n"
+            f"  {leak.detail}\n"
+            "Rebuild it from the manifest with 'scripts/rebuild_hbi_reference.py' "
+            "(no re-split), then re-run. See 'toxfam verify'."
+        )
 
     # Load HBI reference and harmonize labels
     train_df = pd.read_csv(proc / "hbi_train_all.csv")
@@ -178,13 +185,20 @@ def run_hbi_evaluation(dataset: str) -> MetricsResult:
             {lbl: "other" for lbl in only_in_train}
         )
 
-    # Run search
-    hbi_result = run_hbi_search(
-        query_fasta=query_fasta,
-        target_fasta=proc / "hbi_train_all.fasta",
-        target_labels_df=train_df,
-        work_dir=tmp_dir,
-    )
+    # MMseqs2's databases and search scratch run to ~20 GB for a 9,779-query search and
+    # are pure intermediates — the labels come back in `hbi_result`, and nothing below
+    # reads them. Kept under output_dir (same filesystem, so no cross-volume copy on a
+    # machine whose /tmp is a small separate volume) and removed when the search returns.
+    with tempfile.TemporaryDirectory(dir=output_dir, prefix="mmseqs_") as tmp:
+        tmp_dir = Path(tmp)
+        query_fasta = tmp_dir / "query.fasta"
+        write_fasta(df, query_fasta)
+        hbi_result = run_hbi_search(
+            query_fasta=query_fasta,
+            target_fasta=proc / "hbi_train_all.fasta",
+            target_labels_df=train_df,
+            work_dir=tmp_dir,
+        )
     console.print(
         f"   Coverage: {hbi_result.coverage:.1%} "
         f"({hbi_result.n_with_hits}/{hbi_result.n_queries})"
@@ -234,9 +248,9 @@ def run_hbi_evaluation(dataset: str) -> MetricsResult:
         method="hbi",
         dataset=dataset,
         params={
-            "sensitivity": 9.0,
-            "evalue": "inf",
-            "max_seqs": 100_000,
+            "sensitivity": DEFAULT_SENSITIVITY,
+            "evalue": "inf" if DEFAULT_EVALUE == float("inf") else DEFAULT_EVALUE,
+            "max_seqs": DEFAULT_MAX_SEQS,
         },
         output_dir=output_dir,
     )
@@ -273,7 +287,7 @@ def run_eat_evaluation(dataset: str, *, metric: str = "cosine") -> MetricsResult
     # disjoint from val/test (the Split column partitions them), so EAT never looks
     # a query up against itself.
     ref_h5 = proc / "embeddings.h5"
-    train_df = pd.read_csv(proc / "training_data.csv")
+    train_df = apply_manifest(pd.read_csv(proc / "training_data.csv"))
     train_df = train_df[train_df["Split"] == "train"].reset_index(drop=True)
     # NB: do NOT collapse train-only family labels to "other" here. run_eat_search
     # derives the toxic/non-toxin mask for p_toxic from these labels, and collapsing
@@ -373,6 +387,36 @@ def run_eat_evaluation(dataset: str, *, metric: str = "cosine") -> MetricsResult
 # ---------------------------------------------------------------------------
 
 
+def _needs_built_taxonomy(model_dir: Path, df: pd.DataFrame) -> bool:
+    """True when a combined model needs taxonomy vectors this dataset's H5 lacks.
+
+    Returns False for single-branch models, and for datasets the model's training
+    taxonomy H5 already covers (test_set / val_set) — those keep using the stored
+    vectors, so their numbers are unaffected.
+    """
+    import h5py
+
+    from toxfam.model.inference import _resolve_tax_h5
+    from toxfam.model.model_config import ModelConfig
+
+    cfg = ModelConfig.load(model_dir / "model_config.json")
+    if cfg.architecture != "MultiInputMLP":
+        return False
+
+    if ORGANISM_COL not in df.columns:
+        console.print(
+            f"   [bold red]{model_dir.name} is a combined model but '{ORGANISM_COL}' is "
+            "absent from this dataset — its taxonomy branch will contribute nothing.[/]"
+        )
+        return False
+
+    resolved = _resolve_tax_h5(model_dir)
+    if resolved is None:
+        return True
+    with h5py.File(resolved, "r") as f:
+        return any(ident not in f for ident in df["identifier"])
+
+
 def run_model_evaluation(
     dataset: str,
     model_dir: str | Path,
@@ -381,6 +425,11 @@ def run_model_evaluation(
     from toxfam.model.inference import run_inference
 
     model_dir = Path(model_dir)
+    # Every eval scores predictions against ground-truth labels, and for
+    # test_set/val_set those labels come from the split. Refuse a checkpoint that
+    # was not trained against the manifest on disk.
+    verify_split_provenance(model_dir)
+
     method_name = f"nn_{model_dir.name}"
     console.print(f"\n[bold]Running model evaluation '{method_name}' on '{dataset}'[/]")
 
@@ -410,8 +459,20 @@ def run_model_evaluation(
     if len(df) < n_before:
         console.print(f"   Filtered to {len(df)}/{n_before} sequences with embeddings")
 
-    # Run inference
-    inference_df = run_inference(df, h5_path, model_dir)
+    # Run inference. A combined (two-branch) model needs taxonomy vectors for *these*
+    # proteins. The training taxonomy H5 only covers the 65,179 training reps, so on any
+    # other dataset every protein would silently fall back to a zero vector and we would
+    # be scoring a taxonomy-ablated model. Build the vectors from the dataset's own
+    # organism IDs, exactly as `toxfam predict` does.
+    with tempfile.TemporaryDirectory(prefix="toxfam_eval_tax_") as tmp_tax_dir:
+        tax_h5 = None
+        if _needs_built_taxonomy(model_dir, df):
+            from toxfam.data.taxonomy import build_taxonomy_h5
+
+            console.print("   Building taxonomy vectors from the dataset's organism IDs")
+            tax_h5 = build_taxonomy_h5(df, Path(tmp_tax_dir))
+
+        inference_df = run_inference(df, h5_path, model_dir, tax_h5_path=tax_h5)
 
     # Compute metrics
     task = _get_task(dataset)
@@ -472,10 +533,14 @@ def run_binary_evaluation_from_dir(model_dir: str | Path) -> dict:
     from toxfam.model.inference import load_calibrated_model
 
     model_dir = Path(model_dir)
+    # Scores P(toxic) on the val and test splits, so the checkpoint must be pinned
+    # to the split on disk.
+    verify_split_provenance(model_dir)
+
     config = TrainConfig.from_yaml(model_dir / "config.yaml")
     config = config.model_copy(update={"output_dir": model_dir})
 
-    df = pd.read_csv(config.input_csv)
+    df = apply_manifest(pd.read_csv(config.input_csv))
     train_df, val_df, test_df = analyze_data_splits(df)
 
     h5_paths = [str(p) for p in config.h5_paths]
@@ -509,6 +574,33 @@ def run_binary_evaluation_from_dir(model_dir: str | Path) -> dict:
 # ---------------------------------------------------------------------------
 
 
+def _assert_methods_scored_same_proteins(scored_ids: dict[str, set[str]]) -> None:
+    """Refuse to tabulate methods that were run against different protein sets.
+
+    Comparing row counts is not enough: two methods evaluated on two different
+    versions of the "test set" both report 9779 samples while sharing a fraction of
+    their proteins. Only set equality catches a stale benchmark directory.
+    """
+    if len(scored_ids) < 2:
+        return
+
+    reference_method, reference = next(iter(scored_ids.items()))
+    for method, ids in scored_ids.items():
+        if ids == reference:
+            continue
+        shared = len(ids & reference)
+        raise ValueError(
+            f"'{method}' and '{reference_method}' were evaluated on different protein "
+            f"sets, so their metrics are not comparable.\n"
+            f"  {method}: {len(ids)} proteins\n"
+            f"  {reference_method}: {len(reference)} proteins\n"
+            f"  in common: {shared}\n"
+            "A benchmark directory is stale. Re-run every method on the current split, "
+            "e.g. 'toxfam eval hbi <dataset>' and 'toxfam eval model <dataset> "
+            "--model-dir ...', then compare again."
+        )
+
+
 def compare_methods(dataset: str) -> pd.DataFrame:
     """Compare all methods that have been run for a dataset."""
     dataset_dir = benchmark_dir() / dataset
@@ -521,6 +613,7 @@ def compare_methods(dataset: str) -> pd.DataFrame:
 
     results: dict[str, MetricsResult] = {}
     summary_rows: list[dict] = []
+    scored_ids: dict[str, set[str]] = {}
 
     for method_dir in sorted(dataset_dir.iterdir()):
         metrics_path = method_dir / "metrics.json"
@@ -551,15 +644,17 @@ def compare_methods(dataset: str) -> pd.DataFrame:
             accuracy=nm["Test_Accuracy"],
             mcc=nm["Test_MCC"],
             micro_mcc=nm["Test_Micro_MCC"],
+            macro_mcc=nm.get("Test_Macro_MCC", float("nan")),
             std_error=nm["Test_Std_Error"],
             n_samples=0,
         )
 
-        # Load predictions to get n_samples
+        # Load predictions to get n_samples + the identifiers actually scored
         preds_path = method_dir / "predictions.csv"
         if preds_path.exists():
-            n = len(pd.read_csv(preds_path))
-            m.n_samples = n
+            preds = pd.read_csv(preds_path)
+            m.n_samples = len(preds)
+            scored_ids[method_name] = set(preds["identifier"])
 
         results[method_name] = m
         summary_rows.append(
@@ -568,6 +663,7 @@ def compare_methods(dataset: str) -> pd.DataFrame:
                 "Accuracy": m.accuracy,
                 "MCC": m.mcc,
                 "Micro_MCC": m.micro_mcc,
+                "Macro_MCC": m.macro_mcc,
                 "Std_Error": m.std_error,
                 "Sample_Size": m.n_samples,
             }
@@ -577,6 +673,7 @@ def compare_methods(dataset: str) -> pd.DataFrame:
         console.print("[yellow]No method results found.[/]")
         return pd.DataFrame()
 
+    _assert_methods_scored_same_proteins(scored_ids)
     print_metrics_table(results)
 
     # Save comparison

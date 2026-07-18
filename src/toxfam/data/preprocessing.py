@@ -30,8 +30,16 @@ from sklearn.preprocessing import MultiLabelBinarizer
 from toxfam._paths import get_project_root, intermediate_dir, processed_dir, raw_dir
 from toxfam.data._fasta import parse_fasta, write_fasta
 from toxfam.data.normalization import normalize_protein_families
+from toxfam.data.split_manifest import (
+    diff_against_manifest,
+    write_manifest,
+    write_provenance,
+)
 
 console = Console()
+
+# Seed for the two stratified shuffle splits. Recorded in the split manifest.
+SPLIT_SEED = 42
 
 
 # ---------- Utilities ----------
@@ -275,6 +283,16 @@ def run_signalp6_step(
 # ---------- MMseqs2 & splitting ----------
 
 
+def _cluster_cache_key(family_fa: Path, min_seq_id: float) -> str:
+    """Cache key for one family's clustering: its input FASTA *and* the identity cutoff.
+
+    ``min_seq_id`` belongs in the key. Keyed on the FASTA alone, ``preprocess
+    --min-seq-id 0.5`` silently reuses clusters built at 0.9 while printing 0.5.
+    """
+    digest = hashlib.md5(family_fa.read_bytes()).hexdigest()
+    return f"{digest}|min_seq_id={min_seq_id}"
+
+
 def cluster_per_family_and_collect(
     data: pd.DataFrame, min_seq_id: float = 0.9
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
@@ -303,15 +321,13 @@ def cluster_per_family_and_collect(
             fam_mm_dir.mkdir(parents=True, exist_ok=True)
             family_fa = fam_mm_dir / "input.fasta"
             rep_fasta = fam_mm_dir / "cluster_rep_seq.fasta"
-            old_hash = (
-                hashlib.md5(family_fa.read_bytes()).hexdigest()
-                if family_fa.exists()
-                else None
-            )
-            write_fasta(group, family_fa)
-            new_hash = hashlib.md5(family_fa.read_bytes()).hexdigest()
+            key_file = fam_mm_dir / "cluster_key.txt"
 
-            if old_hash == new_hash and rep_fasta.exists():
+            cached_key = key_file.read_text().strip() if key_file.exists() else None
+            write_fasta(group, family_fa)
+            cache_key = _cluster_cache_key(family_fa, min_seq_id)
+
+            if cached_key == cache_key and rep_fasta.exists():
                 progress.advance(task)
                 continue
 
@@ -331,6 +347,11 @@ def cluster_per_family_and_collect(
             except (OSError, RuntimeError, subprocess.CalledProcessError) as e:
                 console.print(f"[red]MMseqs easy-cluster failed for {safe}: {e}[/]")
                 failures.append((str(family_fa), str(cluster_prefix), str(tmp_dir)))
+            else:
+                # Record the key only once the clustering actually produced output, so a
+                # failed run cannot leave a fresh input.fasta that reads as cached.
+                if rep_fasta.exists():
+                    key_file.write_text(cache_key + "\n")
 
             progress.advance(task)
 
@@ -342,7 +363,7 @@ def cluster_per_family_and_collect(
             )
 
     rep_seqs_all, rep_seqs_tox = [], []
-    for family_dir in os.listdir(mmseqs_dir):
+    for family_dir in sorted(os.listdir(mmseqs_dir)):
         full_path = mmseqs_dir / family_dir
         rep_fasta = full_path / "cluster_rep_seq.fasta"
         if not rep_fasta.exists():
@@ -370,11 +391,23 @@ def cluster_per_family_and_collect(
             df["Protein families"].map(df["Protein families"].value_counts()) >= 10,
             "other",
         )
+    # Sort so representatives/{all,tox}.{csv,fasta} are stable artifacts rather
+    # than a record of this machine's directory order.
+    rep_df_all = rep_df_all.sort_values("identifier", kind="stable").reset_index(
+        drop=True
+    )
+    rep_df_tox = rep_df_tox.sort_values("identifier", kind="stable").reset_index(
+        drop=True
+    )
     return rep_df_all, rep_df_tox
 
 
 def multilabel_stratified_splits(rep_df_all: pd.DataFrame):
-    df = rep_df_all.copy()
+    # The splitter below selects rows positionally, so random_state pins which
+    # *positions* land in each split, not which proteins. Sort by identifier so
+    # the assignment is a function of the protein set alone, whatever order the
+    # caller assembled its rows in.
+    df = rep_df_all.sort_values("identifier", kind="stable").reset_index(drop=True)
     df["fam_list"] = df["Protein families"].apply(
         lambda x: x.split(",") if isinstance(x, str) else []
     )
@@ -382,14 +415,14 @@ def multilabel_stratified_splits(rep_df_all: pd.DataFrame):
     Y = mlb.fit_transform(df["fam_list"])
 
     msss1 = MultilabelStratifiedShuffleSplit(
-        n_splits=1, test_size=0.30, random_state=42
+        n_splits=1, test_size=0.30, random_state=SPLIT_SEED
     )
     train_idx, valtest_idx = next(msss1.split(df, Y))
     train_df, df_valtest = df.iloc[train_idx], df.iloc[valtest_idx]
     Y_valtest = Y[valtest_idx]
 
     msss2 = MultilabelStratifiedShuffleSplit(
-        n_splits=1, test_size=0.50, random_state=42
+        n_splits=1, test_size=0.50, random_state=SPLIT_SEED
     )
     val_idx, test_idx = next(msss2.split(df_valtest, Y_valtest))
     train_df = train_df.reset_index(drop=True)
@@ -502,9 +535,31 @@ def run_preprocessing_pipeline(
     proc.mkdir(parents=True, exist_ok=True)
     training_data.to_csv(proc / "training_data.csv", index=False)
 
+    # Persist the assignment to the git-tracked manifest. Downstream code reads the
+    # split from there, never from the CSV above, so a re-downloaded training_data.csv
+    # cannot move it. Report a moved split loudly: it invalidates every checkpoint.
+    moved = diff_against_manifest(training_data)
+    digest = write_manifest(training_data, seed=SPLIT_SEED, min_seq_id=min_seq_id)
+    if moved is None:
+        console.print(f"   Split manifest created ({digest[:12]})")
+    elif moved["reassigned"] or moved["added"] or moved["removed"]:
+        console.print(
+            f"   [bold yellow]Split manifest changed[/] "
+            f"({moved['reassigned']} reassigned, +{moved['added']} / "
+            f"-{moved['removed']} proteins).\n"
+            "   [yellow]Every existing checkpoint is now invalid — retrain before "
+            "evaluating. Commit data/splits/split_manifest.csv.[/]"
+        )
+    else:
+        console.print(f"   Split manifest unchanged ({digest[:12]})")
+
     train_all_df = build_train_all_members(data, train_df)
     train_all_df.to_csv(proc / "hbi_train_all.csv", index=False)
     write_fasta(train_all_df, proc / "hbi_train_all.fasta")
+    # Stamp the HBI reference with the split it was built from, so a stale copy
+    # (or one from an old release) is refused by eval/`toxfam verify` instead of
+    # silently inflating the baseline with val/test self-matches.
+    write_provenance(proc / "hbi_train_all.csv", min_seq_id=min_seq_id)
 
     # -- Summary table --
     console.print()

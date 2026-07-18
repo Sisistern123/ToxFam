@@ -1,233 +1,256 @@
 identifier	split	actual_label	predicted_label	confidence
-P0DPU1	val	CRISP family	nontox	0.9703614711761475
-P82466	val	Venom metalloproteinase (M12B) family	Disintegrin family	0.9937174320220947
-P0DQF9	val	Scoloptoxin family	nontox	0.9350276589393616
-P34387	val	nontox	other	0.9456738233566284
-B5KL31	val	nontox	Venom Kunitz-type family	0.9715444445610046
-B5KL37	val	nontox	Venom Kunitz-type family	0.9285709857940674
-B5L5M7	val	nontox	Venom Kunitz-type family	0.9948405623435974
-P18104	val	nontox	Natriuretic, Bradykinin potentiating peptide family	0.9916375279426575
-P31398	val	nontox	other	0.8938126564025879
-Q0MWV8	val	nontox	Sea anemone type 1 potassium channel toxin family	0.987672746181488
-P84875	val	nontox	Venom Kunitz-type family	0.9274412989616394
-P28504	val	nontox	other	0.9677974581718445
-P28512	val	nontox	other	0.9293643236160278
-P09944	val	nontox	other	0.9851663708686829
-P0C1M6	val	nontox	MCD family	0.9508642554283142
-P0C1Q8	val	nontox	MCD family	0.9999760389328003
-Q6IWZ0	val	nontox	Flavin monoamine oxidase family	0.9425598382949829
-D2XUU7	val	nontox	Cationic peptide family	0.935768187046051
-W5XCJ6	val	nontox	Snaclec family	0.9990160465240479
-C0HJC1	val	nontox	Phospholipase family	0.9945474863052368
-C1JAR9	val	nontox	Phospholipase family	0.9262444376945496
-P0DQR0	val	nontox	Venom Kunitz-type family	0.998150110244751
-P0DV62	val	nontox	Neurotoxin family	0.9993120431900024
-P0DV70	val	nontox	Cationic peptide family	0.9999533891677856
-P0DW72	val	nontox	Conotoxin family	0.9996587038040161
-P0DX34	val	nontox	MCD family	0.9972354769706726
-O77463	val	nontox	Long (4 C-C) scorpion toxin superfamily	0.9999986886978149
-Q58T40	val	nontox	other	0.8653296828269958
-P19859	val	nontox	Venom Kunitz-type family	0.9923850297927856
-P20146	val	nontox	Phospholipase family	0.9883866906166077
-P20257	val	nontox	Phospholipase family	0.9908428192138672
-P25033	val	nontox	other	0.9815458655357361
-P86170	val	nontox	other	0.8848484754562378
-Q63429	val	nontox	other	0.899052083492279
-Q7YTY6	val	nontox	other	0.9170989990234375
-Q8T0Z3	val	nontox	other	0.8447420597076416
-A0A088SG62	val	nontox	Formicidae venom family	0.9987490177154541
-A0A6G9KJM3	val	nontox	other	0.9951602816581726
-B4ESA2	val	nontox	Venom Kunitz-type family	0.994276225566864
-C0HJH6	val	nontox	other	0.9418364763259888
-C0HK45	val	nontox	other	0.986581563949585
-E0XKJ8	val	nontox	CRISP family	0.995324969291687
-F6K6F3	val	nontox	Long (4 C-C) scorpion toxin superfamily	0.9999754428863525
-P53357	val	nontox	other	0.8148767948150635
-P81902	val	nontox	Venom Kunitz-type family	0.9506469964981079
-P82417	val	nontox	other	0.9646002054214478
-P84946	val	nontox	Bradykinin-related peptide family	0.991929292678833
-P84955	val	nontox	Bradykinin-related peptide family	0.9112344980239868
-Q6T6T5	val	nontox	Venom Kunitz-type family	0.9839433431625366
-Q8MUP7	val	nontox	other	0.9535169005393982
-G5EGC4	val	nontox	Long (3 C-C) scorpion toxin superfamily	0.8731180429458618
-L0GB04	val	nontox	other	0.963329553604126
-Q8T9T4	val	nontox	PBP/GOBP family	0.9674330353736877
-Q910A0	val	nontox	Phospholipase family	0.9946205615997314
-W4VSH9	val	nontox	Venom Kunitz-type family	0.9191253781318665
-A7X3V7	val	nontox	Venom Kunitz-type family	0.8652772903442383
-B2D2C0	val	nontox	other	0.9381676316261292
-P04567	val	nontox	Limacoditoxin family	0.9328259229660034
-P0DMA4	val	nontox	Conotoxin family	0.9999459981918335
-P0DPL1	val	nontox	Conotoxin family	0.9985112547874451
-P0DRI1	val	nontox	Insulin family	0.9831637740135193
-P81162	val	nontox	Venom Kunitz-type family	0.8275209665298462
-P84016	val	nontox	Neurotoxin family	0.8583465814590454
-P84947	val	nontox	Bradykinin-related peptide family	0.8092057704925537
-P86821	val	nontox	Non-disulfide-bridged peptide (NDBP) superfamily	0.9922310709953308
-P86824	val	nontox	Non-disulfide-bridged peptide (NDBP) superfamily	0.9996868371963501
-Q2ES48	val	nontox	Venom Kunitz-type family	0.9817836880683899
-Q64356	val	nontox	Scoloptoxin family	0.8764812350273132
-Q68Y22	val	nontox	Formicidae venom family	0.9981933236122131
-Q6ITB4	val	nontox	Venom Kunitz-type family	0.9607598781585693
-Q90W97	val	nontox	Venom Kunitz-type family	0.9524213075637817
-Q5YD59	val	other	nontox	0.9099039435386658
-E2E4E4	val	other	nontox	0.998561441898346
-P04203	val	other	nontox	0.9232071042060852
-V5N6J4	val	other	Scoloptoxin family	0.9998656511306763
-P83998	val	other	Neurotoxin family	0.9972198009490967
-K9IMD0	val	other	nontox	0.9951098561286926
-Q92035	val	other	nontox	0.9810411334037781
-D2Y2E1	val	other	Neurotoxin family	0.8005504012107849
-P0DUV2	val	FARP (FMRFamide related peptide) family	nontox	0.9864335060119629
-C0HJT2	val	Non-disulfide-bridged peptide (NDBP) superfamily	nontox	0.9821547269821167
-P0DUS8	val	Limacoditoxin family	Neurotoxin family	0.9984725117683411
-P0DUS9	val	Limacoditoxin family	Venom Ptu1-like knottin family	0.8493727445602417
-P0DUC3	val	Conotoxin family	Vasopressin/oxytocin family	0.9857462644577026
-P0C023	val	Formicidae venom family	nontox	0.8045074343681335
-P0DN45	val	Teretoxin family	Scoloptoxin family	0.8367809653282166
-P60259	val	Long (3 C-C) scorpion toxin superfamily	Long (4 C-C) scorpion toxin superfamily	0.9970971345901489
-Q66S03	val	other	nontox	0.9964994192123413
-I6S3A9	test	Scoloptoxin family	nontox	0.9798920750617981
-A0A6P3CW73	test	nontox	Short scorpion toxin superfamily	0.9999302625656128
-P51972	test	nontox	Phospholipase family	0.9952606558799744
-B5L5R7	test	nontox	Venom Kunitz-type family	0.9606552720069885
-P0CH86	test	nontox	other	0.9248467683792114
-P35903	test	nontox	Flavin monoamine oxidase family	0.9666281938552856
-P0DMJ4	test	nontox	Venom Kunitz-type family	0.9919828772544861
-P0DMX0	test	nontox	Venom Kunitz-type family	0.993447482585907
-P0DPF1	test	nontox	Sea anemone type 1 potassium channel toxin family	0.9999297857284546
-P0DPT0	test	nontox	other	0.9051598906517029
-A0A348G6I7	test	nontox	Formicidae venom family	0.9983094930648804
-P0DQU7	test	nontox	Long (4 C-C) scorpion toxin superfamily	0.9999908208847046
-P0DQZ9	test	nontox	MCD family	0.9999274015426636
-P0DRK6	test	nontox	Natriuretic, Bradykinin potentiating peptide family	0.999871015548706
-P0DSM0	test	nontox	other	0.9865590333938599
-P00601	test	nontox	Phospholipase family	0.9899683594703674
-P00620	test	nontox	Phospholipase family	0.9960059523582458
-Q58T55	test	nontox	other	0.9198289513587952
-P20254	test	nontox	Phospholipase family	0.9885239005088806
-P04056	test	nontox	Phospholipase family	0.9907537698745728
-P07037	test	nontox	Phospholipase family	0.9896227121353149
-P09464	test	nontox	Calycin superfamily	0.976912260055542
-P0CG68	test	nontox	other	0.976667046546936
-P0DPT9	test	nontox	Phospholipase family	0.8922712802886963
-P16354	test	nontox	Phospholipase family	0.9460029006004333
-P34180	test	nontox	Phospholipase family	0.991747260093689
-P82971	test	nontox	Phospholipase family	0.9530758857727051
-P86810	test	nontox	Flavin monoamine oxidase family	0.9989603757858276
-Q8UW31	test	nontox	Phospholipase family	0.9908565282821655
-A0A182GL09	test	nontox	CRISP family	0.9709057211875916
-A7SRR3	test	nontox	Sea anemone type 1 potassium channel toxin family	0.9851795434951782
-C0HK72	test	nontox	Venom Kunitz-type family	0.9944038391113281
-F8J2F6	test	nontox	Venom Kunitz-type family	0.9814797043800354
-L0GAZ8	test	nontox	Non-disulfide-bridged peptide (NDBP) superfamily	0.927997350692749
-O46202	test	nontox	other	0.8421221971511841
-O46227	test	nontox	Conotoxin family	0.9088349342346191
-P00994	test	nontox	Venom Kunitz-type family	0.9946221113204956
-P10280	test	nontox	Venom Kunitz-type family	0.992753803730011
-P42998	test	nontox	Vasopressin/oxytocin family	0.81974196434021
-Q17043	test	nontox	Flavin monoamine oxidase family	0.8216168880462646
-Q5G8B7	test	nontox	Short scorpion toxin superfamily	0.9992184638977051
-Q5G8A8	test	nontox	Long (4 C-C) scorpion toxin superfamily	0.9999902248382568
-Q6Q252	test	nontox	other	0.9284813404083252
-Q6T6S5	test	nontox	Venom Kunitz-type family	0.9879308938980103
-Q75WH5	test	nontox	Neurotoxin family	0.9993873834609985
-F8J2F3	test	nontox	Venom Kunitz-type family	0.9853869676589966
-F8J2F5	test	nontox	Venom Kunitz-type family	0.9878696799278259
-H2A0P0	test	nontox	Venom Kunitz-type family	0.880788266658783
-Q910A1	test	nontox	Phospholipase family	0.9946923851966858
-Q9I845	test	nontox	Phospholipase family	0.98687344789505
-Q9U6W0	test	nontox	other	0.8757068514823914
-Q9UB31	test	nontox	PBP/GOBP family	0.9854478240013123
-A0A059U8Y9	test	nontox	Non-disulfide-bridged peptide (NDBP) superfamily	0.9520007371902466
-A0A1S4FQ37	test	nontox	other	0.9964154958724976
-A0A5H1ZR48	test	nontox	Short scorpion toxin superfamily	0.978743851184845
-A7X3V4	test	nontox	Venom Kunitz-type family	0.9895757436752319
-Q5BQX9	test	nontox	Neurotoxin family	0.9924252033233643
-P0DRG3	test	nontox	Natriuretic, Bradykinin potentiating peptide family	0.9203768372535706
-P0DV61	test	nontox	other	0.9258894324302673
-P69844	test	nontox	other	0.8732313513755798
-P84590	test	nontox	other	0.970069944858551
-P86726	test	nontox	other	0.8795561790466309
-Q7M4I3	test	nontox	Peptidase S1 family	0.8625617623329163
-P0CJ23	test	other	nontox	0.9997732043266296
-P0DJK1	test	other	nontox	0.9898086786270142
-P0DP56	test	other	nontox	0.9995638728141785
-P0DPV7	test	other	Scoloptoxin family	0.9635360240936279
-P0DQY9	test	other	Conotoxin family	0.8254827260971069
-P0DXX0	test	other	nontox	0.8031481504440308
-P0DRI7	test	other	Conotoxin family	0.9561443328857422
-P0DXW7	test	other	Scoloptoxin family	0.9046670794487
-A0A141SFN5	test	other	nontox	0.8411557078361511
-C0HJC4	test	other	Neurotoxin family	0.998023509979248
-P0DL71	test	other	nontox	0.8375595808029175
-P0DOZ7	test	FARP (FMRFamide related peptide) family	nontox	0.8685528039932251
-P0DUS2	test	Limacoditoxin family	FARP (FMRFamide related peptide) family	0.9519163966178894
-P0DUS3	test	Limacoditoxin family	FARP (FMRFamide related peptide) family	0.9540166258811951
-P83247	test	Cationic peptide family	Non-disulfide-bridged peptide (NDBP) superfamily	0.8181487321853638
-P86147	test	MCD family	Formicidae venom family	0.9891304969787598
-P0DN47	test	Teretoxin family	Conotoxin family	0.9887808561325073
-A7X3X0	test	other	nontox	0.9894737601280212
-P0DRM4	train	nontox	Phospholipase family	0.8007462620735168
-Q95P88	train	nontox	Short scorpion toxin superfamily	0.8001757264137268
-P80007	train	nontox	Calycin superfamily	0.8036336898803711
-A0A1S4EWW7	train	nontox	CRISP family	0.8104752898216248
-P19399	train	nontox	other	0.8156105875968933
-P82422	train	nontox	other	0.8270899057388306
-P80090	train	nontox	Insulin family	0.8203774690628052
-A0A1S4GYH9	train	nontox	PBP/GOBP family	0.8367423415184021
-P35003	train	nontox	Peptidase S1 family	0.8289144039154053
-Q6J201	train	nontox	other	0.83815598487854
-P56685	train	nontox	Short scorpion toxin superfamily	0.8485881686210632
-P0DSJ9	train	nontox	Formicidae venom family	0.8497357964515686
-P35042	train	nontox	Peptidase S1 family	0.8522219061851501
-Q7PN86	train	nontox	PBP/GOBP family	0.8453817367553711
-P81631	train	Venom metalloproteinase (M12B) family	Disintegrin family	0.8509119153022766
-A0A182RFI2	train	nontox	other	0.8511170744895935
-P81610	train	nontox	other	0.8480782508850098
-P0DV71	train	nontox	Cationic peptide family	0.8660181760787964
-A0A0E3SVB8	train	nontox	Teretoxin family	0.8720576763153076
-P0CH87	train	nontox	other	0.8635789155960083
-Q58T87	train	nontox	other	0.8758148550987244
-A0A0K8RJV9	train	nontox	other	0.8733618855476379
-P0CJ18	train	nontox	Scoloptoxin family	0.8851133584976196
-P0DRB5	train	nontox	Non-disulfide-bridged peptide (NDBP) superfamily	0.8872253894805908
-Q8T0W4	train	nontox	Venom Kunitz-type family	0.8934255242347717
-P69129	train	nontox	Vasopressin/oxytocin family	0.8887495994567871
-P0DME9	train	nontox	Non-disulfide-bridged peptide (NDBP) superfamily	0.8807535767555237
-P68425	train	nontox	Venom Kunitz-type family	0.8911170363426208
-Q6X5T4	train	other	Snaclec family	0.8843868970870972
-P16339	train	nontox	Vasopressin/oxytocin family	0.9094762802124023
-Q58T61	train	nontox	other	0.9094128608703613
-P10831	train	nontox	Venom Kunitz-type family	0.9102193713188171
-P81492	train	nontox	other	0.9037011861801147
-P69839	train	nontox	other	0.909369170665741
-B5KL27	train	nontox	Venom Kunitz-type family	0.9195429682731628
-A0A0M3KKW3	train	nontox	other	0.9298865795135498
-A0A8K1YTU0	train	nontox	Neurotoxin family	0.9317587018013
-P26228	train	nontox	Venom Kunitz-type family	0.9271332621574402
-P83411	train	nontox	other	0.924048662185669
-R4JQZ0	train	nontox	Non-disulfide-bridged peptide (NDBP) superfamily	0.9331843852996826
-P0CF05	train	nontox	other	0.9239805936813354
-A9CM07	train	nontox	Formicidae venom family	0.9384760856628418
-Q7M4I6	train	nontox	Phospholipase family	0.9583806395530701
-P0C7S1	train	nontox	Natriuretic, Bradykinin potentiating peptide family	0.9484639763832092
-Q16S34	train	nontox	PBP/GOBP family	0.9438460469245911
-P0DX64	train	nontox	Non-disulfide-bridged peptide (NDBP) superfamily	0.9582480788230896
-Q06B75	train	nontox	other	0.9587663412094116
-Q9GQW4	train	nontox	Non-disulfide-bridged peptide (NDBP) superfamily	0.9517266154289246
-P56686	train	nontox	other	0.9483991861343384
-A6MFL1	train	nontox	Venom Kunitz-type family	0.9727474451065063
-C5J887	train	nontox	Non-disulfide-bridged peptide (NDBP) superfamily	0.9669421315193176
-Q8AY43	train	nontox	Venom Kunitz-type family	0.9788821339607239
-P0DRK7	train	nontox	Natriuretic, Bradykinin potentiating peptide family	0.9682018160820007
-Q8T0W3	train	nontox	Neurotoxin family	0.9791268706321716
-Q9BMK4	train	nontox	Phospholipase family	0.9633404612541199
-Q16937	train	nontox	CRISP family	0.979686975479126
-P86389	train	nontox	Phospholipase family	0.9946041703224182
-P81548	train	nontox	Venom Kunitz-type family	0.9937232136726379
-P0DJ46	train	nontox	Venom Kunitz-type family	0.9821572303771973
-Q90W99	train	nontox	Venom Kunitz-type family	0.9926053285598755
-Q9W716	train	nontox	Three-finger toxin family	0.9997482895851135
-P08873	train	nontox	Phospholipase family	0.983662486076355
-Q6TS00	train	nontox	PBP/GOBP family	0.9962271451950073
+A0A059U8Y9	val	nontox	Non-disulfide-bridged peptide (NDBP) superfamily	0.8908445835113525
+A0A090BX51	val	nontox	other	0.9949126243591309
+A0A1S4GYH9	val	nontox	PBP/GOBP family	0.9363812804222107
+B0M2U6	val	nontox	FARP (FMRFamide related peptide) family	0.9807682633399963
+B5L5R7	val	nontox	Venom Kunitz-type family	0.9867454171180725
+B6RLX2	val	nontox	Venom Kunitz-type family	0.9895473718643188
+B8XH44	val	nontox	Short scorpion toxin superfamily	0.8939806222915649
+C0HJV8	val	nontox	Cationic peptide family	0.999985933303833
+C0HJY4	val	other	Conotoxin family	0.9921074509620667
+C0HJY9	val	other	Neurotoxin family	0.9302696585655212
+C0HKB9	val	nontox	Phospholipase family	0.9952724575996399
+C0HKX5	val	nontox	Natriuretic, Bradykinin potentiating peptide family	0.9841225147247314
+C0HKX7	val	nontox	Natriuretic, Bradykinin potentiating peptide family	0.9509581327438354
+C3TS04	val	other	Conotoxin family	0.9652069807052612
+C5J886	val	nontox	Non-disulfide-bridged peptide (NDBP) superfamily	0.997141420841217
+D5J9S0	val	Natriuretic, Bradykinin potentiating peptide family	nontox	0.990946888923645
+E0XKJ8	val	nontox	CRISP family	0.9976565837860107
+E5L0E5	val	nontox	Peptidase S1 family	0.9999276399612427
+F8J2F3	val	nontox	Venom Kunitz-type family	0.9850314855575562
+H2A0N1	val	nontox	Venom Kunitz-type family	0.8316484689712524
+L0GCI6	val	nontox	Non-disulfide-bridged peptide (NDBP) superfamily	0.9957389831542969
+P00601	val	nontox	Phospholipase family	0.9955576062202454
+P08873	val	nontox	Phospholipase family	0.9928733110427856
+P09464	val	nontox	Calycin superfamily	0.943868100643158
+P0C8L2	val	nontox	Short scorpion toxin superfamily	0.9924848675727844
+P0DMJ2	val	nontox	Venom Kunitz-type family	0.9921064376831055
+P0DQQ8	val	nontox	Natriuretic, Bradykinin potentiating peptide family	0.9952955842018127
+P0DQY9	val	other	Conotoxin family	0.9916194677352905
+P0DRK4	val	nontox	Natriuretic, Bradykinin potentiating peptide family	0.9838468432426453
+P0DRL4	val	nontox	Conotoxin family	0.999990701675415
+P0DSJ1	val	nontox	other	0.984041690826416
+P0DUS4	val	Limacoditoxin family	nontox	0.8752425312995911
+P0DUS6	val	Limacoditoxin family	Cationic peptide family	0.9197461009025574
+P0DV70	val	nontox	Cationic peptide family	0.9999890327453613
+P0DX47	val	FARP (FMRFamide related peptide) family	Limacoditoxin family	0.9707823395729065
+P13208	val	other	nontox	0.8607029318809509
+P18144	val	nontox	Natriuretic, Bradykinin potentiating peptide family	0.9986646175384521
+P19863	val	nontox	Cationic peptide family	0.9789325594902039
+P20250	val	nontox	Phospholipase family	0.9930697083473206
+P20253	val	nontox	Phospholipase family	0.9952417612075806
+P30652	val	nontox	Sea anemone type 1 potassium channel toxin family	0.953183114528656
+P31398	val	nontox	other	0.8254128694534302
+P39877	val	nontox	Phospholipase family	0.9484893679618835
+P42993	val	nontox	Vasopressin/oxytocin family	0.944221019744873
+P61298	val	nontox	Conotoxin family	0.8743605613708496
+P61850	val	nontox	FARP (FMRFamide related peptide) family	0.9781489372253418
+P62968	val	nontox	Natriuretic, Bradykinin potentiating peptide family	0.9975939393043518
+P81162	val	nontox	Venom Kunitz-type family	0.8391258120536804
+P81478	val	nontox	Phospholipase family	0.9974859952926636
+P82321	val	nontox	Short scorpion toxin superfamily	0.9541274309158325
+P82422	val	nontox	other	0.9837505221366882
+P82656	val	nontox	other	0.8505300879478455
+P82971	val	nontox	Phospholipase family	0.9276804327964783
+P83411	val	nontox	other	0.9340276718139648
+P83416	val	nontox	Cationic peptide family	0.9916977882385254
+P83718	val	nontox	Short scorpion toxin superfamily	0.9746320247650146
+P84651	val	nontox	Phospholipase family	0.9976567029953003
+P84950	val	nontox	Natriuretic, Bradykinin potentiating peptide family	0.910092294216156
+P84953	val	nontox	Bradykinin-related peptide family	0.8105887770652771
+P85818	val	nontox	Bradykinin-related peptide family	0.9955612421035767
+P86820	val	Bradykinin-related peptide family	nontox	0.8640170693397522
+P97391	val	nontox	Phospholipase family	0.8962789177894592
+Q03383	val	nontox	other	0.8006803393363953
+Q10996	val	nontox	Conotoxin family	0.9999144077301025
+Q2ES49	val	nontox	Venom Kunitz-type family	0.9946120977401733
+Q58L90	val	other	nontox	0.9895778894424438
+Q68Y22	val	nontox	Formicidae venom family	0.9969485402107239
+Q6Q252	val	nontox	other	0.840190052986145
+Q6T6T5	val	nontox	Venom Kunitz-type family	0.9730004072189331
+Q6TS00	val	nontox	PBP/GOBP family	0.9991990923881531
+Q6X5T4	val	other	Snaclec family	0.9999945163726807
+Q7M4I3	val	nontox	Peptidase S1 family	0.9177835583686829
+Q86SC0	val	nontox	other	0.9359612464904785
+Q8JGT9	val	nontox	CRISP family	0.9975826740264893
+Q8LW54	val	other	Formicidae venom family	0.958801805973053
+Q90W97	val	nontox	Venom Kunitz-type family	0.9907687306404114
+Q9BMK4	val	nontox	Phospholipase family	0.9548384547233582
+Q9I8F8	val	nontox	Phospholipase family	0.9965580105781555
+Q9U6R6	val	nontox	Calycin superfamily	0.9993284940719604
+Q9W4Q9	val	nontox	Insulin family	0.8456699848175049
+R4JJN6	val	nontox	Non-disulfide-bridged peptide (NDBP) superfamily	0.985468327999115
+V5N6J4	val	other	Scoloptoxin family	0.9981480836868286
+A0A059T2H4	test	other	Neurotoxin family	0.9908684492111206
+A0A0K1YW63	test	other	nontox	0.9335880875587463
+A0A182GL09	test	nontox	CRISP family	0.9274792075157166
+A0A1D3IXJ5	test	nontox	Non-disulfide-bridged peptide (NDBP) superfamily	0.9995782971382141
+A0A1S4FGH1	test	other	nontox	0.9996943473815918
+A0A7S8MVN3	test	Long (4 C-C) scorpion toxin superfamily	Long (3 C-C) scorpion toxin superfamily	0.9989895224571228
+A0A7S8RGC8	test	Long (4 C-C) scorpion toxin superfamily	Long (3 C-C) scorpion toxin superfamily	0.9342957735061646
+A3FMN3	test	nontox	other	0.8907025456428528
+A7SRR3	test	nontox	Sea anemone type 1 potassium channel toxin family	0.9822298288345337
+A8E2V9	test	nontox	Phospholipase family	0.9985464215278625
+A8Y7P0	test	nontox	Venom Kunitz-type family	0.9959840774536133
+B5KL31	test	nontox	Venom Kunitz-type family	0.977959930896759
+B5KL37	test	nontox	Venom Kunitz-type family	0.9854710102081299
+B5KL41	test	nontox	Venom Kunitz-type family	0.9964471459388733
+B5L5M7	test	nontox	Venom Kunitz-type family	0.9919265508651733
+C0HJC1	test	nontox	Phospholipase family	0.9961828589439392
+C0HK72	test	nontox	Venom Kunitz-type family	0.9960378408432007
+C0HM26	test	nontox	Cnidaria small cysteine-rich protein (SCRiP) family	0.9808870553970337
+C1IBY0	test	Peptidase S1 family	nontox	0.9600942134857178
+C3TS07	test	other	Conotoxin family	0.9329731464385986
+C8YJG3	test	CRISP family	nontox	0.9997166991233826
+D2Y2Q6	test	nontox	Venom Kunitz-type family	0.9296607375144958
+E2E4E4	test	other	nontox	0.8361203074455261
+L0GAZ8	test	nontox	Non-disulfide-bridged peptide (NDBP) superfamily	0.9721506237983704
+O46201	test	nontox	Limacoditoxin family	0.9413536190986633
+P00621	test	nontox	Phospholipase family	0.997355580329895
+P07481	test	nontox	Venom Kunitz-type family	0.9494025707244873
+P0C7S8	test	nontox	Natriuretic, Bradykinin potentiating peptide family	0.9968581199645996
+P0DJ46	test	nontox	Venom Kunitz-type family	0.994600772857666
+P0DMF8	test	nontox	Non-disulfide-bridged peptide (NDBP) superfamily	0.9784713387489319
+P0DMJ5	test	nontox	Venom Kunitz-type family	0.9948180317878723
+P0DMZ2	test	other	Conotoxin family	0.9440029263496399
+P0DN46	test	Teretoxin family	Conotoxin family	0.8583027124404907
+P0DPT0	test	nontox	other	0.8476094007492065
+P0DPU1	test	CRISP family	nontox	0.9869258403778076
+P0DPW0	test	other	Scoloptoxin family	0.9157766103744507
+P0DQT6	test	nontox	Venom metalloproteinase (M12B) family	0.9995762705802917
+P0DQY8	test	other	Conotoxin family	0.9773688316345215
+P0DRI1	test	nontox	Insulin family	0.9949964284896851
+P0DRI9	test	other	Neurotoxin family	0.9557293057441711
+P0DRJ4	test	nontox	Cationic peptide family	0.9927263259887695
+P0DRK6	test	nontox	Natriuretic, Bradykinin potentiating peptide family	0.9999735355377197
+P0DSJ5	test	nontox	Formicidae venom family	0.9895116686820984
+P0DSM5	test	Non-disulfide-bridged peptide (NDBP) superfamily	Cationic peptide family	0.9985381364822388
+P0DUT6	test	Limacoditoxin family	nontox	0.9824405312538147
+P0DV61	test	nontox	other	0.9285582304000854
+P0DV62	test	nontox	Neurotoxin family	0.9996628761291504
+P0DXW9	test	other	nontox	0.8548659682273865
+P0DY17	test	nontox	Non-disulfide-bridged peptide (NDBP) superfamily	0.9821414947509766
+P10831	test	nontox	Venom Kunitz-type family	0.9722228646278381
+P14615	test	nontox	Phospholipase family	0.9958478212356567
+P16044	test	nontox	Venom Kunitz-type family	0.990473210811615
+P16339	test	nontox	Vasopressin/oxytocin family	0.9485827088356018
+P20249	test	nontox	Phospholipase family	0.9958192110061646
+P24293	test	nontox	Phospholipase family	0.9950518012046814
+P34966	test	nontox	Cationic peptide family	0.8096161484718323
+P47711	test	nontox	Phospholipase family	0.8263178467750549
+P48650	test	nontox	Phospholipase family	0.997647225856781
+P80163	test	other	nontox	0.8012869358062744
+P81438	test	nontox	Natriuretic, Bradykinin potentiating peptide family	0.9727284908294678
+P81464	test	nontox	Natriuretic, Bradykinin potentiating peptide family	0.9279011487960815
+P83658	test	Disintegrin family	Venom metalloproteinase (M12B) family	0.8321337699890137
+P83663	test	nontox	other	0.9130219221115112
+P84015	test	nontox	Neurotoxin family	0.8560287952423096
+P84117	test	nontox	Conotoxin family	0.9287137389183044
+P86286	test	nontox	Bradykinin-related peptide family	0.8030811548233032
+P86821	test	nontox	Non-disulfide-bridged peptide (NDBP) superfamily	0.9912987351417542
+Q06B75	test	nontox	other	0.9697014689445496
+Q172F2	test	nontox	PBP/GOBP family	0.9732444286346436
+Q1L659	test	nontox	Peptidase S1 family	0.9843548536300659
+Q3YEH1	test	Conotoxin family	nontox	0.893028974533081
+Q5DFZ7	test	nontox	other	0.9978269934654236
+Q5GQ85	test	nontox	Calycin superfamily	0.9972720742225647
+Q5MIW3	test	other	nontox	0.9965779185295105
+Q66S03	test	other	nontox	0.8894311785697937
+Q66S08	test	other	nontox	0.9869598746299744
+Q6T6S5	test	nontox	Venom Kunitz-type family	0.9791710376739502
+Q75WF2	test	other	nontox	0.9308556914329529
+Q75WG7	test	nontox	Neurotoxin family	0.9927253723144531
+Q86MA1	test	nontox	Cationic peptide family	0.9678098559379578
+Q8WQK0	test	nontox	other	0.9129565358161926
+Q8WQZ3	test	nontox	Long (3 C-C) scorpion toxin superfamily	0.9763565063476562
+Q95P88	test	nontox	Short scorpion toxin superfamily	0.974733829498291
+Q9I845	test	nontox	Phospholipase family	0.9914212822914124
+U3KRG1	test	nontox	Venom metalloproteinase (M12B) family	0.9982168078422546
+Q94424	train	nontox	Long (4 C-C) scorpion toxin superfamily	0.802333652973175
+C1JAR9	train	nontox	Phospholipase family	0.808506965637207
+P81437	train	nontox	Natriuretic, Bradykinin potentiating peptide family	0.8189190030097961
+A0A059UEE4	train	nontox	Short scorpion toxin superfamily	0.8138516545295715
+Q6YBR5	train	nontox	other	0.8184742331504822
+D3TS87	train	nontox	other	0.8122150897979736
+X5IFZ1	train	nontox	Conotoxin family	0.8168456554412842
+P80090	train	nontox	Insulin family	0.8097831606864929
+P0DSM0	train	nontox	other	0.8068444728851318
+P0DME8	train	nontox	Non-disulfide-bridged peptide (NDBP) superfamily	0.8314195275306702
+Q9XWV2	train	nontox	Phospholipase family	0.8357077836990356
+P80424	train	nontox	other	0.8248748779296875
+Q8MPZ7	train	nontox	other	0.8367010951042175
+P0CH87	train	nontox	other	0.8278435468673706
+P19399	train	nontox	other	0.8330270051956177
+P0C6A5	train	Venom metalloproteinase (M12B) family	Disintegrin family	0.8297383189201355
+P84756	train	other	Neurotoxin family	0.8236293196678162
+A0A8K1YTT4	train	nontox	Neurotoxin family	0.8278936743736267
+L0GB04	train	nontox	other	0.8439117074012756
+P31482	train	nontox	Phospholipase family	0.8521173596382141
+Q7YTY6	train	nontox	other	0.8469146490097046
+A0A0K8RJV9	train	nontox	other	0.8458441495895386
+P28504	train	nontox	other	0.844562292098999
+Q6J201	train	nontox	other	0.8573627471923828
+P0DRB9	train	nontox	Neurotoxin family	0.8413593173027039
+A8I0L8	train	nontox	Neurotoxin family	0.8544464111328125
+P04096	train	nontox	Natriuretic, Bradykinin potentiating peptide family	0.8535499572753906
+O96059	train	nontox	Cationic peptide family	0.8635970950126648
+P0CF01	train	nontox	Non-disulfide-bridged peptide (NDBP) superfamily	0.8609923720359802
+C0HK44	train	nontox	MCD family	0.8624807596206665
+P80027	train	nontox	Vasopressin/oxytocin family	0.8698237538337708
+Q8AYR5	train	nontox	Natriuretic, Bradykinin potentiating peptide family	0.8674322962760925
+P0DSJ9	train	nontox	Formicidae venom family	0.8765643835067749
+P0DMF3	train	nontox	Non-disulfide-bridged peptide (NDBP) superfamily	0.8617393970489502
+P25033	train	nontox	other	0.8753988742828369
+A0A0M3KKW3	train	nontox	other	0.8703800439834595
+P56686	train	nontox	other	0.8908275961875916
+Q7M4I6	train	nontox	Phospholipase family	0.8988682627677917
+A7X3V7	train	nontox	Venom Kunitz-type family	0.899748682975769
+Q9GQW4	train	nontox	Non-disulfide-bridged peptide (NDBP) superfamily	0.8830857276916504
+C0HL58	train	nontox	Non-disulfide-bridged peptide (NDBP) superfamily	0.8971776962280273
+A7X401	train	nontox	Snaclec family	0.8932685256004333
+O46202	train	nontox	other	0.883779764175415
+A6P331	train	nontox	Formicidae venom family	0.8951060175895691
+P0DRH9	train	nontox	Insulin family	0.8870883584022522
+C0HL84	train	nontox	MCD family	0.9061605334281921
+C0HJF6	train	nontox	other	0.9022501707077026
+P14754	train	nontox	other	0.9052744507789612
+P14423	train	nontox	Phospholipase family	0.9154626131057739
+P17726	train	nontox	Venom Kunitz-type family	0.9170485138893127
+B2ZBB8	train	nontox	Venom Kunitz-type family	0.915696918964386
+P35003	train	nontox	Peptidase S1 family	0.9198435544967651
+P84955	train	nontox	Bradykinin-related peptide family	0.9304087162017822
+P42998	train	nontox	Vasopressin/oxytocin family	0.9373778104782104
+P0DJ03	train	nontox	Non-disulfide-bridged peptide (NDBP) superfamily	0.9361433982849121
+P82417	train	nontox	other	0.9298973679542542
+Q0MWV8	train	nontox	Sea anemone type 1 potassium channel toxin family	0.9283067584037781
+Q00630	train	nontox	Calycin superfamily	0.9230349659919739
+P35042	train	nontox	Peptidase S1 family	0.9297907948493958
+C0HK45	train	nontox	other	0.9356371164321899
+P11424	train	nontox	Venom Kunitz-type family	0.9276137948036194
+P0DX33	train	nontox	MCD family	0.9527595639228821
+R4JNJ5	train	nontox	Non-disulfide-bridged peptide (NDBP) superfamily	0.9429072141647339
+P56685	train	nontox	Short scorpion toxin superfamily	0.9416898488998413
+O18496	train	nontox	Cationic peptide family	0.9540992975234985
+Q5BQX9	train	nontox	Neurotoxin family	0.948774516582489
+A0A0E3SVB8	train	nontox	Conotoxin family	0.9447624087333679
+P0DSI7	train	nontox	other	0.9420430660247803
+Q75WH5	train	nontox	Neurotoxin family	0.9538509845733643
+P16895	train	nontox	other	0.9428145885467529
+Q8T0W4	train	nontox	Venom Kunitz-type family	0.9680020213127136
+P0DQZ7	train	nontox	Formicidae venom family	0.9690293669700623
+P0DQZ9	train	nontox	MCD family	0.9663730263710022
+Q7PN86	train	nontox	PBP/GOBP family	0.9690492749214172
+A7ST80	train	nontox	Sea anemone type 1 potassium channel toxin family	0.968041718006134
+P81902	train	nontox	Venom Kunitz-type family	0.9645883440971375
+P0C1Q4	train	nontox	MCD family	0.9661363959312439
+I7GQA7	train	nontox	Phospholipase family	0.9729005098342896
+A0A348G5W1	train	nontox	Formicidae venom family	0.9750432372093201
+Q7YWB0	train	nontox	other	0.9943422079086304
+Q5Y4U5	train	nontox	Neurotoxin family	0.9927264451980591
+Q8UUI2	train	nontox	Phospholipase family	0.9950956106185913
+Q9W716	train	nontox	Three-finger toxin family	0.9999353885650635
+P81547	train	nontox	Venom Kunitz-type family	0.9892772436141968
+Q07932	train	nontox	Formicidae venom family	0.9902286529541016
+Q75S48	train	nontox	Phospholipase family	0.9942548871040344
+P00994	train	nontox	Venom Kunitz-type family	0.9853909015655518
+A9CM07	train	nontox	Formicidae venom family	0.9961082339286804

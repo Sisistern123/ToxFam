@@ -6,29 +6,29 @@ Ground truth: 9779 test proteins, 515 toxic (5.27% positive prior)
 Per-method (own scored subset):
                    n_scored  coverage  roc_auc  pr_auc     mcc  mcc_at_0.5      f1  precision  recall  threshold threshold_src
 method                                                                                                                        
-ToxFam (emb+tax)       9779    1.0000   0.9948  0.9494  0.8494      0.8874  0.8500     0.7478  0.9845     0.1955    youden@val
-EAT (1-NN ProtT5)      9779    1.0000   0.9963  0.9435  0.7467      0.8753  0.7371     0.5878  0.9883     0.4803    youden@val
-ToxinPred 3.0          9779    1.0000   0.9255  0.5720  0.5397      0.5968  0.5273     0.3798  0.8621     0.3950    youden@val
-ToxDL 2.0              9201    0.9409   0.9921  0.7976  0.8078      0.8078  0.8066     0.6879  0.9748     0.5000   default@0.5
+ToxFam (emb+tax)       9779    1.0000   0.9934  0.9582  0.8021      0.8668  0.8000     0.6765  0.9786     0.1248    youden@val
+EAT (1-NN ProtT5)      9779    1.0000   0.9944  0.9316  0.7645      0.8683  0.7595     0.6221  0.9748     0.4839    youden@val
+ToxinPred 3.0          9779    1.0000   0.9189  0.5946  0.4998      0.6029  0.4825     0.3356  0.8583     0.3750    youden@val
+ToxDL 2.0              9019    0.9223   0.9909  0.7826  0.7938      0.7938  0.7924     0.6723  0.9647     0.5000   default@0.5
 
-Common scored subset: n=9201 (477 toxic, 5.18% prior)
+Common scored subset: n=9019 (453 toxic, 5.02% prior)
                    roc_auc  pr_auc     mcc  mcc_at_0.5      f1  precision  recall
 method                                                                           
-ToxFam (emb+tax)    0.9949  0.9553  0.8630      0.8999  0.8640     0.7692  0.9853
-EAT (1-NN ProtT5)   0.9967  0.9491  0.7793      0.8813  0.7734     0.6356  0.9874
-ToxinPred 3.0       0.9217  0.5737  0.5400      0.5970  0.5285     0.3824  0.8553
-ToxDL 2.0           0.9921  0.7976  0.8078      0.8078  0.8066     0.6879  0.9748
+ToxFam (emb+tax)    0.9930  0.9586  0.8145      0.8667  0.8132     0.6972  0.9757
+EAT (1-NN ProtT5)   0.9945  0.9309  0.7860      0.8703  0.7823     0.6529  0.9757
+ToxinPred 3.0       0.9253  0.5865  0.4968      0.5967  0.4760     0.3286  0.8631
+ToxDL 2.0           0.9909  0.7826  0.7938      0.7938  0.7924     0.6723  0.9647
 
 Per-method bootstrap standard error (common subset, 2000 resamples, seed 42):
                    roc_auc_se  pr_auc_se   mcc_se  mcc_at_0.5_se
 method                                                          
-ToxFam (emb+tax)      0.00233    0.00909  0.01071        0.00983
-EAT (1-NN ProtT5)     0.00061    0.00921  0.01196        0.01132
-ToxinPred 3.0         0.00901    0.02560  0.01433        0.01727
-ToxDL 2.0             0.00089    0.02368  0.01174        0.01174
+ToxFam (emb+tax)      0.00279    0.00651  0.01199        0.01149
+EAT (1-NN ProtT5)     0.00141    0.01106  0.01239        0.01235
+ToxinPred 3.0         0.00876    0.02699  0.01456        0.01767
+ToxDL 2.0             0.00100    0.02321  0.01254        0.01254
 
 Paired bootstrap vs ToxFam (positive = ToxFam better; CI excludes 0 => significant):
                 comparison  d_roc_auc  d_roc_lo  d_roc_hi  d_pr_auc  d_pr_lo  d_pr_hi  d_mcc_at_0.5  d_mcc_lo  d_mcc_hi  n_common
-ToxFam - EAT (1-NN ProtT5)    -0.0019   -0.0060    0.0010    0.0060  -0.0081   0.0212        0.0184   -0.0034    0.0399      9201
-    ToxFam - ToxinPred 3.0     0.0734    0.0575    0.0908    0.3810   0.3338   0.4294        0.3031    0.2725    0.3352      9201
-        ToxFam - ToxDL 2.0     0.0028   -0.0023    0.0067    0.1554   0.1102   0.2014        0.0917    0.0713    0.1130      9201
+ToxFam - EAT (1-NN ProtT5)    -0.0015   -0.0072    0.0035    0.0275   0.0118   0.0461       -0.0038   -0.0279    0.0206      9019
+    ToxFam - ToxinPred 3.0     0.0676    0.0511    0.0854    0.3705   0.3217   0.4188        0.2700    0.2369    0.3039      9019
+        ToxFam - ToxDL 2.0     0.0020   -0.0048    0.0069    0.1749   0.1322   0.2188        0.0731    0.0495    0.0957      9019

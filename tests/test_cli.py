@@ -216,3 +216,68 @@ def test_version_flag():
     result = runner.invoke(app, ["--version"])
     assert result.exit_code == 0
     assert __version__ in result.output
+
+
+def test_verify_command_registered():
+    result = runner.invoke(app, ["verify", "--help"])
+    assert result.exit_code == 0
+
+
+def test_train_has_seeds_option():
+    """`train` exposes --seeds. Checked on the click params, not rendered help
+    text, which wraps by terminal width and is fragile under CI (no TTY)."""
+    from typer.main import get_command
+
+    train_cmd = get_command(app).commands["train"]
+    assert "seeds" in {p.name for p in train_cmd.params}
+
+
+def test_verify_command_has_dataset_option():
+    from typer.main import get_command
+
+    verify_cmd = get_command(app).commands["verify"]
+    assert "dataset" in {p.name for p in verify_cmd.params}
+
+
+def test_sha256_of_file_matches_hashlib(tmp_path):
+    import hashlib
+
+    from toxfam.cli import _sha256_of_file
+
+    f = tmp_path / "blob.bin"
+    f.write_bytes(b"toxfam" * 1000)
+    assert _sha256_of_file(f) == hashlib.sha256(b"toxfam" * 1000).hexdigest()
+
+
+def test_fetch_asset_digests_parses_sha256_prefix(monkeypatch):
+    """Digests are keyed by asset name with the 'sha256:' prefix stripped."""
+    import io
+    import json
+
+    from toxfam import cli
+
+    payload = {
+        "assets": [
+            {"name": "hbi_train_all.csv", "digest": "sha256:abc123"},
+            {"name": "weird.bin", "digest": "md5:deadbeef"},  # non-sha256 -> dropped
+            {"name": "no_digest.tsv"},  # missing -> dropped
+        ]
+    }
+
+    def fake_urlopen(url):
+        return io.BytesIO(json.dumps(payload).encode())
+
+    monkeypatch.setattr("urllib.request.urlopen", fake_urlopen)
+    digests = cli._fetch_asset_digests("owner/repo", "data-v2")
+    assert digests == {"hbi_train_all.csv": "abc123"}
+
+
+def test_fetch_asset_digests_empty_on_failure(monkeypatch):
+    """A network/API failure returns {} so download falls back to skip-if-exists."""
+    from toxfam import cli
+
+    def boom(url):
+        raise OSError("offline")
+
+    monkeypatch.setattr("urllib.request.urlopen", boom)
+    assert cli._fetch_asset_digests("owner/repo", "data-v2") == {}

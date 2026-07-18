@@ -155,7 +155,16 @@ def evaluate_model(
 
 def get_class_weights(
     train_dataset: ToxDataset,
+    power: float = 1.0,
 ) -> tuple[dict[str, float], torch.Tensor, dict[int, str]]:
+    """Inverse-frequency class weights, damped by ``power`` and scaled to max 1.
+
+    ``power`` tempers how hard rare classes are up-weighted:
+    ``1.0`` is raw inverse frequency, ``0.5`` its square root, ``0.0`` uniform.
+    At 1.0 the 43k-member ``nontox`` class earns ~1/6000th the weight of a
+    7-member family, which lets the loss all but ignore false toxin calls on
+    the non-toxin majority.
+    """
     encoded_col = train_dataset.label_col + "_encoded"
     class_counts = Counter(train_dataset.df[encoded_col])
     num_classes = train_dataset.num_classes
@@ -166,7 +175,8 @@ def get_class_weights(
 
     total_samples = sum(class_counts.values())
     weights_dict = {
-        encoded_to_label[c]: total_samples / class_counts[c] for c in range(num_classes)
+        encoded_to_label[c]: (total_samples / class_counts[c]) ** power
+        for c in range(num_classes)
     }
 
     max_weight = max(weights_dict.values())

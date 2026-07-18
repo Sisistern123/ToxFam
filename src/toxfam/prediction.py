@@ -28,13 +28,11 @@ import h5py
 import pandas as pd
 from rich.console import Console
 
-from toxfam.data.normalization import ensure_identifier_column
+from toxfam.data.normalization import ORGANISM_COL, ensure_identifier_column
 from toxfam.model.inference import run_topk_inference
 from toxfam.model.model_config import ModelConfig
 
 console = Console()
-
-ORGANISM_COL = "Organism (ID)"
 
 
 # ---------------------------------------------------------------------------
@@ -52,6 +50,22 @@ def _read_input(input_tsv: str | Path) -> pd.DataFrame:
             f"Found columns: {list(df.columns)}"
         )
     return df
+
+
+def _is_split_dataset(spec: str | Path) -> bool:
+    """True when ``spec`` names a dataset carved out of the train/val/test split.
+
+    Predicting on ``test_set``/``val_set`` reads the split, so the checkpoint must be
+    pinned to it. Predicting on a user-supplied TSV, or on an external dataset such as
+    ``non_metazoan``, involves no split and needs no manifest -- which is what lets the
+    Colab notebook run against a pip-installed package with no repo checkout.
+    """
+    from toxfam.data.registry import DATASETS
+
+    name = str(spec)
+    if Path(spec).exists() or name not in DATASETS:
+        return False
+    return DATASETS[name].get("source") == "training_data"
 
 
 def _resolve_input(spec: str | Path) -> tuple[pd.DataFrame, Path | None]:
@@ -177,37 +191,6 @@ def _ensure_embeddings(
     return work_h5
 
 
-def _build_tax_h5(df_pool: pd.DataFrame, work_dir: Path) -> Path:
-    """Build a per-run taxonomy H5 for ``df_pool`` from its organism IDs.
-
-    Uses the same multi-hot pipeline as ``toxfam taxonomy`` so the encoding
-    (50 TAXA, fixed order) matches what the combined model was trained on.
-
-    The pipeline emits one vector per key in its ``input_h5``, so we feed it a
-    keys-only H5 of exactly this pool's identifiers (the pipeline never reads the
-    embedding values) rather than the full shared embeddings file — keeping the
-    output scoped to the pool instead of zero-filling every other protein.
-    """
-    from toxfam.data.taxonomy import run_multi_hot_taxonomy_pipeline
-
-    tax_csv = work_dir / "tax_input.csv"
-    df_pool[["identifier", ORGANISM_COL]].to_csv(tax_csv, index=False)
-
-    pool_keys_h5 = work_dir / "tax_pool_keys.h5"
-    with h5py.File(pool_keys_h5, "w") as f:
-        for ident in df_pool["identifier"]:
-            f.create_dataset(str(ident), data=[])
-
-    tax_h5 = work_dir / "taxonomy.h5"
-    run_multi_hot_taxonomy_pipeline(
-        input_csv=tax_csv,
-        input_h5_path=pool_keys_h5,
-        output_h5_path=tax_h5,
-        id_col="identifier",
-    )
-    return tax_h5
-
-
 def _report_taxonomy_coverage(
     df_pool: pd.DataFrame, tax_h5: Path, output_path: Path
 ) -> None:
@@ -281,7 +264,9 @@ def _predict_pool(
     toxicity_only: bool,
 ) -> pd.DataFrame:
     """Run inference on one pool and attach the binary toxicity call."""
-    tax_h5 = _build_tax_h5(df_pool, work_dir) if is_combined else None
+    from toxfam.data.taxonomy import build_taxonomy_h5
+
+    tax_h5 = build_taxonomy_h5(df_pool, work_dir) if is_combined else None
     if tax_h5 is not None:
         _report_taxonomy_coverage(df_pool, tax_h5, output_path)
     preds = run_topk_inference(
@@ -326,6 +311,16 @@ def run_prediction(
     """
     model_dir = Path(model_dir)
     output = Path(output)
+
+    # test_set / val_set come from the split, so the checkpoint must be pinned to it.
+    # Any other input carries no split and needs no manifest.
+    if _is_split_dataset(input_tsv):
+        from toxfam.data.split_manifest import verify_split_provenance
+
+        verify_split_provenance(model_dir)
+        if standard_model_dir is not None:
+            verify_split_provenance(standard_model_dir)
+
     df, default_h5 = _resolve_input(input_tsv)
     if embeddings_h5 is None and default_h5 is not None:
         embeddings_h5 = default_h5

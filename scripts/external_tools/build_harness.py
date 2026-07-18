@@ -12,10 +12,13 @@ ToxFam baseline = the combined (emb+tax) model = model/model_output/combined_run
 (MultiInputMLP, tax_dim=50, 38 classes). Binary score = 1 - sum P(nontox classes),
 exactly as toxfam.evaluation.binary.compute_p_toxic.
 
-NOTE: this uses the canonical `data-v1` release split (test = 9,779 / 515 toxins),
-i.e. the manuscript's published test set. The ToxFam baseline (combined_run) is
-retrained on this split so there is no train/test leakage; all methods are scored
-on identical proteins + ground truth.
+The split comes from the git-tracked manifest (``data/splits/split_manifest.csv``)
+via ``registry.load_dataset``, never from ``training_data.csv``'s own ``Split``
+column: that CSV is a release artifact a ``download-data --force`` can replace,
+and a replacement carrying a different split would silently redefine what "test"
+means for every tool scored here. The ToxFam baseline is refused unless its
+checkpoint is stamped against that same manifest, so all methods are scored on
+identical proteins + ground truth.
 """
 
 from __future__ import annotations
@@ -29,6 +32,8 @@ import numpy as np
 import pandas as pd
 import torch
 
+from toxfam.data.registry import load_dataset
+from toxfam.data.split_manifest import manifest_sha256, verify_split_provenance
 from toxfam.evaluation.metrics import (
     NONTOXIN_LABELS,
     calculate_binary_metrics_with_scores,
@@ -39,7 +44,6 @@ from toxfam.device import get_device
 
 # ToxFam root = nearest ancestor with pyproject.toml (location-independent).
 ROOT = next(p for p in Path(__file__).resolve().parents if (p / "pyproject.toml").exists())
-TRAIN_CSV = ROOT / "data/processed/training_data.csv"
 EMB_H5 = ROOT / "data/processed/embeddings.h5"
 TAX_H5 = ROOT / "data/processed/taxonomy_vectors.h5"
 MODEL_DIR = ROOT / "model/model_output/combined_run"
@@ -115,14 +119,15 @@ def main() -> None:
     ap = argparse.ArgumentParser(description="Build the shared benchmark harness.")
     ap.add_argument(
         "--shared-only", action="store_true",
-        help="Only (re)build the shared FASTA + ground-truth labels from "
-             "training_data.csv, then exit. Does NOT need the trained model — use this "
+        help="Only (re)build the shared FASTA + ground-truth labels from the split "
+             "manifest, then exit. Does NOT need the trained model — use this "
              "to regenerate ground truth for compare.py on the committed scores.")
     args = ap.parse_args()
 
-    df = pd.read_csv(TRAIN_CSV, usecols=["identifier", "Sequence", "Protein families", "Split"])
-    test = df[df.Split == "test"].reset_index(drop=True)
-    val = df[df.Split == "val"].reset_index(drop=True)
+    # Split assignment comes from the manifest (load_dataset applies it), not from
+    # training_data.csv's own Split column.
+    test = load_dataset("test_set")
+    val = load_dataset("val_set")
 
     print("Writing shared splits:")
     write_split(test, "test")
@@ -137,6 +142,11 @@ def main() -> None:
         print("       Train it first:  uv run toxfam train configs/combined.yaml")
         print("       Shared splits were written; skipping ToxFam scoring.")
         return
+
+    # Scoring against the split: refuse a checkpoint not stamped to this manifest.
+    # (Deliberately after --shared-only: the labels above come from the manifest and
+    # are valid regardless of which checkpoint happens to be on disk.)
+    verify_split_provenance(MODEL_DIR)
 
     print(f"\nLoading ToxFam (emb+tax) from {MODEL_DIR.name} ...")
     model, mcfg, idx_to_label = load_calibrated_model(MODEL_DIR)
@@ -162,13 +172,14 @@ def main() -> None:
     out = {
         "method": "ToxFam (emb+tax)",
         "model_dir": str(MODEL_DIR.relative_to(ROOT)),
-        "snapshot": "canonical data-v1 release (test=9779)",
+        "split_manifest_sha256": manifest_sha256(),
+        "n_test": len(test),
         "optimized_threshold": thr,
         "test_default": {k: v for k, v in m_def.items() if k not in drop},
         "test_optimized": {k: v for k, v in m_opt.items() if k not in drop},
     }
     (TOXFAM / "metrics.json").write_text(json.dumps(out, indent=2))
-    print(f"\nToxFam (emb+tax) on 9,779 test (t*={thr:.3f}):")
+    print(f"\nToxFam (emb+tax) on {len(test):,} test (t*={thr:.3f}):")
     print(f"  ROC-AUC={m_def['roc_auc']:.4f}  PR-AUC={m_def['pr_auc']:.4f}  "
           f"MCC(t*)={m_opt['mcc']:.4f}  F1(t*)={m_opt['f1']:.4f}  acc(t*)={m_opt['accuracy']:.4f}")
     print(f"\nWrote: {OUT}")

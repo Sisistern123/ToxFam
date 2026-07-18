@@ -146,6 +146,26 @@ def test_run_topk_inference_contract(tmp_path, sample_h5):
     assert ((out["p_toxic"] >= 0) & (out["p_toxic"] <= 1)).all()
 
 
+def test_load_calibrated_model_does_not_need_a_split_manifest(
+    tmp_path, sample_h5, monkeypatch
+):
+    """Predicting on user proteins involves no split, and must work outside a checkout.
+
+    The Colab notebook pip-installs the package, so `get_project_root()` has nothing
+    to find. Loading a checkpoint must not reach for the manifest. The split guard
+    lives with the callers that score against a split (eval, predict test_set/val_set).
+    """
+    from toxfam.data import split_manifest as sm
+
+    model_dir = _make_model_dir(tmp_path)  # no split_provenance.json written
+    monkeypatch.setattr(sm, "splits_dir", lambda: tmp_path / "nonexistent")
+
+    out = run_topk_inference(
+        pd.DataFrame({"identifier": ["P001"]}), sample_h5, model_dir, top_k=1
+    )
+    assert list(out["identifier"]) == ["P001"]
+
+
 def test_run_topk_inference_binary_only(tmp_path, sample_h5):
     model_dir = _make_model_dir(tmp_path)
     df = pd.DataFrame({"identifier": ["P001", "P002"]})

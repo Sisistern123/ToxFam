@@ -6,7 +6,31 @@ from pathlib import Path
 
 import h5py
 import numpy as np
+import pandas as pd
 import pytest
+
+
+@pytest.fixture
+def fake_split_manifest(tmp_path, monkeypatch):
+    """Redirect the split manifest to a temp dir; call the returned writer to fill it.
+
+    Tests that build a synthetic ``training_data.csv`` need a manifest covering the
+    same identifiers, because the split is read from the manifest rather than from
+    the CSV. Returns ``write({identifier: split, ...})``.
+    """
+    from toxfam.data import split_manifest as sm
+
+    splits = tmp_path / "splits"
+    splits.mkdir()
+    monkeypatch.setattr(sm, "splits_dir", lambda: splits)
+
+    def write(mapping: dict[str, str]) -> Path:
+        pd.DataFrame(
+            {"identifier": list(mapping), "Split": list(mapping.values())}
+        ).to_csv(splits / "split_manifest.csv", index=False)
+        return splits / "split_manifest.csv"
+
+    return write
 
 
 @pytest.fixture

@@ -13,6 +13,15 @@ writes two files to ``paper/data/curation/``:
     plus empty ``verdict`` / ``assessment`` / ``assessment_note`` columns. It deliberately
     OMITS the calibrated confidence and the split, and the row order is SHUFFLED (fixed
     seed) so that nothing biases the curator toward the model.
+  * ``curation_provenance.json``       — the split manifest hash, the checkpoint's stamp,
+    and the commit, so a sheet can always answer which split its ``split`` column names.
+
+The ``split`` column is load-bearing: a confident error on a *training* protein is
+evidence that Swiss-Prot under-annotates it (the model saw the label, was optimised
+toward it, and still refuses it), whereas a confident error on a *held-out* protein has
+two explanations — bad label, or failed generalisation. Get the column wrong and the
+sheet answers neither question. So the split is read from the git-tracked manifest, and
+the run aborts unless the checkpoint was trained against that same manifest.
 
 This supersedes an ad-hoc notebook cell that produced the old test-only
 ``model_test_wrong_conf.csv`` (which used a fragile ``.iloc[series.index]``
@@ -25,15 +34,53 @@ Always prints the full count matrix (splits x {0.8, 0.9}) before writing.
 from __future__ import annotations
 
 import argparse
+import json
 from pathlib import Path
 
 import pandas as pd
 from rich.console import Console
 
+from toxfam._git import git_commit_short
 from toxfam._paths import get_project_root, processed_dir
+from toxfam.data.split_manifest import (
+    apply_manifest,
+    manifest_sha256,
+    provenance_path,
+    verify_split_provenance,
+)
 from toxfam.model.inference import run_inference
 
 console = Console()
+
+
+def _write_provenance(
+    out_dir: Path,
+    model_dir: Path,
+    splits: list[str],
+    threshold: float,
+    prefill_from: str | None = None,
+) -> None:
+    """Record which split and which checkpoint produced this sheet.
+
+    The previous sheet could not answer "which split is this row's `split` column from?".
+    It had been labelled from a training_data.csv that a later `download-data --force`
+    had replaced, so 81 rows read "test" when 18 of them were.
+    """
+    (out_dir / "curation_provenance.json").write_text(
+        json.dumps(
+            {
+                "split_manifest_sha256": manifest_sha256(),
+                "checkpoint_stamp": json.loads(provenance_path(model_dir).read_text()),
+                "model_dir": str(model_dir),
+                "splits": splits,
+                "confidence_threshold": threshold,
+                "prefilled_from": prefill_from,
+                "git_commit": git_commit_short(),
+            },
+            indent=2,
+        )
+        + "\n"
+    )
 
 
 def predictions_for_split(td: pd.DataFrame, split: str, model_dir: Path, h5: Path) -> pd.DataFrame:
@@ -56,6 +103,39 @@ def predictions_for_split(td: pd.DataFrame, split: str, model_dir: Path, h5: Pat
     return out
 
 
+def _prefill_verdicts(blind: pd.DataFrame, ce: pd.DataFrame, prior_csv: Path) -> pd.DataFrame:
+    """Carry verdicts over from an earlier curation round, by identifier.
+
+    A verdict answers one specific question — "Swiss-Prot says X, the model says Y; who
+    is right?" — so it only transfers while *both* labels are unchanged. A different
+    checkpoint can predict a different family for the same protein, and the old answer
+    would then be attached to a question nobody asked. Such rows are left blank for the
+    curator rather than carried over, and the count is printed.
+    """
+    prior = pd.read_csv(prior_csv)
+    ask = ce.set_index("identifier")[["actual_label", "predicted_label"]]
+
+    same = prior.join(ask, on="identifier", how="inner", rsuffix="_now")
+    unchanged = (
+        same["actual_label"].eq(same["actual_label_now"])
+        & same["predicted_label"].eq(same["predicted_label_now"])
+    )
+    carried = same[unchanged].set_index("identifier")
+    stale = int((~unchanged).sum())
+
+    for col in ("verdict", "assessment", "assessment_note"):
+        filled = blind["identifier"].map(carried[col])
+        blind[col] = filled.fillna("")
+
+    console.print(
+        f"[yellow]pre-filled[/] {len(carried)} verdict(s) from {prior_csv.name} "
+        f"({len(blind) - len(carried)} left for the curator)"
+        + (f"; [red]{stale} refused[/] — the label or the prediction changed since"
+           if stale else "")
+    )
+    return blind
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--splits", default="train,val,test",
@@ -69,6 +149,11 @@ def main() -> None:
                          "(test+val kept in full); e.g. 0.3333 for one third")
     ap.add_argument("--train-subsample-bins", type=int, default=10,
                     help="number of equal-width confidence bins for stratified train subsampling")
+    ap.add_argument("--prefill-from", default=None,
+                    help="CSV of verdicts from an earlier curation round; rows whose "
+                         "identifier reappears here are pre-filled so the curator does "
+                         "not re-answer them (see _prefill_verdicts for when a verdict "
+                         "is refused)")
     ap.add_argument("--model-dir", default=None)
     ap.add_argument("--out-dir", default=None)
     args = ap.parse_args()
@@ -76,11 +161,22 @@ def main() -> None:
     root = get_project_root()
     model_dir = Path(args.model_dir) if args.model_dir else root / "model" / "model_output" / "combined_run"
     h5 = processed_dir() / "embeddings.h5"
+
+    # The sheet's `split` column is its whole point: it separates "the model was trained
+    # on this protein" (evidence of under-annotation) from "the model never saw it"
+    # (evidence of generalisation). Two things have to hold for that column to mean
+    # anything, and neither used to:
+    #   1. the split must come from the manifest, not from training_data.csv's own Split
+    #      column, which `download-data --force` can replace;
+    #   2. the checkpoint must have been trained against that same manifest.
+    # Check before creating anything, so a refused run leaves no directory behind.
+    verify_split_provenance(model_dir)
+
     out_dir = Path(args.out_dir) if args.out_dir else root / "paper" / "data" / "curation"
     out_dir.mkdir(parents=True, exist_ok=True)
 
     splits = [s.strip() for s in args.splits.split(",") if s.strip()]
-    td = pd.read_csv(processed_dir() / "training_data.csv")
+    td = apply_manifest(pd.read_csv(processed_dir() / "training_data.csv"))
 
     frames = []
     for s in splits:
@@ -126,14 +222,19 @@ def main() -> None:
                               "predicted_label": "model_predicted_family"}))
     for c in ("verdict", "assessment", "assessment_note"):
         blind[c] = ""
+    if args.prefill_from:
+        blind = _prefill_verdicts(blind, ce, Path(args.prefill_from))
     blind = blind.sample(frac=1.0, random_state=args.seed).reset_index(drop=True)
     blind.insert(0, "curation_id", [f"CE{i + 1:03d}" for i in range(len(blind))])
     blind.to_csv(out_dir / "confident_errors_to_curate.tsv", sep="\t", index=False)
 
+    _write_provenance(out_dir, model_dir, splits, args.threshold, args.prefill_from)
+
     console.print(
         f"\n[green]wrote[/] {len(ce)} confident errors (conf >= {args.threshold}, "
         f"splits={'+'.join(splits)}) -> {out_dir}/confident_errors_to_curate.tsv (blind) "
-        f"+ confident_errors_key.tsv (internal)")
+        f"+ confident_errors_key.tsv (internal) "
+        f"+ curation_provenance.json (split manifest {manifest_sha256()[:12]})")
 
 
 if __name__ == "__main__":

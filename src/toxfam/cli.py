@@ -85,7 +85,7 @@ class EatMetric(str, Enum):
 
 
 GITHUB_REPO = "Sisistern123/ToxFam"
-RELEASE_TAG = "data-v1"
+RELEASE_TAG = "data-v2"
 
 _RAW = "raw"
 _PROCESSED = "processed"
@@ -103,6 +103,42 @@ DATA_ASSETS: list[tuple[str, str, str, str]] = [
     ("sp6_cache.zip", _INTERMEDIATE, "sp6", "sp6/sp6_cache.json"),
     ("evaluation_data.zip", _EVALUATION, ".", "non_metazoan/non_metazoan.tsv"),
 ]
+
+
+def _fetch_asset_digests(repo: str, tag: str) -> dict[str, str]:
+    """Map release asset name -> sha256 hex digest, via the GitHub REST API.
+
+    Lets ``download-data`` skip a local file only when its bytes match the release,
+    and refresh it otherwise — so a stale local copy (e.g. an ``hbi_train_all``
+    left from an earlier split) can never shadow the correct released one. Returns
+    an empty dict on any failure (offline, rate limit): callers then fall back to
+    skip-if-exists rather than block the download.
+    """
+    import json
+    import urllib.request
+
+    url = f"https://api.github.com/repos/{repo}/releases/tags/{tag}"
+    try:
+        with urllib.request.urlopen(url) as resp:
+            data = json.load(resp)
+    except Exception:
+        return {}
+    digests: dict[str, str] = {}
+    for asset in data.get("assets", []):
+        digest = asset.get("digest", "")
+        if digest.startswith("sha256:"):
+            digests[asset["name"]] = digest.split(":", 1)[1]
+    return digests
+
+
+def _sha256_of_file(path: Path) -> str:
+    import hashlib
+
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(1024 * 1024), b""):
+            h.update(chunk)
+    return h.hexdigest()
 
 
 def _download_with_progress(url: str, dest: Path, label: str) -> None:
@@ -146,8 +182,11 @@ def download_data(
     Fetches UniProt TSVs (data/raw/), training splits and ProtT5 embeddings
     (data/processed/), and the SignalP6 per-sequence cache
     (data/intermediate/sp6/). Taxonomy vectors are not included — regenerate
-    them with `toxfam taxonomy`. Existing files are skipped unless --force
-    is set.
+    them with `toxfam taxonomy`. An existing local file is skipped only when its
+    bytes match the release's sha256 digest; if they differ (a stale copy from an
+    earlier split, a truncated download) it is refreshed, so a stale file can
+    never shadow the correct release. --force re-downloads everything. (Content
+    correctness for the current split is a separate concern — see `toxfam verify`.)
     """
     import os
     import tempfile
@@ -168,14 +207,32 @@ def download_data(
     }
     base_url = f"https://github.com/{GITHUB_REPO}/releases/download/{tag}"
 
+    # Skip a local file only when its bytes match the release digest; refresh it
+    # otherwise. This is what stops a stale local copy (an hbi_train_all from an
+    # earlier split, a truncated download) from shadowing the correct release
+    # forever. Zip assets are extracted, so they have no single-file digest to
+    # compare and keep the plain skip-if-exists marker. Empty on offline/failure
+    # -> fall back to skip-if-exists.
+    digests: dict[str, str] = {} if force else _fetch_asset_digests(GITHUB_REPO, tag)
+
     for asset_name, dir_key, rel_path, skip_file in DATA_ASSETS:
         target_dir = dirs[dir_key]
         skip_path = target_dir / skip_file
         url = f"{base_url}/{asset_name}"
 
         if skip_path.exists() and not force:
-            console.print(f"  skip {rel_path} (exists)")
-            continue
+            expected = digests.get(asset_name)
+            if asset_name.endswith(".zip") or expected is None:
+                # No comparable digest (extracted archive, or metadata unavailable):
+                # preserve the original skip-if-exists behaviour.
+                console.print(f"  skip {rel_path} (exists)")
+                continue
+            if _sha256_of_file(skip_path) == expected:
+                console.print(f"  skip {rel_path} (up to date)")
+                continue
+            console.print(
+                f"  [yellow]refresh {rel_path} — local differs from release[/]"
+            )
 
         try:
             if asset_name.endswith(".zip"):
@@ -205,7 +262,45 @@ def download_data(
             err_console.print(f"  FAILED: {e}", style="red")
             raise typer.Exit(code=1)
 
+    _verify_training_csv_against_manifest(processed_dir() / "training_data.csv")
     console.print("Done.")
+
+
+def _verify_training_csv_against_manifest(training_csv: Path) -> None:
+    """Check the downloaded release CSV describes the proteins the manifest pins.
+
+    The split itself is always read from the git-tracked manifest, so a release CSV
+    cannot redefine it. But a CSV describing a *different protein set* means the
+    release and the checkout disagree about the dataset, and every downstream
+    command would fail later and less clearly than here.
+    """
+    import pandas as pd
+
+    from toxfam.data.split_manifest import SplitManifestError, load_manifest
+
+    if not training_csv.exists():
+        return
+    try:
+        manifest_ids = set(load_manifest()["identifier"])
+    except SplitManifestError as e:
+        err_console.print(f"  [yellow]Could not verify split manifest: {e}[/]")
+        return
+
+    csv_ids = set(pd.read_csv(training_csv, usecols=["identifier"])["identifier"])
+    if csv_ids == manifest_ids:
+        return
+
+    err_console.print(
+        f"  [red]{training_csv.name} does not match data/splits/split_manifest.csv[/]\n"
+        f"    release CSV: {len(csv_ids)} proteins\n"
+        f"    manifest:    {len(manifest_ids)} proteins\n"
+        f"    only in CSV: {len(csv_ids - manifest_ids)}, "
+        f"only in manifest: {len(manifest_ids - csv_ids)}\n"
+        "  The data release and this checkout describe different protein sets. "
+        "Check out the commit matching the release, or re-run 'toxfam preprocess'.",
+        style="red",
+    )
+    raise typer.Exit(code=1)
 
 
 # ---------- Step 1: toxfam preprocess ----------
@@ -374,6 +469,15 @@ def train(
             readable=True,
         ),
     ],
+    seeds: Annotated[
+        int,
+        typer.Option(
+            "--seeds",
+            help="Train this many seeds and promote the best-on-val as canonical. "
+            "1 (default) is a plain single-seed run. Writes seeds_summary.json.",
+            min=1,
+        ),
+    ] = 1,
 ) -> None:
     """Train a toxin family classifier from a YAML config file.
 
@@ -384,12 +488,17 @@ def train(
     scaling calibration on the validation set. Outputs the best model,
     calibrated model, metrics JSON, predictions CSV, and plots to the
     configured output directory.
+
+    With --seeds N>1, trains N models on different seeds, promotes the one with
+    the highest validation MCC to the canonical output directory, and records
+    per-seed spread in seeds_summary.json — so a single lucky/unlucky seed can no
+    longer set the headline (run-to-run sd is ~0.03).
     """
     from toxfam.config import TrainConfig
-    from toxfam.training.orchestrator import run_training
+    from toxfam.training.orchestrator import run_multiseed_training
 
     cfg = TrainConfig.from_yaml(config)
-    run_training(cfg)
+    run_multiseed_training(cfg, n_seeds=seeds)
 
 
 # ---------- toxfam predict ----------
@@ -605,6 +714,44 @@ def plot_taxonomy() -> None:
     from toxfam.visualization.taxonomy_sunburst import main as _main
 
     _main()
+
+
+@app.command("verify")
+def verify(
+    dataset: Annotated[
+        Optional[str],
+        typer.Option(help="Limit the benchmark scan to one dataset (e.g. test_set)."),
+    ] = None,
+) -> None:
+    """Check the whole pipeline is consistent with the pinned split manifest.
+
+    Verifies that every split-derived artifact (embeddings, taxonomy, the HBI
+    reference, benchmark predictions) was built against the manifest on disk, and
+    that the content invariants hold (no HBI reference leakage, embeddings cover
+    the manifest). Exits non-zero if anything is stale — run this before trusting
+    any benchmark number or regenerating figures.
+    """
+    from rich.table import Table
+
+    from toxfam.data.verify import has_failures, run_checks
+
+    rows = run_checks(dataset)
+    table = Table(title="Pipeline verification", show_lines=False)
+    table.add_column("check", style="bold")
+    table.add_column("status")
+    table.add_column("detail")
+    glyph = {"ok": "[green]✓ ok[/]", "fail": "[red]✗ FAIL[/]", "skip": "[dim]– skip[/]"}
+    for r in rows:
+        table.add_row(r.name, glyph[r.status], r.detail)
+    console.print(table)
+
+    if has_failures(rows):
+        err_console.print(
+            "\n[bold red]Pipeline is NOT consistent with the split manifest.[/] "
+            "Regenerate the flagged artifacts before trusting any number."
+        )
+        raise typer.Exit(code=1)
+    console.print("\n[bold green]All checks passed.[/] Pipeline is consistent.")
 
 
 def main():

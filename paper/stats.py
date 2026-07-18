@@ -509,20 +509,171 @@ def binary_reliability(
             "bin_proportion": props, "ece": float(ece)}
 
 
-def adjudication_summary(csv_path: str | Path) -> dict:
-    """Summarize Ivan's confident-error adjudication CSV for Figure 3 Panel B."""
-    df = pd.read_csv(csv_path)
-    required = {"identifier", "verdict", "actual_label", "assessment", "assessment_category"}
+def load_curated_verdicts(curated_path: str | Path, key_path: str | Path) -> pd.DataFrame:
+    """Join the returned curation sheet to its un-blinding key.
+
+    The sheet is deliberately blind — it carries no ``split`` or ``confidence``, so a
+    curator cannot be swayed by either. The key restores both. Joining in one place
+    keeps the figure and the manuscript numbers reading the same frame.
+    """
+    df = pd.read_csv(curated_path, sep="\t")
+    key = pd.read_csv(key_path, sep="\t")
+    required = {"identifier", "swissprot_side", "verdict", "assessment"}
     missing = required - set(df.columns)
     if missing:
-        raise ValueError(f"adjudication CSV missing required columns: {sorted(missing)}")
-    gaps = df[(df["actual_label"].fillna("").str.lower().isin(NONTOXIN_LABELS))
-              & (df["verdict"].fillna("").str.lower() == "tox")]
+        raise ValueError(f"curated sheet missing required columns: {sorted(missing)}")
+    key_required = {"identifier", "split", "actual_label", "confidence"}
+    missing = key_required - set(key.columns)
+    if missing:
+        raise ValueError(f"curation key missing required columns: {sorted(missing)}")
+
+    unanswered = int(df["verdict"].isna().sum())
+    if unanswered:
+        raise ValueError(
+            f"{unanswered} of {len(df)} rows have no verdict. The sheet is only "
+            "usable once curation is complete."
+        )
+
+    merged = df.merge(key, on="identifier", how="left", validate="one_to_one")
+    if merged["split"].isna().any():
+        orphans = merged.loc[merged["split"].isna(), "identifier"].tolist()[:5]
+        raise ValueError(
+            f"{merged['split'].isna().sum()} curated protein(s) are absent from the "
+            f"key (e.g. {orphans}). Sheet and key disagree — regenerate both."
+        )
+    merged["assessment"] = merged["assessment"].str.strip().str.lower()
+    merged["verdict"] = merged["verdict"].str.strip().str.lower()
+    return merged
+
+
+def curation_summary(curated_path: str | Path, key_path: str | Path) -> dict:
+    """Summarise the expert verdicts on the model's confident errors.
+
+    Supersedes the earlier n=63 adjudication, which was judged against a split since
+    shown to be contaminated. ``n_annotation_gaps`` counts proteins SwissProt files as
+    non-toxin that the curator confirmed *are* toxins — the model was right and the
+    database is incomplete, so these are not errors at all.
+    """
+    df = load_curated_verdicts(curated_path, key_path)
+    gaps = df[
+        df["actual_label"].fillna("").str.lower().isin(NONTOXIN_LABELS)
+        & df["verdict"].eq("tox")
+    ]
+    fps = df[df["verdict"].eq("nontox")]
     return {
         "n": int(len(df)),
-        "assessment": dict(Counter(df["assessment"].fillna("unknown").str.strip())),
-        "assessment_category": dict(Counter(df["assessment_category"].fillna("unknown").str.strip())),
-        "verdict": dict(Counter(df["verdict"].fillna("unknown").str.strip())),
+        "assessment": dict(Counter(df["assessment"])),
+        "verdict": dict(Counter(df["verdict"])),
+        "fp_category": dict(Counter(fps["fp_category"].fillna("unknown").str.strip()))
+        if "fp_category" in df.columns
+        else {},
+        "by_split": dict(Counter(df["split"])),
         "n_annotation_gaps": int(len(gaps)),
         "annotation_gap_ids": gaps["identifier"].tolist(),
+    }
+
+
+# ---------------------------------------------------------------------------
+# Generalisation beyond the reviewed metazoan training distribution.
+#
+# Both sets are scored with `toxfam predict` (not `eval`), because neither is a
+# labelled benchmark: non_metazoan has no non-toxins, and unreviewed is TrEMBL, whose
+# family labels are auto-assigned. The numbers below are therefore descriptive, and the
+# figures that render them are supplementary.
+# ---------------------------------------------------------------------------
+
+
+def nonmetazoan_toxicity_recall(preds: pd.DataFrame, *, threshold: float = 0.5) -> dict:
+    """Recall of the combined model on the non-metazoan set.
+
+    Every entry is a reviewed KW-0800 toxin, so every row is a true positive and recall
+    is the *only* measurable quantity — specificity would need a non-metazoan non-toxin
+    set, which does not exist. Reported alongside the median P(toxic) because a recall
+    figure alone hides whether the misses are near-misses or confident rejections.
+    """
+    p = preds["p_toxic"].astype(float)
+    return {
+        "n": int(len(p)),
+        "threshold": float(threshold),
+        "median_p_toxic": float(p.median()),
+        "recall": float((p >= threshold).mean()),
+        "n_flagged": int((p >= threshold).sum()),
+    }
+
+
+def _collapse_to_vocab(families: pd.Series, vocab: set[str]) -> pd.DataFrame:
+    """Normalize raw UniProt family strings, then collapse to the model's label space.
+
+    Mirrors preprocessing: normalize_protein_families() first (conotoxin fixes + regex
+    consolidation), with min_count=1 so the *dataset-relative* frequency collapse is
+    disabled — the model's fixed vocabulary decides what "other" means here, not how
+    often a family happens to occur in this particular set. Unannotated entries stay NA
+    rather than becoming "other": "no label" and "a label the model cannot name" are
+    different facts and the coverage panel counts them separately.
+    """
+    from toxfam.data.normalization import normalize_protein_families
+
+    norm = normalize_protein_families(
+        families.rename("Protein families").to_frame(), column="Protein families", min_count=1
+    )["Protein families"]
+    norm = norm.where(families.notna(), other=pd.NA)
+    collapsed = norm.where(norm.isin(vocab) | norm.isna(), other="other")
+    return pd.DataFrame({"normalized": norm, "collapsed": collapsed})
+
+
+def unreviewed_annotation_summary(
+    preds: pd.DataFrame, families: pd.Series, *, vocab: set[str], top_k: int = 3
+) -> dict:
+    """Annotation coverage + top-k agreement on the unreviewed (TrEMBL) set.
+
+    ``families`` is the raw UniProt "Protein families" column aligned to ``preds`` by
+    identifier. Two distinct questions, deliberately kept apart:
+
+    * coverage — how many entries carry no UniProt family at all, i.e. where the model
+      is filling a gap rather than corroborating a label;
+    * agreement — where UniProt *does* carry a family the model's vocabulary can express,
+      how often is it the top-1 pick, and how often does it appear anywhere in the top-k.
+
+    Agreement is computed only over entries whose collapsed family is a *specific* family:
+    "other" and "nontox" are excluded, since agreeing with a catch-all class says nothing
+    about whether the model named the right family.
+    """
+    fam = _collapse_to_vocab(families, vocab)
+    n = int(len(preds))
+    n_unannotated = int(fam["normalized"].isna().sum())
+    n_other = int((fam["collapsed"] == "other").sum())
+
+    specific = fam["collapsed"].notna() & ~fam["collapsed"].isin(["other", "nontox"])
+    comparable = preds.loc[specific]
+    target = fam.loc[specific, "collapsed"]
+
+    cols = [f"pred_{i}" for i in range(1, top_k + 1)]
+    ranks = np.zeros(len(comparable), dtype=int)  # 0 == not in top-k
+    for i, col in enumerate(cols, start=1):
+        hit = (comparable[col].values == target.values) & (ranks == 0)
+        ranks[hit] = i
+
+    n_cmp = int(len(comparable))
+    # Top pick for the entries with no UniProt family at all: how often the model
+    # proposes a real family rather than "other"/"nontox" where no label exists.
+    unann_top1 = preds.loc[fam["normalized"].isna(), "pred_1"]
+    return {
+        "n": n,
+        "n_annotated": n - n_unannotated,
+        "n_unannotated": n_unannotated,
+        "frac_unannotated": (n_unannotated / n) if n else float("nan"),
+        "n_out_of_vocab": n_other,
+        "n_out_of_vocab_families": int(
+            fam.loc[fam["collapsed"] == "other", "normalized"].nunique()
+        ),
+        "n_comparable": n_cmp,
+        "rank_counts": {
+            **{f"top_{i}": int((ranks == i).sum()) for i in range(1, top_k + 1)},
+            "not_in_top_k": int((ranks == 0).sum()),
+        },
+        "top_1": float((ranks == 1).mean()) if n_cmp else float("nan"),
+        "top_k": float((ranks > 0).mean()) if n_cmp else float("nan"),
+        "n_unannotated_given_specific_family": int(
+            (~unann_top1.isin(["other", "nontox"])).sum()
+        ),
     }

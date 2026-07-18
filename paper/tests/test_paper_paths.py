@@ -15,10 +15,12 @@ def test_figures_output_dir_layout():
     assert out.parent.parent == _paths.paper_root()
 
 
-def test_adjudication_csv_lives_in_paper_data():
-    csv = _paths.adjudication_csv()
-    assert csv.parent == _paths.paper_data_dir()
-    assert csv.name == "model_test_wrong_conf_annotated.csv"
+def test_curation_files_live_in_paper_data_curation():
+    curated, key = _paths.curated_verdicts_tsv(), _paths.curation_key_tsv()
+    assert curated.parent == _paths.curation_dir() == _paths.paper_data_dir() / "curation"
+    assert curated.name == "confident_errors_curated.tsv"
+    assert key.parent == _paths.curation_dir()
+    assert key.name == "confident_errors_key.tsv"
 
 
 def test_manuscript_tex_target_respects_env_override(monkeypatch, tmp_path):

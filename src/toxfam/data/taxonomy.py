@@ -28,6 +28,8 @@ from rich.progress import (
     TextColumn,
 )
 
+from toxfam.data.normalization import ORGANISM_COL
+
 logger = logging.getLogger(__name__)
 console = Console()
 
@@ -384,3 +386,41 @@ def run_multi_hot_taxonomy_pipeline(
             console.print(f"  First 10 unmatched IDs: {unmatched_ids[:10]}")
 
     console.print(f"Output: [cyan]{output_h5_path}[/]")
+
+
+def build_taxonomy_h5(
+    df: pd.DataFrame,
+    work_dir: str | Path,
+    *,
+    id_col: str = "identifier",
+) -> Path:
+    """Build a taxonomy H5 covering exactly the proteins in ``df``.
+
+    Shared by ``toxfam predict`` and ``toxfam eval model`` so a combined
+    (two-branch) model is fed real taxonomy vectors for *any* dataset, not only the
+    training proteins. Feeding it the training ``taxonomy_vectors.h5`` instead makes
+    every out-of-training protein fall back to a zero vector, silently evaluating a
+    taxonomy-ablated model.
+
+    The multi-hot pipeline emits one vector per key of ``input_h5``, so it is given a
+    keys-only H5 of exactly these identifiers (values are never read).
+    """
+    work_dir = Path(work_dir)
+    work_dir.mkdir(parents=True, exist_ok=True)
+
+    tax_csv = work_dir / "tax_input.csv"
+    df[[id_col, ORGANISM_COL]].to_csv(tax_csv, index=False)
+
+    keys_h5 = work_dir / "tax_pool_keys.h5"
+    with h5py.File(keys_h5, "w") as f:
+        for ident in df[id_col]:
+            f.create_dataset(str(ident), data=[])
+
+    out_h5 = work_dir / "taxonomy.h5"
+    run_multi_hot_taxonomy_pipeline(
+        input_csv=tax_csv,
+        input_h5_path=keys_h5,
+        output_h5_path=out_h5,
+        id_col=id_col,
+    )
+    return out_h5

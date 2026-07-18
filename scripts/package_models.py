@@ -25,17 +25,23 @@ Requires the `gh` CLI (https://cli.github.com) to be installed and authenticated
 from __future__ import annotations
 
 import argparse
-import shutil
-import subprocess
 import sys
 import tempfile
 import zipfile
 from pathlib import Path
 
+# Sibling import: works both when run as `uv run scripts/package_models.py` and when
+# the file is loaded by path (importlib), which does not put scripts/ on sys.path.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from _gh_release import (  # noqa: E402
+    add_release_args,
+    create_release,
+    guard_existing_tag,
+)
+
 ROOT = Path(__file__).resolve().parent.parent
 MODEL_OUTPUT = ROOT / "model" / "model_output"
 
-REPO = "Sisistern123/ToxFam"
 DEFAULT_TAG = "models-v1"
 
 # Runs to bundle and the per-run files inference needs.
@@ -45,6 +51,9 @@ KEEP_FILES = (
     "class_indices.json",
     "config.yaml",
     "models/best_model_calibrated.pt",
+    # Records the split manifest the checkpoint was calibrated against. `eval` and
+    # `predict test_set/val_set` refuse a checkpoint without it.
+    "models/split_provenance.json",
 )
 
 
@@ -61,44 +70,6 @@ def build_zip(dest: Path, runs: tuple[str, ...] = RUNS) -> None:
                 zf.write(src, f"{run}/{rel}")
     size_mb = dest.stat().st_size / 1e6
     print(f"  built {dest.name} ({size_mb:.2f} MB)")
-
-
-def upload(tag: str, zip_path: Path) -> None:
-    """Recreate the release at *tag* with *zip_path* as its only asset."""
-    try:
-        print(f"  deleting old release '{tag}' (if any) ...")
-        subprocess.run(
-            ["gh", "release", "delete", tag, "--yes", "--cleanup-tag"],
-            capture_output=True,
-        )
-        print(f"  creating release '{tag}' ...")
-        subprocess.run(
-            [
-                "gh",
-                "release",
-                "create",
-                tag,
-                str(zip_path),
-                "--repo",
-                REPO,
-                "--title",
-                "Models v1",
-                "--notes",
-                "Trained ToxFam models (standard + combined) for the Colab "
-                "prediction notebook. Slimmed to inference-required files.",
-            ],
-            check=True,
-        )
-        print("Done.")
-    except FileNotFoundError:
-        print(
-            "ERROR: `gh` CLI not found. Install from https://cli.github.com",
-            file=sys.stderr,
-        )
-        sys.exit(1)
-    except subprocess.CalledProcessError as e:
-        print(f"FAILED: {e}", file=sys.stderr)
-        sys.exit(1)
 
 
 def main() -> None:
@@ -119,6 +90,11 @@ def main() -> None:
         action="store_true",
         help="only build models.zip locally, do not touch the GitHub release",
     )
+    add_release_args(
+        parser,
+        notes_help="markdown file with the release notes "
+        "(metrics, split manifest hash)",
+    )
     parser.add_argument(
         "-o",
         "--output",
@@ -137,13 +113,38 @@ def main() -> None:
         print(f"models.zip written to {dest}")
         return
 
-    tmp_dir = Path(tempfile.mkdtemp())
-    try:
-        zip_path = tmp_dir / "models.zip"
+    notes = (
+        args.notes_file.read_text()
+        if args.notes_file
+        else (
+            "Trained ToxFam models (standard + combined) for the Colab "
+            "prediction notebook. Slimmed to inference-required files."
+        )
+    )
+
+    tag: str = args.tag
+    next_tag = (
+        f"{tag[:-1]}{int(tag[-1]) + 1}" if tag[-1:].isdigit() else "a new version"
+    )
+    exists = guard_existing_tag(
+        tag,
+        replace=args.replace,
+        remediation=f"Publish new artifacts under a new tag (e.g. {next_tag})",
+    )
+
+    with tempfile.TemporaryDirectory() as tmp:
+        zip_path = Path(tmp) / "models.zip"
         build_zip(zip_path, runs)
-        upload(args.tag, zip_path)
-    finally:
-        shutil.rmtree(tmp_dir, ignore_errors=True)
+        create_release(
+            tag,
+            [zip_path],
+            title=f"Models {tag.removeprefix('models-')}",
+            notes=notes,
+            exists=exists,
+            replace=args.replace,
+            prerelease=args.prerelease,
+            target=args.target,
+        )
 
 
 if __name__ == "__main__":
