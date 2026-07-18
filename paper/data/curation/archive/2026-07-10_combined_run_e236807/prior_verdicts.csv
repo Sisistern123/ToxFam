@@ -1,0 +1,256 @@
+identifier,verdict,assessment,assessment_note,fp_category,actual_label,predicted_label
+Q6J201,nontox,incorrect,"Jellyfish serpin (jellypin), a protease inhibitor with no venom or nematocyst evidence in UniProt; 'other' = toxin-of-unmodeled-family, so this is a false-positive toxin call. Lower confidence: Cyanea tentacle secretions are venomous, so recruitment cannot be fully excluded.",endogenous_protease_inhibitor,nontox,other
+B8XH44,tox,correct,"Scorpion venom-gland potassium channel toxin alpha-KTx 27.1; short scorpion toxin superfamily is exactly right. The nontox ground truth is a keyword gap, not a model error.",,nontox,Short scorpion toxin superfamily
+Q9W4Q9,nontox,incorrect,"Fly endogenous insulin-like peptide 7 (InR ligand); the insulin family is venom-recruited in cone snails, but this is the physiological hormone -> false-positive toxin call.",endogenous_hormone,nontox,Insulin family
+A7X3V7,tox,correct,Green-racer venom-gland Kunitz-type inhibitor (kunitoxin-Phi1); genuine venom Kunitz family member.,,nontox,Venom Kunitz-type family
+P0DPW0,tox,partial,"Centipede venom-gland scutigerotoxin; true family (scutigerotoxin-02) is unmodeled so the label is 'other', and the model's Scoloptoxin call is the adjacent centipede-venom family. Venom-correct, family approximate.",,other,Scoloptoxin family
+L0GB04,tox,correct,"Scorpion venom-gland La1-like peptide; the La1-like family is unmodeled, so 'other' is the correct tox call.",,nontox,other
+P25033,nontox,incorrect,Moth hemolymph immune Ig protein — clear non-toxin; 'other' = toxin-unmodeled-family -> false-positive toxin call.,endogenous_immune_other,nontox,other
+Q94424,tox,partial,"Cat-flea salivary antigen 1 / allergen (blood-feeding secretion); the long (4 C-C) scorpion NaTx call is spurious. Secretion-context correct, family wrong (lower confidence on the tox call: no host-disabling activity is documented).",,nontox,Long (4 C-C) scorpion toxin superfamily
+C0HJY9,tox,partial,"Ant venom-gland poneratoxin (poneritoxin-Ae1 family, unmodeled so label is 'other'); poneratoxin genuinely is a neurotoxin, so the call is venom-correct but the family is approximate.",,other,Neurotoxin family
+P0DSJ1,tox,correct,"Ant venom-gland ponericin (ponericin-G family); family unmodeled, so 'other' is the correct tox call.",,nontox,other
+P0CH87,tox,correct,"Hornet venom-gland phospholipase A1 (allergen, hemolytic); the lipase/AB-hydrolase venom PLA1 family is unmodeled, so 'other' is the correct tox call.",,nontox,other
+P0DJ03,tox,correct,Scorpion venom-gland peptide Hp1035; NDBP superfamily is exactly right.,,nontox,Non-disulfide-bridged peptide (NDBP) superfamily
+R4JNJ5,tox,correct,Scorpion venom-gland pantinin-1; NDBP superfamily is exactly right.,,nontox,Non-disulfide-bridged peptide (NDBP) superfamily
+P17726,tox,correct,"Soft-tick anticoagulant peptide TAP (Kunitz fold, tight-binding host factor Xa inhibitor); a blood-feeding anti-hemostatic, and venom-Kunitz is the right family. This is the entry the previous model missed.",,nontox,Venom Kunitz-type family
+P24293,tox,correct,Leaf-nosed viper venom PLA2 (group II); genuine venom family member.,,nontox,Phospholipase family
+Q6T6T5,tox,correct,Gaboon-viper venom Kunitz-type inhibitor (bitisilin); genuine venom family member.,,nontox,Venom Kunitz-type family
+Q8AYR5,nontox,incorrect,Medaka endogenous C-type natriuretic peptide (brain and spinal cord); right family but not venom -> false-positive toxin call. Same pattern as the seed row CE132.,endogenous_hormone,nontox,"Natriuretic, Bradykinin potentiating peptide family"
+D5J9S0,tox,incorrect,Krait venom-gland natriuretic peptide (genuine venom toxin); model called nontox -> false negative.,,"Natriuretic, Bradykinin potentiating peptide family",nontox
+B5L5M7,tox,correct,Copperhead snake Kunitz/BPTI-like venom toxin; genuine venom Kunitz family member.,,nontox,Venom Kunitz-type family
+P0C8L2,tox,correct,Scorpion venom-gland potassium channel toxin alpha-KTx 13.4 (blocks Shaker B); short scorpion toxin superfamily is exactly right.,,nontox,Short scorpion toxin superfamily
+P0DSI7,tox,correct,"Ant venom-gland ponericin Pa I1 (ponericin-G family); family unmodeled, so 'other' is the correct tox call.",,nontox,other
+H2A0N1,nontox,incorrect,"Pearl-mussel shell-matrix Kunitz inhibitor (prismatic layer, biomineralization), not venom; Kunitz fold drove the venom-Kunitz call -> false-positive.",structural,nontox,Venom Kunitz-type family
+P0DRI1,nontox,incorrect,"Sea-anemone endogenous insulin-like peptide (glucose metabolism hormone); insulin is venom-recruited in cone snails, but this is the physiological hormone -> false-positive.",endogenous_hormone,nontox,Insulin family
+Q3YEH1,tox,incorrect,Cone-snail venom-duct conotoxin (T superfamily); model called nontox -> false negative.,,Conotoxin family,nontox
+P0DV70,tox,correct,"Wolf-spider venom lycosin-I; UniProt places it in the cationic peptide 04 (cupiennin) family, so the cationic-peptide call is exactly right.",,nontox,Cationic peptide family
+P0DSJ5,tox,correct,Bulldog-ant venom-gland myrmeciitoxin (cytolytic on DRG neurons); Formicidae venom family is exactly right.,,nontox,Formicidae venom family
+Q75S48,tox,correct,Malayan krait venom-gland PLA2 (group I); genuine venom family member.,,nontox,Phospholipase family
+P0C1Q4,tox,correct,Wasp venom-gland polybia-mastoparan-I; MCD/mastoparan family is exactly right.,,nontox,MCD family
+C0HKB9,tox,correct,"Coral-snake venom-gland PLA2 (group I, myotoxic); genuine venom family member.",,nontox,Phospholipase family
+Q95P88,tox,partial,"Scorpion venom-gland defensin-like peptide TXKs2 (invertebrate defensin, CSaB fold); venom-correct, family approximate (defensin vs short scorpion toxin superfamily, which share the CSaB scaffold).",,nontox,Short scorpion toxin superfamily
+A0A8K1YTT4,tox,partial,"Parasitoid-wasp teratocyte ICK/knottin with insecticidal and immunosuppressive activity, injected into the host; toxin-like but not venom-gland derived. ICK fold drove the neurotoxin call. Venom-adjacent, family approximate (lower confidence).",,nontox,Neurotoxin family
+C0HJC1,tox,correct,Palm-pitviper venom PLA2 (group II); genuine venom family member.,,nontox,Phospholipase family
+P86821,tox,partial,"Tityus venom-gland Pape peptide, no family assigned by UniProt; NDBP is plausible for a scorpion linear venom peptide. Venom-correct, family unconfirmed.",,nontox,Non-disulfide-bridged peptide (NDBP) superfamily
+O46202,nontox,incorrect,"Fly seminal accessory-gland protein Acp62F (reproductive, transferred in seminal fluid), not venom -> false-positive toxin call. Its reported 'toxicity' to mated females is a reproductive effect, not envenomation.",reproductive,nontox,other
+P82417,tox,correct,"Ant venom-gland ponericin-G4; family unmodeled, so 'other' is the correct tox call.",,nontox,other
+P0DMJ2,tox,correct,Sea-anemone venom Kunitz-type toxin (acrorhagi/nematocyst); genuine venom family member.,,nontox,Venom Kunitz-type family
+A0A1S4FGH1,tox,incorrect,Mosquito salivary anticoagulant serpin (inhibits host factor Xa; hemostasis-impairing); model called nontox -> false negative.,,other,nontox
+F8J2F3,tox,correct,White-lipped snake venom-gland Kunitz-type inhibitor; genuine venom Kunitz family member.,,nontox,Venom Kunitz-type family
+Q90W97,tox,correct,Brown-snake venom-gland Kunitz-type inhibitor (textilinin-5); genuine venom Kunitz family member.,,nontox,Venom Kunitz-type family
+P34966,nontox,incorrect,Guinea-pig endogenous neuropeptide neuromedin-U; a short amidated cationic peptide fooled the cationic-peptide call -> false-positive.,endogenous_hormone,nontox,Cationic peptide family
+P0CF01,tox,correct,Ant venom-gland dinoponeratoxin; NDBP superfamily is exactly right.,,nontox,Non-disulfide-bridged peptide (NDBP) superfamily
+P0DME8,tox,correct,Scorpion venom-gland peptide Hp1239; NDBP superfamily is exactly right.,,nontox,Non-disulfide-bridged peptide (NDBP) superfamily
+P0DQZ7,tox,partial,"Hornet venom-gland mastoparan-VT5 (MCD/mastoparan family); the Formicidae-venom call is the wrong hymenopteran venom family. Venom-correct, family wrong.",,nontox,Formicidae venom family
+P19399,nontox,incorrect,"Parasitic-nematode carboxypeptidase A inhibitor (protects the worm against host proteases), not venom -> false-positive toxin call.",endogenous_protease_inhibitor,nontox,other
+P61850,nontox,incorrect,"Fly endogenous myoinhibitory neuropeptide (neomyosuppressin, an RFamide); FARP is the right family but this is not venom -> false-positive.",endogenous_hormone,nontox,FARP (FMRFamide related peptide) family
+Q68Y22,tox,correct,Jack-jumper ant venom-gland pilosulin-4; Formicidae venom family is exactly right.,,nontox,Formicidae venom family
+E0XKJ8,tox,correct,Horsefly salivary antigen-5 / cysteine-rich venom protein (blood-feeding secretion); CRISP family is exactly right. Same family and organism as the Toxin-keyworded tabinhibitin CE255.,,nontox,CRISP family
+Q6Q252,tox,correct,"Paper-wasp venom-gland phospholipase A1 (allergen, hemolytic); venom PLA1 family unmodeled, so 'other' is the correct tox call.",,nontox,other
+Q9GQW4,tox,correct,Scorpion venom-gland peptide BmKn1; NDBP superfamily is exactly right.,,nontox,Non-disulfide-bridged peptide (NDBP) superfamily
+P0DMF3,tox,correct,Scorpion venom-gland peptide Ctry2459; NDBP superfamily is exactly right.,,nontox,Non-disulfide-bridged peptide (NDBP) superfamily
+Q9XWV2,nontox,incorrect,C.elegans lysosomal phospholipase B homolog (endogenous); shares only the phospholipase fold -> false-positive.,endogenous_enzyme,nontox,Phospholipase family
+P20250,tox,correct,Mulga-snake venom-gland PLA2 (group I); genuine venom family member.,,nontox,Phospholipase family
+P83658,tox,partial,"Saw-scaled viper venom-gland dimeric disintegrin schistatin; the M12B call is the parent SVMP family from which disintegrins are proteolytically released. Venom-correct, family adjacent. Mirror image of CE145.",,Disintegrin family,Venom metalloproteinase (M12B) family
+A0A182GL09,tox,correct,"Mosquito salivary antigen-5 / venom allergen-1 (blood-feeding secretion, host immunomodulator); CRISP family is exactly right.",,nontox,CRISP family
+P83718,tox,partial,"Scorpion venom-gland 2.4 kDa peptide, no family assigned; short scorpion toxin superfamily is plausible for a disulfide-bonded venom peptide but unconfirmed. Venom-correct, family approximate.",,nontox,Short scorpion toxin superfamily
+P84955,nontox,incorrect,"Frog SKIN hyposin (FSAP), not venom; superficially bradykinin-like -> false-positive toxin call.",true_antimicrobial,nontox,Bradykinin-related peptide family
+E2E4E4,tox,incorrect,"Monitor-lizard mandibular venom-gland cholecystoxin (venom-recruited cholecystokinin, hypotensive); model called nontox -> false negative.",,other,nontox
+P48650,tox,correct,Saw-scaled viper venom PLA2 homolog (myotoxin); genuine venom family member.,,nontox,Phospholipase family
+P0DV61,nontox,incorrect,"Tick endogenous immune defensin (antibacterial, invertebrate defensin family), not a salivary anti-hemostatic -> false-positive toxin call.",true_antimicrobial,nontox,other
+P86820,tox,incorrect,"Frog skin-gland phyllokinin: a bradykinin-related defense peptide that relaxes arterial and constricts intestinal smooth muscle via host bradykinin receptors (UniProt: 'G protein-coupled receptor impairing toxin', Toxin keyword). Pharmacologically active on vertebrate receptors, so toxic; model called nontox -> false negative.",,Bradykinin-related peptide family,nontox
+C3TS07,tox,partial,"Sea-anemone nematocyst Nav toxin (sea anemone short toxin type III, unmodeled so label is 'other'); the conotoxin call is a different venom family. Venom-correct, family wrong.",,other,Conotoxin family
+D3TS87,tox,correct,"Tsetse salivary nuclease Tsal1 (blood-feeding secretion); the DNA/RNA non-specific endonuclease family is unmodeled, so 'other' is the correct tox call.",,nontox,other
+Q8UUI2,tox,correct,Sea-krait venom PLA2 (elapid group IA); genuine venom family member.,,nontox,Phospholipase family
+P0DUT6,tox,incorrect,Cup-moth venom-spine limacoditoxin (vulnericin); model called nontox -> false negative.,,Limacoditoxin family,nontox
+Q00630,nontox,incorrect,"Moth hemolymph biliverdin-binding lipocalin (insecticyanin, camouflage pigment carrier); the calycin fold is venom-recruited in tick salivary lipocalins, but this is endogenous -> false-positive.",endogenous_carrier,nontox,Calycin superfamily
+P83663,tox,correct,"Frog skin granular-gland ranacyclin-E (FSAP/brevinin): hemolytic and cytolytic, forms transmembrane pores, not merely antimicrobial. Toxic, and the FSAP family is unmodeled, so 'other' is the correct tox call.",,nontox,other
+P07481,nontox,incorrect,"Silkworm endogenous chymotrypsin inhibitor (prophenoloxidase regulation, immune), not venom -> false-positive. Same pattern as the seed row CE198.",endogenous_protease_inhibitor,nontox,Venom Kunitz-type family
+P80424,tox,correct,"Medicinal-leech salivary tryptase inhibitor that blocks host defenses (blood-feeding secretion); family unmodeled, so 'other' is the correct tox call.",,nontox,other
+Q8JGT9,tox,correct,Keelback venom-gland cysteine-rich venom protein (tigrin); CRISP family is exactly right.,,nontox,CRISP family
+P0DN46,tox,partial,"Auger-snail venom-duct teretoxin; the conotoxin call is the sister Conoidea venom family. Venom-correct, family adjacent.",,Teretoxin family,Conotoxin family
+Q6T6S5,tox,correct,Gaboon-adder venom-gland Kunitz-type inhibitor (bitisilin-2); genuine venom Kunitz family member.,,nontox,Venom Kunitz-type family
+Q6TS00,tox,correct,"Mosquito salivary D7 short-form (blood-feeding secretion); PBP/GOBP is exactly the family UniProt assigns. This paralog has lost serotonin binding, so the tox call rests on the salivary context (lower confidence).",,nontox,PBP/GOBP family
+P81438,nontox,incorrect,"Ant endogenous inducible immune AMP (formaecin-1, a proline-rich apidaecin/drosocin-type peptide), not venom -> false-positive; the natriuretic/BPP call is also spurious.",true_antimicrobial,nontox,"Natriuretic, Bradykinin potentiating peptide family"
+P0C7S8,tox,correct,Wolf-spider venom-gland bradykinin-potentiating peptide (ACE inhibitor); BPP family is exactly right.,,nontox,"Natriuretic, Bradykinin potentiating peptide family"
+P0DPT0,tox,correct,"Hornet venom-gland phospholipase A1 VesT1.02 (hemolytic); venom PLA1 family unmodeled, so 'other' is the correct tox call.",,nontox,other
+A0A348G5W1,tox,correct,Trap-jaw ant venom-gland pilosulin-like peptide (hemolytic); Formicidae venom family is exactly right.,,nontox,Formicidae venom family
+P0DMZ2,tox,partial,"Sea-anemone nematocyst Nav toxin (type III, unmodeled so label is 'other'); the conotoxin call is a different venom family. Venom-correct, family wrong.",,other,Conotoxin family
+P81902,nontox,incorrect,"Silkworm cocoon-shell trypsin inhibitor (middle silk gland, developmental/structural), not venom -> false-positive.",structural,nontox,Venom Kunitz-type family
+A7SRR3,tox,correct,"Nematostella ShK-like2: paralytic and lethal to zebrafish larvae, so a genuine anemone toxin despite the 'neuropeptide' annotation; the sea anemone type 1 (ShK) potassium channel toxin family is right. Contrast CE138, the non-toxic ShK-like4.",,nontox,Sea anemone type 1 potassium channel toxin family
+P0DRL4,tox,correct,Cone-snail venom-duct alpha-conotoxin NcIA (nAChR inhibitor); conotoxin family is exactly right.,,nontox,Conotoxin family
+A0A059UEE4,tox,correct,Scorpion venom-gland potassium channel toxin alpha-KTx 27.4; short scorpion toxin superfamily is exactly right.,,nontox,Short scorpion toxin superfamily
+A0A059T2H4,tox,partial,Yellow-sac-spider venom-gland CSTX-family toxin (unmodeled so label is 'other'); neurotoxin call is venom-correct but the family is approximate.,,other,Neurotoxin family
+P0DMF8,tox,correct,Scorpion venom-gland peptide Ctri10261; NDBP superfamily is exactly right.,,nontox,Non-disulfide-bridged peptide (NDBP) superfamily
+B6RLX2,tox,correct,King-cobra venom-gland Kunitz-type inhibitor (TCI); genuine venom Kunitz family member.,,nontox,Venom Kunitz-type family
+P84651,tox,correct,Bushmaster venom-gland PLA2 (group II); genuine venom family member.,,nontox,Phospholipase family
+P14615,tox,correct,Banded-krait venom-gland PLA2 (group I); genuine venom family member.,,nontox,Phospholipase family
+Q5GQ85,tox,correct,"Pigeon-tick salivary histamine-binding lipocalin (allergen Arg r 1); sequesters host mediators during blood feeding, and calycin superfamily is exactly right.",,nontox,Calycin superfamily
+Q8WQK0,tox,correct,"Parasitoid-wasp venom-gland protein Vn4.6 (blocks host prophenoloxidase activation); family unmodeled, so 'other' is the correct tox call.",,nontox,other
+Q58L90,tox,incorrect,"Taipan venom prothrombin activator, factor-Va-like non-catalytic subunit (genuine venom toxin); model called nontox -> false negative. A venom-recruited coagulation factor reads as endogenous.",,other,nontox
+P31482,nontox,incorrect,Mouse endogenous secreted group-IIA PLA2 (Paneth-cell antibacterial defense); same family as viper venom PLA2s -> false-positive.,endogenous_enzyme,nontox,Phospholipase family
+A0A1D3IXJ5,tox,correct,Scorpion venom-gland antimicrobial peptide ToAP2; NDBP superfamily is exactly right.,,nontox,Non-disulfide-bridged peptide (NDBP) superfamily
+B2ZBB8,tox,correct,Spider venom Kunitz-type protease inhibitor; genuine venom family member.,,nontox,Venom Kunitz-type family
+P16895,tox,correct,"Sea-anemone Kazal-type protease-inhibitor toxin (PI-actitoxin-Avd5a); family unmodeled, so 'other' is the correct tox call.",,nontox,other
+P0DUS4,tox,incorrect,Cup-moth venom-spine limacoditoxin-1 (ACP-like vulnericin); model called nontox -> false negative.,,Limacoditoxin family,nontox
+C0HKX7,nontox,incorrect,"Wasp endogenous immune AMP (apidaecin P, proline-rich), not venom -> false-positive; the natriuretic/BPP call is spurious.",true_antimicrobial,nontox,"Natriuretic, Bradykinin potentiating peptide family"
+P13208,tox,incorrect,"Burrowing-asp venom-gland sarafotoxin (venom-recruited endothelin, cardiotoxic); model called nontox -> false negative.",,other,nontox
+P0DRK4,tox,correct,Cantil venom-gland bradykinin-potentiating peptide 11c (ACE inhibitor); BPP family is exactly right.,,nontox,"Natriuretic, Bradykinin potentiating peptide family"
+P39877,nontox,incorrect,Human endogenous secreted group-V PLA2; shares the venom PLA2 family -> false-positive.,endogenous_enzyme,nontox,Phospholipase family
+P0DMJ5,tox,correct,Sea-anemone nematocyst Kunitz-type toxin (PI-stichotoxin-Hcr2e); genuine venom Kunitz family member.,,nontox,Venom Kunitz-type family
+P08873,tox,correct,Tiger-snake venom-gland PLA2 (group I); genuine venom family member.,,nontox,Phospholipase family
+P0DSM5,tox,partial,"Ant venom-gland ponericin (NDBP superfamily); the cationic-peptide call is the adjacent linear-AMP venom family. Venom-correct, family adjacent.",,Non-disulfide-bridged peptide (NDBP) superfamily,Cationic peptide family
+B5KL31,tox,correct,Red-bellied black snake venom-gland Kunitz-type inhibitor (blackelin-3); genuine venom Kunitz family member.,,nontox,Venom Kunitz-type family
+X5IFZ1,tox,correct,Cone-snail conotoxin (A superfamily); genuine venom family member.,,nontox,Conotoxin family
+P81547,tox,correct,Sea-anemone acrorhagi Kunitz-type toxin (AXPI-I); genuine venom Kunitz family member.,,nontox,Venom Kunitz-type family
+P82656,tox,partial,"Scorpion venom-gland hadrurin (NDBP superfamily, long-chain group 2); 'other' is a tox call but misses the modeled NDBP family. Venom-correct, family missed.",,nontox,other
+P0DQZ9,tox,correct,Hornet venom-gland mastoparan-VT7; MCD/mastoparan family is exactly right.,,nontox,MCD family
+B5KL41,tox,correct,Copperhead venom-gland Kunitz-type inhibitor (superbin-4); genuine venom Kunitz family member.,,nontox,Venom Kunitz-type family
+P84117,nontox,incorrect,"Polychaete-worm antimicrobial peptide (perinerin, endogenous immune), not venom -> false-positive; the conotoxin call is spurious.",true_antimicrobial,nontox,Conotoxin family
+Q0MWV8,nontox,incorrect,"Jellyfish endogenous antimicrobial peptide aurelin; UniProt genuinely places it in the sea anemone type 1 (ShK) potassium channel toxin family, so the family call is right, but it is an immune peptide with no nematocyst evidence -> false-positive tox call.",true_antimicrobial,nontox,Sea anemone type 1 potassium channel toxin family
+Q9BMK4,tox,correct,Honeybee venom PLA2 (group III; major bee-venom allergen Api m 1); genuine venom family member.,,nontox,Phospholipase family
+P31398,nontox,incorrect,"Moth hemolymph immune Ig protein — clear non-toxin; model's 'other' = toxin-of-unmodeled-family, so this is a false-positive toxin call.",endogenous_immune_other,nontox,other
+P0DQY8,tox,partial,Cone-snail venom-duct elevenin (prey-neuropeptide mimic; elevenin family unmodeled so label is 'other'); conotoxin call is venom-correct but the family is approximate.,,other,Conotoxin family
+Q5MIW3,tox,incorrect,Mosquito salivary alboserpin (host factor Xa anticoagulant); model called nontox -> false negative.,,other,nontox
+Q9U6R6,tox,correct,Kissing-bug salivary lipocalin/triabin procalin (blood-feeding secretion); calycin superfamily is exactly right.,,nontox,Calycin superfamily
+Q172F2,tox,correct,Mosquito salivary neutrophil recruitment protein (drives host TLR/NF-kB signaling during blood feeding); PBP/GOBP family is exactly right.,,nontox,PBP/GOBP family
+P0DQQ8,tox,correct,Box-jellyfish nematocyst ACE-inhibitory peptide; a nematocyst venom component and the bradykinin-potentiating peptide family is exactly right.,,nontox,"Natriuretic, Bradykinin potentiating peptide family"
+Q7YWB0,tox,correct,"Honeybee venom-gland secapin; family unmodeled, so 'other' is the correct tox call. A genuine venom component even though this entry is annotated 'nontoxic peptide'; cf. CE190, where the model called the sister secapin nontox.",,nontox,other
+C1JAR9,tox,correct,Centipede venom-gland PLA2; genuine venom family member.,,nontox,Phospholipase family
+P0DQT6,tox,correct,Lance-headed viper venom-gland metalloproteinase BmooMP-I; M12B P-I is exactly right.,,nontox,Venom metalloproteinase (M12B) family
+A8I0L8,nontox,incorrect,"Leech endogenous immune peptide theromacin (macin family, bactericidal); the cysteine-rich fold drove the neurotoxin call -> false-positive.",true_antimicrobial,nontox,Neurotoxin family
+P80163,tox,incorrect,"Mole-viper venom-gland bibrotoxin (endothelin/sarafotoxin family, cardiotoxic); model called nontox -> false negative.",,other,nontox
+A0A059U8Y9,tox,correct,Scorpion venom-gland antimicrobial peptide megicin-18; NDBP superfamily is exactly right.,,nontox,Non-disulfide-bridged peptide (NDBP) superfamily
+A0A1S4GYH9,tox,correct,"Mosquito salivary D7-related 3 (sequesters host response mediators, vasodilator); PBP/GOBP family is exactly right.",,nontox,PBP/GOBP family
+Q9I8F8,tox,correct,Bothrops venom PLA2 (group II); genuine venom family member.,,nontox,Phospholipase family
+P62968,nontox,incorrect,"Pig endogenous hormone TRH (pGlu-His-Pro-NH2, 3 residues); the natriuretic/BPP call on a tripeptide is spurious -> false-positive.",endogenous_hormone,nontox,"Natriuretic, Bradykinin potentiating peptide family"
+C1IBY0,tox,incorrect,Horsefly salivary serine protease tabserin (impairs host coagulation); model called nontox -> false negative.,,Peptidase S1 family,nontox
+Q7M4I6,tox,correct,Bumblebee venom-gland PLA2 (allergen); genuine venom family member.,,nontox,Phospholipase family
+Q75WF2,tox,incorrect,Crown-of-thorns starfish venom-gland plancitoxin-1 (hepatotoxic DNase II); model called nontox -> false negative.,,other,nontox
+P84756,tox,partial,"Lynx-spider venom-gland oxytoxin-2 (spiderine family, unmodeled so label is 'other'); it genuinely blocks Cav channels, so the neurotoxin call is venom-correct but the family is approximate.",,other,Neurotoxin family
+P00994,nontox,incorrect,"Land-snail mucus protease isoinhibitor K (defensive mucus secretion, not venom); Kunitz-like fold -> false-positive.",endogenous_protease_inhibitor,nontox,Venom Kunitz-type family
+C0HK72,tox,correct,Sea-anemone nematocyst Kunitz-type toxin (HMRG1); genuine venom Kunitz family member.,,nontox,Venom Kunitz-type family
+P18144,nontox,incorrect,"Eel natriuretic peptide hormone — endogenous, not venom; right family but false-positive toxin call.",endogenous_hormone,nontox,"Natriuretic, Bradykinin potentiating peptide family"
+P97391,nontox,incorrect,"Mouse endogenous secreted group-V PLA2 (macrophages, heart, adipose); shares the venom PLA2 family -> false-positive.",endogenous_enzyme,nontox,Phospholipase family
+P0DSJ9,tox,correct,Bulldog-ant venom-gland myrmeciitoxin; Formicidae venom family is exactly right.,,nontox,Formicidae venom family
+P81464,nontox,incorrect,"Bumblebee endogenous immune AMP (apidaecin, proline-rich), not venom -> false-positive; the natriuretic/BPP call is spurious.",true_antimicrobial,nontox,"Natriuretic, Bradykinin potentiating peptide family"
+C0HKX5,nontox,incorrect,"Hornet endogenous immune AMP (apidaecin, proline-rich), not venom -> false-positive; the natriuretic/BPP call is spurious.",true_antimicrobial,nontox,"Natriuretic, Bradykinin potentiating peptide family"
+Q9W716,tox,correct,Cobra venom three-finger toxin (cytotoxin); genuine venom family member.,,nontox,Three-finger toxin family
+A7ST80,nontox,incorrect,"Nematostella ShK-like4: endogenous neuropeptide in ectodermal sensory neurons, explicitly not nematocyte-expressed and no toxicity reported; the ShK fold drove the type-1 K-channel-toxin call -> false-positive. Contrast CE079, the fish-lethal ShK-like2.",endogenous_hormone,nontox,Sea anemone type 1 potassium channel toxin family
+P0DQY9,tox,partial,Cone-snail venom-duct elevenin (family unmodeled so label is 'other'); conotoxin call is venom-correct but the family is approximate.,,other,Conotoxin family
+P56685,tox,partial,"Scorpion venom antimicrobial peptide (buthinin); venom-correct, exact family approximate.",,nontox,Short scorpion toxin superfamily
+B5L5R7,tox,correct,Stephens's banded snake venom-gland Kunitz-type inhibitor (stephenin-2); genuine venom Kunitz family member.,,nontox,Venom Kunitz-type family
+P0DRJ4,tox,correct,Wolf-spider venom-gland linear cationic AMP (LC-AMP precursor 3); cationic-peptide family fits a lycosin/cupiennin-type spider venom peptide.,,nontox,Cationic peptide family
+P0DUS6,tox,partial,"Cup-moth venom-spine cecropin-like limacoditoxin (induces pain, insecticidal); the cationic-peptide call is venom-correct but the modeled Limacoditoxin family was the right answer. Family wrong.",,Limacoditoxin family,Cationic peptide family
+P86286,tox,partial,"Frog parotoid-gland tryptophyllin-like peptide PbT-1; no activity recorded for this entry, but every characterised tryptophyllin is myotropic on vertebrate smooth muscle (cf. CE166), so tox by homology. The bradykinin-related call is the wrong family (FSAP tryptophillin), though it does capture the myotropic/bradykinin-antagonist pharmacology. Venom-context correct, family wrong.",,nontox,Bradykinin-related peptide family
+P0C6A5,tox,partial,"Sand-viper venom-gland P-II SVMP-derived disintegrin VA6; label follows the M12B parent family, model said Disintegrin. Same lineage, so venom-correct and family adjacent. Mirror image of CE053.",,Venom metalloproteinase (M12B) family,Disintegrin family
+P47711,nontox,incorrect,Guinea-pig endogenous secreted group-IIA PLA2 (alveolar macrophages); shares the venom PLA2 family -> false-positive.,endogenous_enzyme,nontox,Phospholipase family
+Q03383,nontox,incorrect,Silkworm hemolymph serpin antichymotrypsin-1 (endogenous immune protease inhibitor); 'other' = toxin-of-unmodeled-family -> false-positive toxin call.,endogenous_protease_inhibitor,nontox,other
+P20249,tox,correct,Mamushi venom-gland PLA2 (group II); genuine venom family member.,,nontox,Phospholipase family
+P0DV62,tox,correct,"Wolf-spider venom-gland lycotoxin-Pa4a (neurotoxin 19 / CSTX family, knottin); neurotoxin family is right.",,nontox,Neurotoxin family
+O18496,nontox,incorrect,"Tunicate endogenous immune AMP styelin-E (hemocytes, pharynx); amphipathic cationic peptide -> false-positive.",true_antimicrobial,nontox,Cationic peptide family
+P04096,tox,partial,"Frog skin-gland tryptophyllin-13 (FSAP tryptophillin subfamily); no activity recorded for this entry, but the Bombina ortholog P84215 stimulates insulin release and tryptophyllin-1 is myotropic, so tox by homology. The natriuretic/BPP call is the wrong family. Venom-context correct, family wrong.",,nontox,"Natriuretic, Bradykinin potentiating peptide family"
+Q6X5T4,tox,partial,"Puff-adder venom-gland true venom lectin (sugar-binding, unmodeled so label is 'other'); the Snaclec call is the sister snake-venom C-type-lectin family. Venom-correct, family adjacent.",,other,Snaclec family
+C0HK44,tox,partial,"Sweat-bee venom-gland lasioglossin-3; the MCD/mastoparan call is the adjacent hymenopteran linear venom-peptide family. Venom-correct, family approximate.",,nontox,MCD family
+Q2ES49,tox,correct,Russell's viper venom-gland Kunitz-type inhibitor; genuine venom Kunitz family member.,,nontox,Venom Kunitz-type family
+P61298,nontox,incorrect,Alligator endogenous hormone somatostatin-14; a small disulfide-cyclised peptide -> false-positive conotoxin call.,endogenous_hormone,nontox,Conotoxin family
+Q9I845,tox,correct,Sea-krait venom-gland PLA2 (group I); genuine venom family member.,,nontox,Phospholipase family
+Q66S03,tox,incorrect,Toadfish venom-gland galactose-specific lectin (nattectin); model called nontox -> false negative. Same blind spot as the snake venom lectins.,,other,nontox
+P30652,nontox,incorrect,Uncharacterized C.elegans secreted protein with ShKT-domain repeats; ShKT domains are widespread in nematode proteins and carry no toxin evidence here -> false-positive.,uncharacterized,nontox,Sea anemone type 1 potassium channel toxin family
+P0DRK6,tox,correct,Cantil venom-gland bradykinin-potentiating peptide POL-236 (ACE inhibitor); BPP family is exactly right.,,nontox,"Natriuretic, Bradykinin potentiating peptide family"
+Q5DFZ7,nontox,incorrect,"Blood-fluke egg protein CP422 with knottin protease-inhibitor domains, not venom -> false-positive toxin call.",uncharacterized,nontox,other
+P09464,nontox,incorrect,Butterfly hemolymph bilin-binding lipocalin (endogenous pigment carrier); the calycin fold is venom-recruited in tick salivary lipocalins -> false-positive. Same pattern as CE065.,endogenous_carrier,nontox,Calycin superfamily
+P11424,nontox,incorrect,"Fly male accessory-gland protease inhibitor (reproductive, paragonial peptide D), not venom -> false-positive.",reproductive,nontox,Venom Kunitz-type family
+P14423,nontox,incorrect,Rat endogenous secreted group-IIA PLA2; shares the venom PLA2 family -> false-positive.,endogenous_enzyme,nontox,Phospholipase family
+V5N6J4,tox,correct,"Centipede venom-gland U-scoloptoxin(15)-Ssm2a (SLPTX15 family); the model's Scoloptoxin call is biologically right. The 'other' ground truth only reflects that SLPTX15 is an unmodeled sub-family, so this is a label artifact rather than a model error.",,other,Scoloptoxin family
+P20253,tox,correct,Mulga-snake venom-gland PLA2 (group I); genuine venom family member.,,nontox,Phospholipase family
+C0HJF6,tox,correct,"Frog skin-gland tryptophyllin-1 (FSAP): inhibits bradykinin-induced relaxation of rat artery smooth muscle and is anti-proliferative on human cell lines, so pharmacologically active on vertebrates and therefore toxic. FSAP family unmodeled, so 'other' is the correct tox call. This is the characterised anchor for the tryptophyllin homology inference.",,nontox,other
+P81162,tox,correct,"Cattle-tick protease inhibitor carrapatin (blood-feeding secretion); venom-Kunitz fits a tick Kunitz-fold anti-hemostatic, consistent with TAP (CE014).",,nontox,Venom Kunitz-type family
+B5KL37,tox,correct,Small-eyed snake venom-gland Kunitz-type inhibitor (nigrescinin-6); genuine venom Kunitz family member.,,nontox,Venom Kunitz-type family
+O96059,nontox,incorrect,"Silkworm endogenous immune AMP moricin-2 (fat body, hemocytes); amphipathic cationic helix -> false-positive.",true_antimicrobial,nontox,Cationic peptide family
+Q86MA1,nontox,incorrect,Hawkmoth endogenous immune AMP moricin; amphipathic cationic helix -> false-positive.,true_antimicrobial,nontox,Cationic peptide family
+P42993,nontox,incorrect,Carp endogenous isotocin hormone; the vasopressin/oxytocin family is venom-recruited (conopressins) but this is the physiological hormone -> false-positive.,endogenous_hormone,nontox,Vasopressin/oxytocin family
+P84015,tox,correct,"Armed-spider venom-gland ctenitoxin (neurotoxin 33 family, knottin); neurotoxin family is right. Non-lethal to mice, but a genuine venom-gland product.",,nontox,Neurotoxin family
+P0DSM0,tox,correct,"Ant venom-gland myrmexin subunit; family unmodeled, so 'other' is the correct tox call.",,nontox,other
+B0M2U6,nontox,incorrect,"Gladiator-bug endogenous myoinhibitory neuropeptide (myosuppressin, an RFamide); FARP is the right family but this is not venom -> false-positive. Same pattern as CE045.",endogenous_hormone,nontox,FARP (FMRFamide related peptide) family
+L0GAZ8,tox,correct,Scorpion venom-gland antimicrobial peptide UyCT5; NDBP superfamily is exactly right.,,nontox,Non-disulfide-bridged peptide (NDBP) superfamily
+P83411,nontox,incorrect,"Moth hemolymph antifungal peptide spodomicin (diapausin family, endogenous immune) -> false-positive toxin call.",true_antimicrobial,nontox,other
+P16044,nontox,incorrect,"Horseshoe-crab endogenous Kunitz/BPTI-type protease inhibitor (hemolymph), not venom -> false-positive.",endogenous_protease_inhibitor,nontox,Venom Kunitz-type family
+Q5BQX9,nontox,incorrect,Uncharacterized blood-fluke secreted knottin with no toxin evidence; the ICK fold drove the neurotoxin call -> false-positive.,uncharacterized,nontox,Neurotoxin family
+P80027,nontox,incorrect,"Octopus endogenous cephalotocin (vasopressin/oxytocin family neurohormone); right family, not venom -> false-positive.",endogenous_hormone,nontox,Vasopressin/oxytocin family
+Q8T0W4,tox,correct,Parasitoid-wasp venom-gland Kunitz-type inhibitor (cvp2); genuine venom Kunitz family member.,,nontox,Venom Kunitz-type family
+P82321,nontox,incorrect,"Termite endogenous antifungal defensin-like AMP termicin (salivary glands and hemocytes, immune rather than a feeding secretion); the CSaB fold drove the scorpion-toxin call -> false-positive.",true_antimicrobial,nontox,Short scorpion toxin superfamily
+Q8WQZ3,nontox,incorrect,Cabbage-moth endogenous immune defensin; the CSaB scaffold is shared with scorpion toxins -> false-positive.,true_antimicrobial,nontox,Long (3 C-C) scorpion toxin superfamily
+R4JJN6,tox,correct,Scorpion venom-gland pantinin-3; NDBP superfamily is exactly right.,,nontox,Non-disulfide-bridged peptide (NDBP) superfamily
+P0DX47,tox,partial,"Saddleback-caterpillar venom-spine toxin that is a venom-recruited FMRFamide-related peptide; the label follows the FARP fold family while the model followed the limacoditoxin venom naming. Venom-correct, family label genuinely ambiguous.",,FARP (FMRFamide related peptide) family,Limacoditoxin family
+I7GQA7,tox,correct,Carpenter-bee venom PLA2 (group III); genuine venom family member.,,nontox,Phospholipase family
+C0HJV8,tox,partial,"Spider venom cationic peptide (met-lysine); broad 'cationic peptide' call is venom-correct, family approximate.",,nontox,Cationic peptide family
+Q6YBR5,nontox,incorrect,"Zebrafish endogenous nerve growth factor; NGF is venom-recruited in snakes, but this is the physiological growth factor -> false-positive toxin call.",endogenous_hormone,nontox,other
+P0DJ46,tox,correct,Scorpion venom-gland Kunitz-type inhibitor LmKTT-1a (delta-KTx 2.1); genuine venom Kunitz family member.,,nontox,Venom Kunitz-type family
+A8E2V9,tox,correct,Habu venom-gland PLA2 (group II K49 myotoxin); genuine venom family member.,,nontox,Phospholipase family
+A0A0K1YW63,tox,incorrect,"Honeybee venom-gland secapin (antifibrinolytic, antielastolytic, hemostasis-impairing); model called nontox -> false negative. Note the model made the opposite (tox) call on the sister secapin CE117.",,other,nontox
+P0DX33,tox,correct,Potter-wasp venom-gland eumenine mastoparan-EM3; MCD/mastoparan family is exactly right.,,nontox,MCD family
+A0A0E3SVB8,tox,correct,Cone-snail venom-duct conotoxin phi-MiXXVIIB (G2 superfamily); conotoxin family is exactly right.,,nontox,Conotoxin family
+A3FMN3,tox,correct,"Tsetse salivary nuclease Tsal2A (blood-feeding secretion); endonuclease family unmodeled, so 'other' is the correct tox call.",,nontox,other
+C0HJY4,tox,partial,"Ant venom-gland poneratoxin (Cav-impairing; poneritoxin-Ae1 family unmodeled so label is 'other'); the conotoxin call is a different venom family. Venom-correct, family wrong.",,other,Conotoxin family
+C3TS04,tox,partial,"Sea-anemone nematocyst Nav toxin (type III, unmodeled so label is 'other'); the conotoxin call is a different venom family. Venom-correct, family wrong.",,other,Conotoxin family
+P85818,nontox,incorrect,Kissing-bug endogenous SIFamide neuropeptide (FARP family); the bradykinin-related call is both wrong-family and non-venom -> false-positive.,endogenous_hormone,nontox,Bradykinin-related peptide family
+P42998,nontox,incorrect,"Earthworm endogenous annetocin (vasopressin/oxytocin family, gut and nephridia); right family, not venom -> false-positive.",endogenous_hormone,nontox,Vasopressin/oxytocin family
+P10831,nontox,incorrect,"Silkworm hemolymph protease inhibitor (immune, prophenoloxidase regulation), not venom; protease-inhibitor signal drove a venom-Kunitz call -> false-positive toxin.",endogenous_protease_inhibitor,nontox,Venom Kunitz-type family
+E5L0E5,tox,correct,"Cottonmouth venom-gland plasminogen activator (peptidase S1, snake venom subfamily); family is exactly right.",,nontox,Peptidase S1 family
+U3KRG1,tox,correct,Habu venom-gland metalloproteinase TM-1 (fibrinogenolytic); M12B P-I is exactly right.,,nontox,Venom metalloproteinase (M12B) family
+Q86SC0,nontox,incorrect,Beetle endogenous antifungal chitin-binding peptide scarabaecin -> false-positive toxin call.,true_antimicrobial,nontox,other
+P35042,nontox,incorrect,Moth endogenous digestive trypsin; peptidase S1 is venom-recruited (snake venom serine proteases) but this is a gut enzyme -> false-positive.,endogenous_enzyme,nontox,Peptidase S1 family
+P16339,nontox,incorrect,"Locust endogenous diuretic hormone locupressin (vasopressin/oxytocin family); right family, not venom -> false-positive.",endogenous_hormone,nontox,Vasopressin/oxytocin family
+A7X401,tox,partial,"Malagasy-hognose venom-gland true venom lectin (lectoxin-Lei1); the Snaclec call is the sister snake-venom C-type-lectin family. Venom-correct, family adjacent.",,nontox,Snaclec family
+Q75WH5,tox,correct,"Funnel-web spider venom-gland hexatoxin magi-8 (neurotoxin 10 / Hwtx-1 family, knottin); neurotoxin family is right.",,nontox,Neurotoxin family
+Q10996,nontox,incorrect,Lamprey endogenous alpha-defensin / corticostatin-related peptide; a small disulfide-rich peptide -> false-positive conotoxin call.,true_antimicrobial,nontox,Conotoxin family
+P83416,nontox,incorrect,Moth hemolymph endogenous immune AMP virescein (moricin family) -> false-positive.,true_antimicrobial,nontox,Cationic peptide family
+P00621,tox,correct,Rhinoceros-adder venom-gland PLA2 (group II); genuine venom family member.,,nontox,Phospholipase family
+P82422,tox,correct,"Ant venom-gland ponericin-L2; family unmodeled, so 'other' is the correct tox call.",,nontox,other
+P0DRH9,nontox,incorrect,"Sea-anemone endogenous insulin-like peptide 01; insulin is venom-recruited in cone snails, but this is the physiological hormone -> false-positive. Same pattern as CE023.",endogenous_hormone,nontox,Insulin family
+P80090,nontox,incorrect,"Pond-snail endogenous insulin-related neuropeptide (growth control, neuroendocrine cells); insulin is venom-recruited in cone snails, but this is the physiological hormone -> false-positive.",endogenous_hormone,nontox,Insulin family
+C0HL84,tox,partial,"Solitary-bee venom linear amphipathic peptide panurgin-1 (hemolytic); the MCD/mastoparan call is the adjacent hymenopteran venom-peptide family. Venom-correct, family approximate.",,nontox,MCD family
+P28504,tox,correct,"Medicinal-leech salivary hirudin-2 (thrombin inhibitor, blood-feeding anti-hemostatic); hirudin family unmodeled, so 'other' is the correct tox call.",,nontox,other
+Q07932,tox,correct,Jack-jumper ant venom pilosulin (Formicidae venom); genuine venom family member.,,nontox,Formicidae venom family
+C0HL58,tox,correct,Scorpion venom-gland peptide Im-5; NDBP superfamily is exactly right.,,nontox,Non-disulfide-bridged peptide (NDBP) superfamily
+C0HK45,tox,correct,"Ant venom-gland ponericin-Q42 (membrane-perforating); family unmodeled, so 'other' is the correct tox call.",,nontox,other
+P81437,nontox,incorrect,"Ant endogenous inducible immune AMP (formaecin-2, proline-rich), not venom -> false-positive; the natriuretic/BPP call is spurious. Same as CE073.",true_antimicrobial,nontox,"Natriuretic, Bradykinin potentiating peptide family"
+P84953,tox,partial,"Frog skin-gland tryptophyllin-T2-8 (FSAP tryptophillin subfamily); no activity recorded for this entry, tox by homology with the myotropic characterised tryptophyllins (cf. CE166). The bradykinin-related call is the wrong family. Venom-context correct, family wrong.",,nontox,Bradykinin-related peptide family
+P35003,nontox,incorrect,Abalone endogenous digestive chymotrypsin-like protease (intestine); peptidase S1 fold -> false-positive.,endogenous_enzyme,nontox,Peptidase S1 family
+P81478,tox,correct,Bamboo pit-viper venom-gland PLA2 (group II); genuine venom family member.,,nontox,Phospholipase family
+A0A7S8RGC8,tox,partial,"Tityus venom-gland sodium channel toxin Ts27 (long 4 C-C superfamily); the model picked the sister long (3 C-C) superfamily. Venom-correct, family adjacent.",,Long (4 C-C) scorpion toxin superfamily,Long (3 C-C) scorpion toxin superfamily
+P00601,tox,correct,Forest-cobra venom-gland PLA2 (group I); genuine venom family member.,,nontox,Phospholipase family
+P84950,tox,partial,"Frog skin-gland tryptophyllin-T3-2 (FSAP tryptophillin subfamily); no activity recorded for this entry, tox by homology with the myotropic characterised tryptophyllins (cf. CE166). The natriuretic/BPP call is the wrong family. Venom-context correct, family wrong.",,nontox,"Natriuretic, Bradykinin potentiating peptide family"
+P56686,tox,correct,"Scorpion 4 kDa defensin: dual-function, and it blocks potassium channels as well as being antimicrobial. Channel blockade is an animal-directed toxin activity (scorpion defensins are the CSaB ancestor of the alpha-KTx toxins), so toxic on the evidence even though it is hemolymph-derived with no venom-gland annotation. The invertebrate defensin family is unmodeled, so 'other' is the correct tox call.",,nontox,other
+Q75WG7,tox,correct,"Funnel-web spider venom-gland hexatoxin magi-12 (neurotoxin 03 / Tx2 family, knottin); neurotoxin family is right.",,nontox,Neurotoxin family
+Q5Y4U5,tox,correct,"Funnel-web spider venom-gland agatoxin (neurotoxin 33 family, knottin); neurotoxin family is right.",,nontox,Neurotoxin family
+Q7YTY6,nontox,incorrect,"Fly endogenous serpin 42Dd (Toll-pathway immune regulation, ovary) -> false-positive toxin call.",endogenous_protease_inhibitor,nontox,other
+P0DRB9,tox,correct,Sea-anemone nematocyst ICK toxin active on pain receptors (U-isophellitoxin-Tst2); neurotoxin family is right.,,nontox,Neurotoxin family
+P0DXW9,tox,incorrect,Flannel-moth venom-apparatus megalopygitoxin; model called nontox -> false negative.,,other,nontox
+P19863,nontox,incorrect,Dog endogenous gut hormone motilin -> false-positive cationic-peptide call.,endogenous_hormone,nontox,Cationic peptide family
+Q66S08,tox,incorrect,"Toadfish venom-gland natterin-P (kininogenase, nociceptive, edema-inducing); model called nontox -> false negative.",,other,nontox
+Q7PN86,tox,correct,"Mosquito salivary D7-related 5 (blood-feeding secretion); PBP/GOBP is exactly the family UniProt assigns. This paralog does not bind biogenic amines, so the tox call rests on the salivary context (lower confidence).",,nontox,PBP/GOBP family
+A0A090BX51,tox,correct,"Taiga-tick salivary immunosuppressive serpin Ipis-1 (blood-feeding secretion); serpin family unmodeled, so 'other' is the correct tox call.",,nontox,other
+P82971,tox,correct,Bumblebee venom-gland PLA2 (allergen); genuine venom family member.,,nontox,Phospholipase family
+Q06B75,tox,correct,"Common-tick salivary serpin Iripin-1 (modulates host response during blood feeding); serpin family unmodeled, so 'other' is the correct tox call.",,nontox,other
+P0DY17,tox,correct,Scorpion venom-gland peptide Smp13; NDBP superfamily is exactly right.,,nontox,Non-disulfide-bridged peptide (NDBP) superfamily
+Q1L659,nontox,incorrect,"Brown snake's OWN plasma/liver coagulation factor X (endogenous S1 protease), not the venom prothrombin activator; Peptidase-S1 call shares a venom-recruited fold -> false-positive toxin.",endogenous_enzyme,nontox,Peptidase S1 family
+D2Y2Q6,tox,correct,Bird-spider venom-gland Kunitz-type inhibitor (hainantoxin-XI-15); genuine venom Kunitz family member.,,nontox,Venom Kunitz-type family
+C0HM26,tox,correct,"Mushroom-coral nematocyst peptide Hact-4; the cnidarian SCRiP call fits a small cysteine-rich nematocyst peptide. Function is undetermined, so the family call is plausible rather than confirmed (lower confidence).",,nontox,Cnidaria small cysteine-rich protein (SCRiP) family
+P0DPU1,tox,incorrect,Centipede venom-gland CRISP / venom-allergen-5 toxin (voltage-gated calcium channel inhibitor); model called nontox -> false negative.,,CRISP family,nontox
+A0A7S8MVN3,tox,partial,"Tityus venom-gland putative sodium channel toxin Ts41 (long 4 C-C superfamily); the model picked the sister long (3 C-C) superfamily. Venom-correct, family adjacent.",,Long (4 C-C) scorpion toxin superfamily,Long (3 C-C) scorpion toxin superfamily
+A0A0M3KKW3,tox,correct,"Hornet venom-gland phospholipase A1 (potently hemolytic, lethal); venom PLA1 family unmodeled, so 'other' is the correct tox call.",,nontox,other
+Q8LW54,tox,partial,"Honeybee venom melittin (melittin family unmodeled, so label is 'other'); the Formicidae-venom call is the analogous aculeate linear venom-peptide family. Venom-correct, family wrong.",,other,Formicidae venom family
+P14754,nontox,incorrect,"Hawkmoth hemolymph serpin alaserpin (endogenous elastase inhibitor), not venom -> false-positive toxin call.",endogenous_protease_inhibitor,nontox,other
+A6P331,tox,partial,"Solitary-wasp venom-gland peptide, no family assigned; the Formicidae-venom call is the adjacent aculeate venom-peptide family. Venom-correct, family approximate.",,nontox,Formicidae venom family
+P0DRI9,tox,partial,Remipede venom-gland xibalbin-13 (Kv1 inhibitor; family unmodeled so label is 'other'); neurotoxin call is venom-correct but the family is approximate.,,other,Neurotoxin family
+A9CM07,tox,correct,Jack-jumper ant venom-gland pilosulin-5 (histamine-releasing); Formicidae venom family is exactly right.,,nontox,Formicidae venom family
+L0GCI6,tox,correct,Scorpion venom-gland antimicrobial peptide UyCT3; NDBP superfamily is exactly right.,,nontox,Non-disulfide-bridged peptide (NDBP) superfamily
+A0A0K8RJV9,tox,correct,"Common-tick salivary serpin Iripin-4 (blood-feeding secretion); serpin family unmodeled, so 'other' is the correct tox call.",,nontox,other
+Q7M4I3,tox,correct,Bumblebee venom-duct protease (allergen); peptidase S1 family is exactly right.,,nontox,Peptidase S1 family
+O46201,nontox,incorrect,"Fly seminal accessory-gland protein Acp98AB (reproductive), not venom -> false-positive; the limacoditoxin call is spurious.",reproductive,nontox,Limacoditoxin family
+C5J886,tox,correct,Scorpion venom-gland antimicrobial peptide OcyC1; NDBP superfamily is exactly right.,,nontox,Non-disulfide-bridged peptide (NDBP) superfamily
+A8Y7P0,tox,correct,Russell's viper venom-gland Kunitz-type inhibitor; genuine venom Kunitz family member.,,nontox,Venom Kunitz-type family
+Q8MPZ7,nontox,incorrect,"C.elegans endogenous secreted serine protease inhibitor, no toxin evidence -> false-positive toxin call.",endogenous_protease_inhibitor,nontox,other
+C8YJG3,tox,incorrect,Horsefly salivary CRISP tabinhibitin 8 (platelet-aggregation inhibitor); model called nontox -> false negative.,,CRISP family,nontox

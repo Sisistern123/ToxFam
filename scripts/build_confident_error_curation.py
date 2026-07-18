@@ -199,16 +199,39 @@ def main() -> None:
         tr = ce[ce["split"] == "train"]
         rest = ce[ce["split"] != "train"]
         n_target = round(len(tr) * args.train_subsample_frac)
-        edges = np.linspace(args.threshold, 1.0, args.train_subsample_bins + 1)
-        bin_idx = np.clip(np.digitize(tr["confidence"], edges) - 1, 0, args.train_subsample_bins - 1)
-        per_bin = max(1, round(n_target / args.train_subsample_bins))
-        picked = [g.sample(min(len(g), per_bin), random_state=args.seed + int(b))
-                  for b, g in tr.groupby(bin_idx)]
-        tr = pd.concat(picked)
+
+        # Retain train confident errors that already carry a transferable verdict (same
+        # identifier + Swiss-Prot label + prediction as the prefill round) and subsample
+        # only the NEW ones to top the sheet up to n_target. Subsampling blind to curation
+        # status would resample the retained set on every re-run and discard completed
+        # verdicts; here a re-run keeps all prior curation and asks only for the delta.
+        retained = tr.iloc[:0]
+        if args.prefill_from:
+            prior = pd.read_csv(args.prefill_from)
+            ask = tr.set_index("identifier")[["actual_label", "predicted_label"]]
+            j = prior.join(ask, on="identifier", how="inner", rsuffix="_now")
+            keep_ids = set(j.loc[
+                j["actual_label"].eq(j["actual_label_now"])
+                & j["predicted_label"].eq(j["predicted_label_now"]),
+                "identifier"])
+            retained = tr[tr["identifier"].isin(keep_ids)]
+            tr = tr[~tr["identifier"].isin(keep_ids)]
+
+        n_sample = max(0, n_target - len(retained))
+        if n_sample and len(tr):
+            edges = np.linspace(args.threshold, 1.0, args.train_subsample_bins + 1)
+            bin_idx = np.clip(np.digitize(tr["confidence"], edges) - 1, 0, args.train_subsample_bins - 1)
+            per_bin = max(1, round(n_sample / args.train_subsample_bins))
+            picked = [g.sample(min(len(g), per_bin), random_state=args.seed + int(b))
+                      for b, g in tr.groupby(bin_idx)]
+            sampled = pd.concat(picked)
+        else:
+            sampled = tr.iloc[:0]
+        tr = pd.concat([retained, sampled])
         ce = pd.concat([rest, tr], ignore_index=True)
         console.print(f"[yellow]train subsampled[/] to {len(tr)} "
-                      f"(~{args.train_subsample_frac:.2f} of confident-error train, "
-                      f"equal across {args.train_subsample_bins} confidence bins)")
+                      f"({len(retained)} retained already-curated + {len(sampled)} new; "
+                      f"target ~{n_target}, {args.train_subsample_bins} confidence bins)")
 
     ce["swissprot_side"] = ce["actual_label"].eq("nontox").map(
         {True: "nontoxin", False: "toxin(KW-0800)"})
@@ -227,6 +250,14 @@ def main() -> None:
     blind = blind.sample(frac=1.0, random_state=args.seed).reset_index(drop=True)
     blind.insert(0, "curation_id", [f"CE{i + 1:03d}" for i in range(len(blind))])
     blind.to_csv(out_dir / "confident_errors_to_curate.tsv", sep="\t", index=False)
+
+    # When re-curating against a new checkpoint, hand the curator ONLY the rows that
+    # still need a verdict (the prefill filled the rest). Same blind format and shuffle.
+    if args.prefill_from:
+        new_only = blind[blind["verdict"].astype(str).str.strip() == ""]
+        new_only.to_csv(out_dir / "confident_errors_new_to_curate.tsv", sep="\t", index=False)
+        console.print(f"[green]wrote[/] {len(new_only)} NEW (uncurated) rows -> "
+                      f"{out_dir}/confident_errors_new_to_curate.tsv")
 
     _write_provenance(out_dir, model_dir, splits, args.threshold, args.prefill_from)
 

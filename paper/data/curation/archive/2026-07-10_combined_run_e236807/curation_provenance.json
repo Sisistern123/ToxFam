@@ -1,0 +1,16 @@
+{
+  "split_manifest_sha256": "959e4d5bf53954a094a2b0f367a5034f1f90d3af32090fd80be31740160452e8",
+  "checkpoint_stamp": {
+    "split_manifest_sha256": "959e4d5bf53954a094a2b0f367a5034f1f90d3af32090fd80be31740160452e8",
+    "stamped_at": "2026-07-10T09:07:57.889708+00:00"
+  },
+  "model_dir": "/Users/selin/PycharmProjects/ToxFam/model/model_output/combined_run",
+  "splits": [
+    "train",
+    "val",
+    "test"
+  ],
+  "confidence_threshold": 0.8,
+  "prefilled_from": "paper/data/model_test_wrong_conf_annotated.csv",
+  "git_commit": "e236807"
+}
