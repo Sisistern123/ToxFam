@@ -15,9 +15,9 @@ excluded so the asset stays small (~2.5 MB). The Colab prediction notebook
 downloads and unzips this asset.
 
 Usage:
-    uv run scripts/package_models.py                  # build + upload to models-v1
+    uv run scripts/package_models.py                  # build + upload to models-v3
     uv run scripts/package_models.py --no-upload      # only build models.zip locally
-    uv run scripts/package_models.py --tag models-v1
+    uv run scripts/package_models.py --tag models-v3
 
 Requires the `gh` CLI (https://cli.github.com) to be installed and authenticated.
 """
@@ -42,7 +42,7 @@ from _gh_release import (  # noqa: E402
 ROOT = Path(__file__).resolve().parent.parent
 MODEL_OUTPUT = ROOT / "model" / "model_output"
 
-DEFAULT_TAG = "models-v1"
+DEFAULT_TAG = "models-v3"
 
 # Runs to bundle and the per-run files inference needs.
 RUNS = ("standard_run", "combined_run")

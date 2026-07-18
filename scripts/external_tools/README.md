@@ -101,10 +101,10 @@ externally, by design:
   `results/scores/` were produced against **this** split; `numbers_manifest.py`
   refuses to quote them if they cover <90% of it.
 - **ToxFam baseline = `configs/combined.yaml`** in
-  `model/model_output/combined_run` (shipped as `models-v2`, stamped to manifest
+  `model/model_output/combined_run` (shipped as `models-v3`, stamped to manifest
   `959e4d5b`; `build_harness.py` refuses an unstamped or mismatched checkpoint).
-  Standalone on the full 9,779 test: **ROC-AUC 0.9934, PR-AUC 0.9582, MCC@0.5
-  0.8668**.
+  Standalone on the full 9,779 test: **ROC-AUC 0.9932, PR-AUC 0.9614, MCC@0.5
+  0.8802**.
 - **Contamination of ToxDL 2.0 (the important one).** ToxDL 2.0 trains on
   ToxProt-provenance positives that overlap our UniProt KW-0800 test positives.
   Intersecting its bundled training set (`train.fasta` + `valid.domain`, 15,631

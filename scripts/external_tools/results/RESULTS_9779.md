@@ -11,7 +11,7 @@ MCC@0.5 0.8668**.
 **Provenance.** The split is read from the git-tracked manifest, never from
 `training_data.csv`'s own `Split` column: `build_harness.py` goes through
 `registry.load_dataset`, so a re-downloaded release CSV cannot move the ground
-truth. The ToxFam baseline is `models-v2`'s `combined_run`, whose
+truth. The ToxFam baseline is `models-v3`'s `combined_run`, whose
 `models/split_provenance.json` is stamped to the same manifest hash —
 `build_harness.py` refuses an unstamped or mismatched checkpoint, so no test id can
 be in its training set. `numbers_manifest.py` refuses to quote `results/scores/` if
@@ -113,7 +113,7 @@ ToxDL 2.0 no-structure NA list is `benchmark/test_set/toxdl2/no_structure.txt`, 
 
 ## Reproduce
 ```bash
-# 0. data + the stamped ToxFam baseline (models-v2); no retrain needed
+# 0. data + the stamped ToxFam baseline (models-v3); no retrain needed
 uv run toxfam download-data
 uv run python scripts/external_tools/build_harness.py   # ToxFam scores + 9,779 substrate
 
