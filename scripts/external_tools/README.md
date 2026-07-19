@@ -13,15 +13,15 @@ proteins all methods scored (453 toxins, 5.02% positive prior):
 
 | Method | ROC-AUC | **PR-AUC** | MCC @ t=0.5 |
 |---|---|---|---|
-| **ToxFam (emb+tax)** | 0.9930 | **0.9586** | 0.8667 |
+| **ToxFam (emb+tax)** | 0.9926 | **0.9591** | 0.8781 |
 | EAT (1-NN ProtT5, ours) | **0.9945** | 0.9309 | 0.8703 |
 | ToxDL 2.0 (2025) | 0.9909 | 0.7826 | 0.7938 |
 | ToxinPred 3.0 (2024) | 0.9253 | 0.5865 | 0.5967 |
 
 Paired-bootstrap difference vs ToxFam (2000 resamples; ✓ = 95% CI excludes 0):
-- vs **EAT (1-NN ProtT5)**: ΔROC −0.002 (tied), ΔPR **+0.028** ✓, ΔMCC@0.5 −0.004 (tied)
-- vs **ToxinPred 3.0**: ΔROC **+0.068** ✓, ΔPR **+0.371** ✓, ΔMCC@0.5 **+0.270** ✓
-- vs **ToxDL 2.0**: ΔROC +0.002 (tied), ΔPR **+0.175** ✓, ΔMCC@0.5 **+0.073** ✓
+- vs **EAT (1-NN ProtT5)**: ΔROC −0.002 (tied), ΔPR **+0.028** ✓, ΔMCC@0.5 +0.008 (tied)
+- vs **ToxinPred 3.0**: ΔROC **+0.067** ✓, ΔPR **+0.371** ✓, ΔMCC@0.5 **+0.281** ✓
+- vs **ToxDL 2.0**: ΔROC +0.002 (tied), ΔPR **+0.175** ✓, ΔMCC@0.5 **+0.084** ✓
 
 **EAT** (`toxfam eval eat`, cosine 1-NN over the same ProtT5 embeddings, training
 split as a leakage-free reference) is the internal "is the MLP needed for binary
@@ -34,7 +34,7 @@ strengthened by a contamination asymmetry (below): ToxinPred 3.0 is a *clean*
 comparator that ToxFam beats decisively, while ToxDL 2.0 has a train/test-overlap
 advantage (it has seen **61.9% of our test toxins**, 319/515, in training) — and on
 the contamination-excluded clean subset ToxFam's **PR-AUC** lead over it widens to
-+0.347 ✓, while the two tie on the near-ceiling ROC-AUC (see *Contamination*).
++0.351 ✓, while the two tie on the near-ceiling ROC-AUC (see *Contamination*).
 
 > **Note:** ToxDL 2.0 is the only method here that needs a predicted **3D structure**
 > (it embeds an AlphaFold2 model with a GCN). **760 of the 9,779** test proteins (62
@@ -113,11 +113,11 @@ externally, by design:
   an **inflated upper bound**, not OOD generalisation — yet ToxFam still beats it on
   PR-AUC. **Contamination-excluded clean subset** (drop the 828 seen proteins;
   8,951 proteins / 196 toxins, common n=8,249): ToxDL 2.0's PR-AUC collapses
-  0.783 → 0.551 while ToxFam's barely moves (0.959 → 0.902), widening ToxFam's lead
-  to **ΔPR +0.347 ✓**; the two tie on the near-ceiling ROC-AUC (ΔROC −0.003, CI
+  0.783 → 0.551 while ToxFam's barely moves (0.959 → 0.907), widening ToxFam's lead
+  to **ΔPR +0.351 ✓**; the two tie on the near-ceiling ROC-AUC (ΔROC −0.001, CI
   includes 0). The PR-AUC gap is the evidence the win is not memorisation.
   ToxinPred 3.0 is *not* ToxProt-trained → a cleaner comparator, beaten by a wide
-  margin throughout (clean-subset ΔPR +0.533 ✓).
+  margin throughout (clean-subset ΔPR +0.537 ✓).
 - **ToxinPred 3.0 domain shift.** Peptide-oriented tool applied to full-length
   proteins; it over-calls (precision 0.34), which depresses its PR-AUC.
 - **760 proteins (62 toxic) had no AlphaFold structure** on the 9,779 set, so they

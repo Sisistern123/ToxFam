@@ -5,8 +5,8 @@ on the test split pinned by **`data/splits/split_manifest.csv`** (sha256
 `959e4d5b…`; 9,779 proteins / 515 toxins). All methods are scored by the same metric
 code (`compare.py`), P(toxic) per protein, identical ground truth.
 
-ToxFam standalone on the full 9,779 test: **ROC-AUC 0.9934, PR-AUC 0.9582,
-MCC@0.5 0.8668**.
+ToxFam standalone on the full 9,779 test: **ROC-AUC 0.9932, PR-AUC 0.9614,
+MCC@0.5 0.8802**.
 
 **Provenance.** The split is read from the git-tracked manifest, never from
 `training_data.csv`'s own `Split` column: `build_harness.py` goes through
@@ -27,7 +27,7 @@ rebuilt by `scripts/external_tools/toxdl2/build_clean_subset.py`.
 
 | Method | ROC-AUC | **PR-AUC** | MCC @ t=0.5 |
 |---|---|---|---|
-| **ToxFam (emb+tax)** | 0.9930 | **0.9586** | 0.8667 |
+| **ToxFam (emb+tax)** | 0.9926 | **0.9591** | 0.8781 |
 | EAT (1-NN ProtT5, ours) | **0.9945** | 0.9309 | 0.8703 |
 | ToxDL 2.0 (2025) | 0.9909 | 0.7826 | 0.7938 |
 | ToxinPred 3.0 (2024) | 0.9253 | 0.5865 | 0.5967 |
@@ -36,9 +36,9 @@ Paired bootstrap vs ToxFam (2000 resamples, seed 42; ✓ = 95% CI excludes 0):
 
 | vs | ΔROC-AUC | ΔPR-AUC | ΔMCC@0.5 |
 |---|---|---|---|
-| EAT (1-NN ProtT5) | −0.002 `[−0.007,+0.004]` | **+0.028** ✓ `[+0.012,+0.046]` | −0.004 `[−0.028,+0.021]` |
-| ToxinPred 3.0 | **+0.068** ✓ `[+0.051,+0.085]` | **+0.371** ✓ `[+0.322,+0.419]` | **+0.270** ✓ `[+0.237,+0.304]` |
-| ToxDL 2.0 | +0.002 `[−0.005,+0.007]` | **+0.175** ✓ `[+0.132,+0.219]` | **+0.073** ✓ `[+0.050,+0.096]` |
+| EAT (1-NN ProtT5) | −0.002 `[−0.007,+0.003]` | **+0.028** ✓ `[+0.012,+0.046]` | +0.008 `[−0.015,+0.031]` |
+| ToxinPred 3.0 | **+0.067** ✓ `[+0.051,+0.084]` | **+0.371** ✓ `[+0.322,+0.419]` | **+0.281** ✓ `[+0.248,+0.316]` |
+| ToxDL 2.0 | +0.002 `[−0.005,+0.007]` | **+0.175** ✓ `[+0.132,+0.221]` | **+0.084** ✓ `[+0.060,+0.109]` |
 
 ToxFam wins PR-AUC against every other method, significantly — the metric that
 matters at a ~5% prior, where ROC-AUC is near-ceiling (≥0.991) for the three strong
@@ -65,15 +65,15 @@ proteins / 196 toxins; 8,249 of those are scored by all four methods.
 
 | Method | ROC-AUC | **PR-AUC** | MCC @ t=0.5 |
 |---|---|---|---|
-| **ToxFam (emb+tax)** | 0.9853 | **0.9025** | 0.7520 |
+| **ToxFam (emb+tax)** | 0.9870 | **0.9068** | 0.7736 |
 | EAT (1-NN ProtT5, ours) | **0.9942** | 0.8588 | **0.7924** |
 | ToxDL 2.0 (2025) | 0.9877 | 0.5510 | 0.6260 |
 | ToxinPred 3.0 (2024) | 0.9217 | 0.3673 | 0.4552 |
 
 ToxDL 2.0's PR-AUC collapses **0.783 → 0.551** once its own training data is
-removed, while ToxFam's barely moves (**0.959 → 0.902**): ToxFam's paired PR-AUC
-lead widens to **+0.347 ✓** `[+0.268,+0.424]`. The two are statistically
-indistinguishable on ROC-AUC here (−0.003, `[−0.019,+0.010]`), as expected at a
+removed, while ToxFam's barely moves (**0.959 → 0.907**): ToxFam's paired PR-AUC
+lead widens to **+0.351 ✓** `[+0.272,+0.430]`. The two are statistically
+indistinguishable on ROC-AUC here (−0.001, `[−0.016,+0.011]`), as expected at a
 near-ceiling metric. The PR-AUC gap — not ToxDL 2.0's absolute fall, which partly
 reflects the lower prior — is the evidence that its apparent strength was largely
 memorisation and ToxFam's is not.
