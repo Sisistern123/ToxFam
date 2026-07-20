@@ -124,13 +124,34 @@ def _organism_mask(df: pd.DataFrame) -> pd.Series:
 
 
 def _read_optimized_threshold(model_dir: Path) -> float:
-    """Read the calibrated binary threshold; fall back to 0.5 if unavailable."""
+    """Read the deployed binary threshold; fall back to 0.5 if unavailable.
+
+    When the checkpoint ships a deployed Platt calibrator
+    (``models/binary_calibrator.json``), its ``threshold`` lives in calibrated
+    score space and must be used against the calibrated P(toxic) that
+    ``run_topk_inference`` now emits. Older checkpoints fall back to the raw
+    Youden threshold in ``metrics/binary_metrics.json``.
+    """
+    from toxfam.model.inference import _load_binary_calibration
+
+    binary_cal = _load_binary_calibration(model_dir)
+    if binary_cal is not None:
+        return binary_cal.threshold
+
+    # Back-compat: older checkpoints (no calibrator) store a raw-space Youden
+    # threshold here, consistent with the raw P(toxic) emitted in that case.
     path = model_dir / "metrics" / "binary_metrics.json"
     if not path.exists():
         return 0.5
     try:
-        return float(json.loads(path.read_text())["optimized_threshold"])
-    except (KeyError, ValueError, json.JSONDecodeError):
+        data = json.loads(path.read_text())
+        # A calibrated-space threshold whose calibrator is missing/unreadable would
+        # be applied to the RAW P(toxic) that run_topk_inference emits in that case
+        # — a score-space mismatch. Degrade to the raw-space default instead.
+        if data.get("score_space") == "platt_calibrated":
+            return 0.5
+        return float(data["optimized_threshold"])
+    except (KeyError, ValueError, TypeError, json.JSONDecodeError):
         return 0.5
 
 

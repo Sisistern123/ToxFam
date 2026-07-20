@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, NamedTuple
 
 import h5py
 import pandas as pd
@@ -21,6 +21,7 @@ from toxfam.device import get_device
 from toxfam.model.model_config import ModelConfig
 
 if TYPE_CHECKING:
+    from toxfam.evaluation.metrics import PlattCalibrator
     from toxfam.model.calibration import ModelWithTemperature
 
 console = Console()
@@ -91,6 +92,41 @@ def load_calibrated_model(
     )
 
     return scaled_model, model_config, idx_to_label
+
+
+class _BinaryCalibration(NamedTuple):
+    """The deployed binary P(toxic) calibrator and its decision threshold.
+
+    Loaded as one unit so the emitted score and the threshold can never be
+    sourced from different score spaces: with a calibrator present both are
+    calibrated; absent, the caller uses the raw score and a raw-space threshold.
+    """
+
+    calibrator: PlattCalibrator
+    threshold: float
+
+
+def _load_binary_calibration(model_dir: str | Path) -> _BinaryCalibration | None:
+    """Load the deployed binary P(toxic) calibrator + threshold, or None if absent.
+
+    ``models/binary_calibrator.json`` is written by ``run_binary_evaluation`` when
+    a checkpoint is calibrated. Its absence (older checkpoints) means the raw
+    P(toxic) is used, so this returns None and both the score and the threshold
+    stay in raw space. Single reader for both fields — see
+    ``prediction._read_optimized_threshold`` and ``run_topk_inference``.
+    """
+    from toxfam.evaluation.metrics import PlattCalibrator
+
+    path = Path(model_dir) / "models" / "binary_calibrator.json"
+    if not path.exists():
+        return None
+    try:
+        d = json.loads(path.read_text())
+        return _BinaryCalibration(PlattCalibrator.from_dict(d), float(d["threshold"]))
+    except (json.JSONDecodeError, KeyError, ValueError, TypeError, OSError):
+        # TypeError covers a null / non-numeric "threshold" (float(None)); a
+        # calibrator we cannot fully parse must degrade to the raw path, not crash.
+        return None
 
 
 def _resolve_tax_h5(model_dir: Path) -> Path | None:
@@ -295,6 +331,16 @@ def run_topk_inference(
         p_toxic = 1.0 - cal_probs[:, nontox_indices].sum(dim=1)
     else:
         p_toxic = torch.ones(len(identifiers))
+
+    # Deployed binary calibration (recommendation #1): recalibrate the derived
+    # P(toxic) with the checkpoint's Platt calibrator when present. Monotonic, so
+    # it changes no ranking — only the probability value (and the 0.5 point).
+    # The family predictions/confidence above are NOT touched.
+    binary_cal = _load_binary_calibration(model_dir)
+    if binary_cal is not None:
+        p_toxic = torch.as_tensor(
+            binary_cal.calibrator.transform(p_toxic.numpy()), dtype=torch.float32
+        )
 
     if binary_only:
         return pd.DataFrame({"identifier": identifiers, "p_toxic": p_toxic.tolist()})

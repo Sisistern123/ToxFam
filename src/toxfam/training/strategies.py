@@ -198,9 +198,21 @@ def evaluate_label_on_dataset(
         output_dict=True,
         zero_division=0,
     )
+    # Richer calibration metrics than top-1 ECE alone: classwise-ECE/SCE
+    # (per-class reliability a single temperature cannot fix), adaptive ECE,
+    # Brier, NLL. Computed on this split's scores, so the uncalibrated tag and
+    # its `_calibrated` counterpart give an automatic before/after.
+    from toxfam.evaluation.metrics import multiclass_calibration_report
+
+    calibration_metrics = multiclass_calibration_report(y_scores, y_true)
     (out_path / "metrics" / f"{tag}_metrics.json").write_text(
         json.dumps(
-            {"numeric_metrics": metrics, "classification_report": report}, indent=4
+            {
+                "numeric_metrics": metrics,
+                "calibration_metrics": calibration_metrics,
+                "classification_report": report,
+            },
+            indent=4,
         )
     )
 

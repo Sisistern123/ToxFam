@@ -134,6 +134,44 @@ def test_threshold_malformed_json_defaults_to_half(tmp_path):
     assert _read_optimized_threshold(tmp_path) == 0.5
 
 
+def _write_binary_calibrator(model_dir: Path, threshold: float) -> None:
+    models = model_dir / "models"
+    models.mkdir(parents=True, exist_ok=True)
+    (models / "binary_calibrator.json").write_text(
+        json.dumps({"a": 0.7, "b": -2.3, "eps": 1e-6, "threshold": threshold,
+                    "threshold_space": "platt"})
+    )
+
+
+def test_threshold_prefers_deployed_calibrator(tmp_path):
+    """When the deployed calibrator is present, its (calibrated-space) threshold wins."""
+    _write_binary_metrics(tmp_path, json.dumps({"optimized_threshold": 0.73}))
+    _write_binary_calibrator(tmp_path, threshold=0.31)
+    assert _read_optimized_threshold(tmp_path) == pytest.approx(0.31)
+
+
+def test_threshold_falls_back_to_binary_metrics_without_calibrator(tmp_path):
+    _write_binary_metrics(tmp_path, json.dumps({"optimized_threshold": 0.73}))
+    assert _read_optimized_threshold(tmp_path) == pytest.approx(0.73)
+
+
+def test_threshold_malformed_calibrator_falls_back(tmp_path):
+    (tmp_path / "models").mkdir(parents=True, exist_ok=True)
+    (tmp_path / "models" / "binary_calibrator.json").write_text("{bad json")
+    _write_binary_metrics(tmp_path, json.dumps({"optimized_threshold": 0.73}))
+    assert _read_optimized_threshold(tmp_path) == pytest.approx(0.73)
+
+
+def test_threshold_calibrated_metrics_without_calibrator_is_half(tmp_path):
+    """A calibrated-space threshold with no calibrator would be applied to the raw
+    P(toxic) — score-space mismatch; degrade to 0.5 rather than reuse it."""
+    _write_binary_metrics(
+        tmp_path,
+        json.dumps({"optimized_threshold": 0.03, "score_space": "platt_calibrated"}),
+    )
+    assert _read_optimized_threshold(tmp_path) == 0.5
+
+
 # --------------------------------------------------------------------------- #
 # _suffixed                                                                    #
 # --------------------------------------------------------------------------- #

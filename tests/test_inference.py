@@ -174,3 +174,85 @@ def test_run_topk_inference_binary_only(tmp_path, sample_h5):
 
     assert list(out.columns) == ["identifier", "p_toxic"]
     assert len(out) == 2
+
+
+# --------------------------------------------------------------------------- #
+# Deployed binary P(toxic) calibrator (recommendation #1)                      #
+# --------------------------------------------------------------------------- #
+
+
+def _write_binary_calibrator(model_dir, *, a, b, threshold=0.5, eps=1e-6):
+    (model_dir / "models" / "binary_calibrator.json").write_text(
+        json.dumps(
+            {"a": a, "b": b, "eps": eps, "threshold": threshold,
+             "threshold_space": "platt"}
+        )
+    )
+
+
+def test_load_binary_calibration_roundtrip_and_missing(tmp_path):
+    from toxfam.evaluation.metrics import PlattCalibrator
+    from toxfam.model.inference import _load_binary_calibration
+
+    model_dir = _make_model_dir(tmp_path)
+    assert _load_binary_calibration(model_dir) is None  # nothing written yet
+
+    _write_binary_calibrator(model_dir, a=0.7, b=-2.3, threshold=0.2)
+    bc = _load_binary_calibration(model_dir)
+    x = np.array([0.1, 0.5, 0.9])
+    np.testing.assert_allclose(
+        bc.calibrator.transform(x), PlattCalibrator(a=0.7, b=-2.3).transform(x)
+    )
+    assert bc.threshold == 0.2  # threshold loaded as a matched unit with the calibrator
+
+
+def test_load_binary_calibration_null_threshold_falls_back(tmp_path):
+    """A null/non-numeric threshold must degrade to None (raw path), not crash."""
+    from toxfam.model.inference import _load_binary_calibration
+
+    model_dir = _make_model_dir(tmp_path)
+    (model_dir / "models" / "binary_calibrator.json").write_text(
+        json.dumps({"a": 0.7, "b": -2.3, "eps": 1e-6, "threshold": None})
+    )
+    assert _load_binary_calibration(model_dir) is None
+
+
+def test_run_topk_inference_applies_binary_calibrator(tmp_path, sample_h5):
+    from toxfam.evaluation.metrics import PlattCalibrator
+
+    model_dir = _make_model_dir(tmp_path)
+    df = pd.DataFrame({"identifier": ["P001", "P002", "P003"]})
+
+    raw = run_topk_inference(df, sample_h5, model_dir, top_k=1)["p_toxic"].to_numpy()
+    _write_binary_calibrator(model_dir, a=0.7, b=-2.3)
+    cal = run_topk_inference(df, sample_h5, model_dir, top_k=1)["p_toxic"].to_numpy()
+
+    np.testing.assert_allclose(
+        cal, PlattCalibrator(a=0.7, b=-2.3).transform(raw), atol=1e-6
+    )
+    assert not np.allclose(cal, raw)  # the calibrator actually moved the score
+
+
+def test_run_topk_inference_identity_calibrator_reproduces_raw(tmp_path, sample_h5):
+    model_dir = _make_model_dir(tmp_path)
+    df = pd.DataFrame({"identifier": ["P001", "P002"]})
+
+    raw = run_topk_inference(df, sample_h5, model_dir)["p_toxic"].to_numpy()
+    _write_binary_calibrator(model_dir, a=1.0, b=0.0)
+    ident = run_topk_inference(df, sample_h5, model_dir)["p_toxic"].to_numpy()
+    np.testing.assert_allclose(ident, raw, atol=1e-6)
+
+
+def test_binary_calibrator_does_not_affect_family_confidence(tmp_path, sample_h5):
+    """Guardrail: the family curation path (run_inference) is untouched by #1."""
+    from toxfam.model.inference import run_inference
+
+    model_dir = _make_model_dir(tmp_path)
+    df = pd.DataFrame({"identifier": ["P001", "P002", "P003"]})
+
+    before = run_inference(df, sample_h5, model_dir)
+    _write_binary_calibrator(model_dir, a=0.7, b=-2.3)
+    after = run_inference(df, sample_h5, model_dir)
+
+    assert list(before["predicted_label"]) == list(after["predicted_label"])
+    np.testing.assert_allclose(before["confidence"], after["confidence"])
