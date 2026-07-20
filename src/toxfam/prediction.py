@@ -144,8 +144,14 @@ def _read_optimized_threshold(model_dir: Path) -> float:
     if not path.exists():
         return 0.5
     try:
-        return float(json.loads(path.read_text())["optimized_threshold"])
-    except (KeyError, ValueError, json.JSONDecodeError):
+        data = json.loads(path.read_text())
+        # A calibrated-space threshold whose calibrator is missing/unreadable would
+        # be applied to the RAW P(toxic) that run_topk_inference emits in that case
+        # — a score-space mismatch. Degrade to the raw-space default instead.
+        if data.get("score_space") == "platt_calibrated":
+            return 0.5
+        return float(data["optimized_threshold"])
+    except (KeyError, ValueError, TypeError, json.JSONDecodeError):
         return 0.5
 
 

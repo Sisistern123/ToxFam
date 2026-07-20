@@ -206,6 +206,17 @@ def test_load_binary_calibration_roundtrip_and_missing(tmp_path):
     assert bc.threshold == 0.2  # threshold loaded as a matched unit with the calibrator
 
 
+def test_load_binary_calibration_null_threshold_falls_back(tmp_path):
+    """A null/non-numeric threshold must degrade to None (raw path), not crash."""
+    from toxfam.model.inference import _load_binary_calibration
+
+    model_dir = _make_model_dir(tmp_path)
+    (model_dir / "models" / "binary_calibrator.json").write_text(
+        json.dumps({"a": 0.7, "b": -2.3, "eps": 1e-6, "threshold": None})
+    )
+    assert _load_binary_calibration(model_dir) is None
+
+
 def test_run_topk_inference_applies_binary_calibrator(tmp_path, sample_h5):
     from toxfam.evaluation.metrics import PlattCalibrator
 

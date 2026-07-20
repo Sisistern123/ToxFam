@@ -123,7 +123,9 @@ def _load_binary_calibration(model_dir: str | Path) -> _BinaryCalibration | None
     try:
         d = json.loads(path.read_text())
         return _BinaryCalibration(PlattCalibrator.from_dict(d), float(d["threshold"]))
-    except (json.JSONDecodeError, KeyError, ValueError, OSError):
+    except (json.JSONDecodeError, KeyError, ValueError, TypeError, OSError):
+        # TypeError covers a null / non-numeric "threshold" (float(None)); a
+        # calibrator we cannot fully parse must degrade to the raw path, not crash.
         return None
 
 

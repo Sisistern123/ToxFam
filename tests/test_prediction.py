@@ -162,6 +162,16 @@ def test_threshold_malformed_calibrator_falls_back(tmp_path):
     assert _read_optimized_threshold(tmp_path) == pytest.approx(0.73)
 
 
+def test_threshold_calibrated_metrics_without_calibrator_is_half(tmp_path):
+    """A calibrated-space threshold with no calibrator would be applied to the raw
+    P(toxic) — score-space mismatch; degrade to 0.5 rather than reuse it."""
+    _write_binary_metrics(
+        tmp_path,
+        json.dumps({"optimized_threshold": 0.03, "score_space": "platt_calibrated"}),
+    )
+    assert _read_optimized_threshold(tmp_path) == 0.5
+
+
 # --------------------------------------------------------------------------- #
 # _suffixed                                                                    #
 # --------------------------------------------------------------------------- #
