@@ -86,3 +86,6 @@ models.zip
 # Claude-in-Chrome / Playwright MCP scratch (console logs + page snapshots from
 # visually verifying figures); transient, never part of the project.
 .playwright-mcp/
+
+# ProtSpace bundles + intermediates (make protspace; reproducible from data/processed)
+/protspace/
