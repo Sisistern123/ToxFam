@@ -124,7 +124,23 @@ def _organism_mask(df: pd.DataFrame) -> pd.Series:
 
 
 def _read_optimized_threshold(model_dir: Path) -> float:
-    """Read the calibrated binary threshold; fall back to 0.5 if unavailable."""
+    """Read the deployed binary threshold; fall back to 0.5 if unavailable.
+
+    When the checkpoint ships a deployed Platt calibrator
+    (``models/binary_calibrator.json``), its ``threshold`` lives in calibrated
+    score space and must be used against the calibrated P(toxic) that
+    ``run_topk_inference`` now emits. Older checkpoints fall back to the raw
+    Youden threshold in ``metrics/binary_metrics.json``.
+    """
+    cal_path = model_dir / "models" / "binary_calibrator.json"
+    if cal_path.exists():
+        try:
+            threshold = json.loads(cal_path.read_text()).get("threshold")
+            if threshold is not None:
+                return float(threshold)
+        except (ValueError, json.JSONDecodeError):
+            pass
+
     path = model_dir / "metrics" / "binary_metrics.json"
     if not path.exists():
         return 0.5

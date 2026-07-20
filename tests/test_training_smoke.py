@@ -70,11 +70,31 @@ def test_run_training_standard_smoke(tmp_path, monkeypatch, fake_split_manifest)
 
     test_metrics = json.loads((out_dir / "metrics" / "test_metrics.json").read_text())
     assert "numeric_metrics" in test_metrics
+    # Recommendation #2: richer calibration metrics are emitted per split.
+    assert set(test_metrics["calibration_metrics"]) >= {
+        "ece", "adaptive_ece", "classwise_ece", "brier", "nll"
+    }
 
     binary_metrics = json.loads(
         (out_dir / "metrics" / "binary_metrics.json").read_text()
     )
     assert isinstance(binary_metrics, dict) and binary_metrics
+
+    # Recommendation #1: a separate binary Platt-calibration report is written.
+    binary_cal = json.loads(
+        (out_dir / "metrics" / "binary_calibration.json").read_text()
+    )
+    assert set(binary_cal) >= {"platt", "test_raw", "test_calibrated", "delta"}
+    assert set(binary_cal["test_raw"]) >= {"ece", "brier", "nll"}
+
+    # Recommendation #1 DEPLOYED: the calibrator ships with the checkpoint, and the
+    # reported binary metrics/threshold are in calibrated score space.
+    calibrator = json.loads(
+        (out_dir / "models" / "binary_calibrator.json").read_text()
+    )
+    assert set(calibrator) >= {"a", "b", "threshold", "threshold_space"}
+    assert binary_metrics["score_space"] == "platt_calibrated"
+    assert binary_metrics["optimized_threshold"] == pytest.approx(calibrator["threshold"])
 
 
 def _tiny_training_setup(tmp_path, fake_split_manifest):

@@ -111,23 +111,45 @@ def run_binary_evaluation(
     Returns the binary results dict.
     """
     from toxfam.evaluation.metrics import (
+        PlattCalibrator,
+        binary_calibration_analysis,
         calculate_binary_metrics_with_scores,
         find_optimal_threshold,
     )
 
     console.print("\n[bold]Running Binary Metrics Pipeline...[/bold]")
 
-    # Val set — threshold optimization
+    # Raw P(toxic) — inherits the 38-class temperature (systematically over-toxic).
     val_y_true = compute_binary_labels(val_df, label_col)
-    val_p_toxic = compute_p_toxic(model, val_df, config, label_encoder, label_col)
+    val_p_raw = compute_p_toxic(model, val_df, config, label_encoder, label_col)
+    test_y_true = compute_binary_labels(test_df, label_col)
+    test_p_raw = compute_p_toxic(model, test_df, config, label_encoder, label_col)
 
+    # Recommendation #1 (DEPLOYED): fit a dedicated Platt calibrator for P(toxic)
+    # on val and score on the calibrated probability. The raw-vs-calibrated
+    # diagnostic (ECE/Brier/NLL + bootstrap CIs) is kept in binary_calibration.json;
+    # the calibrator itself is persisted to models/binary_calibrator.json so predict
+    # and eval apply it. Platt is monotonic, so ROC-AUC/PR-AUC are unchanged.
+    binary_cal = binary_calibration_analysis(
+        val_p_raw, val_y_true, test_p_raw, test_y_true, n_boot=1000, seed=42
+    )
+    calibrator = PlattCalibrator.from_dict(binary_cal["platt"])
+    val_p_toxic = calibrator.transform(val_p_raw)
+    test_p_toxic = calibrator.transform(test_p_raw)
+    console.print(
+        f"  Binary P(toxic) Platt-calibrated — ECE {binary_cal['test_raw']['ece']:.4f} "
+        f"→ {binary_cal['test_calibrated']['ece']:.4f}, "
+        f"Brier {binary_cal['test_raw']['brier']:.4f} "
+        f"→ {binary_cal['test_calibrated']['brier']:.4f} "
+        f"(ROC-AUC unchanged {binary_cal['roc_auc_raw']:.4f})"
+    )
+
+    # Threshold optimized in CALIBRATED score space, to match the deployed P(toxic).
     thresh_result = find_optimal_threshold(val_y_true, val_p_toxic, method="youden")
     opt_threshold = thresh_result["optimal_threshold"]
-    console.print(f"  Optimized threshold (Youden's J): {opt_threshold:.4f}")
-
-    # Test set — evaluate at both thresholds
-    test_y_true = compute_binary_labels(test_df, label_col)
-    test_p_toxic = compute_p_toxic(model, test_df, config, label_encoder, label_col)
+    console.print(
+        f"  Deployed threshold (Youden's J, calibrated space): {opt_threshold:.4f}"
+    )
 
     test_default = calculate_binary_metrics_with_scores(
         test_y_true, test_p_toxic, threshold=0.5
@@ -145,7 +167,19 @@ def run_binary_evaluation(
         f"PR-AUC={test_opt['pr_auc']:.4f}, MCC={test_opt['mcc']:.4f}"
     )
 
-    # Save metrics
+    # Persist the deployed calibrator next to the checkpoint so it ships with the
+    # model and predict/eval load it (see model.inference._load_binary_calibrator).
+    models_dir = output_dir / "models"
+    models_dir.mkdir(exist_ok=True)
+    (models_dir / "binary_calibrator.json").write_text(
+        json.dumps(
+            {**calibrator.to_dict(), "threshold": opt_threshold,
+             "threshold_space": "platt"},
+            indent=4,
+        )
+    )
+
+    # Save metrics — binary_metrics.json now reports the DEPLOYED (calibrated) score.
     metrics_dir = output_dir / "metrics"
     metrics_dir.mkdir(exist_ok=True)
     _curve_keys = {
@@ -154,11 +188,15 @@ def run_binary_evaluation(
     }
     binary_results = {
         "optimized_threshold": opt_threshold,
+        "score_space": "platt_calibrated",
         "test_default": {k: v for k, v in test_default.items() if k not in _curve_keys},
         "test_optimized": {k: v for k, v in test_opt.items() if k not in _curve_keys},
     }
     (metrics_dir / "binary_metrics.json").write_text(
         json.dumps(binary_results, indent=4)
+    )
+    (metrics_dir / "binary_calibration.json").write_text(
+        json.dumps(binary_cal, indent=4)
     )
 
     # Plots

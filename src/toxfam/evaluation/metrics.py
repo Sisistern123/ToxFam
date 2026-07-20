@@ -267,6 +267,304 @@ def calculate_binary_metrics_with_scores(
     }
 
 
+# ---------------------------------------------------------------------------
+# Calibration-quality metrics
+#
+# Global temperature scaling (ModelWithTemperature) is judged in-repo only by
+# top-1 ECE. These add the richer notions the calibration literature uses to
+# decide whether a single scalar is enough: classwise-ECE / Static Calibration
+# Error (per-class one-vs-rest reliability), adaptive (equal-mass) ECE, Brier,
+# and NLL. See Kull et al. NeurIPS 2019 (classwise-ECE) and Nixon et al.
+# CVPRW 2019 (binning sensitivity / SCE).
+# ---------------------------------------------------------------------------
+
+
+def _onehot(labels: np.ndarray, n_classes: int) -> np.ndarray:
+    oh = np.zeros((len(labels), n_classes), dtype=float)
+    oh[np.arange(len(labels)), labels] = 1.0
+    return oh
+
+
+def _reliability_ece(
+    scores: np.ndarray, positives: np.ndarray, n_bins: int
+) -> float:
+    """Binned reliability gap E|conf - freq| for one score vs its outcome.
+
+    ``scores`` is a per-sample probability, ``positives`` the matching 0/1
+    outcome. Equal-width bins on [0, 1], lower-exclusive / upper-inclusive to
+    match the torch ``_ECELoss`` used during calibration; the first bin also
+    captures an exact-zero score so a never-predicted class still contributes.
+    """
+    scores = np.asarray(scores, dtype=float)
+    positives = np.asarray(positives, dtype=float)
+    n = len(scores)
+    if n == 0:
+        return 0.0
+    boundaries = np.linspace(0.0, 1.0, n_bins + 1)
+    ece = 0.0
+    for lo, hi in zip(boundaries[:-1], boundaries[1:]):
+        in_bin = (scores > lo) & (scores <= hi)
+        if lo == 0.0:
+            in_bin = in_bin | (scores == 0.0)
+        prop = in_bin.mean()
+        if prop > 0:
+            ece += abs(positives[in_bin].mean() - scores[in_bin].mean()) * prop
+    return float(ece)
+
+
+def top_label_ece(probs: np.ndarray, labels: np.ndarray, n_bins: int = 15) -> float:
+    """Top-1 confidence ECE (Guo et al.'s notion): calibration of max prob."""
+    probs = np.asarray(probs, dtype=float)
+    labels = np.asarray(labels)
+    confidences = probs.max(axis=1)
+    accuracies = (probs.argmax(axis=1) == labels).astype(float)
+    return _reliability_ece(confidences, accuracies, n_bins)
+
+
+def adaptive_ece(probs: np.ndarray, labels: np.ndarray, n_bins: int = 15) -> float:
+    """Adaptive ECE (ACE): equal-mass confidence bins instead of equal-width.
+
+    Removes ECE's sensitivity to empty/underpopulated high-confidence bins by
+    putting an equal number of samples in each bin (Nixon et al. 2019).
+    """
+    probs = np.asarray(probs, dtype=float)
+    labels = np.asarray(labels)
+    confidences = probs.max(axis=1)
+    accuracies = (probs.argmax(axis=1) == labels).astype(float)
+    n = len(confidences)
+    if n == 0:
+        return 0.0
+    order = np.argsort(confidences, kind="stable")
+    conf_sorted = confidences[order]
+    acc_sorted = accuracies[order]
+    ece = 0.0
+    for idx in np.array_split(np.arange(n), min(n_bins, n)):
+        if len(idx) == 0:
+            continue
+        ece += abs(acc_sorted[idx].mean() - conf_sorted[idx].mean()) * (len(idx) / n)
+    return float(ece)
+
+
+def classwise_ece_per_class(
+    probs: np.ndarray, labels: np.ndarray, n_bins: int = 15
+) -> list[dict[str, Any]]:
+    """Per-class one-vs-rest ECE with its test support, one entry per class.
+
+    The honest way to read classwise reliability on an imbalanced many-class
+    problem: the aggregate is dominated by near-empty classes (each ~0), so the
+    per-class breakdown (with support) is needed to see whether a *populated*
+    class is miscalibrated.
+    """
+    probs = np.asarray(probs, dtype=float)
+    labels = np.asarray(labels)
+    n_classes = probs.shape[1]
+    out = []
+    for c in range(n_classes):
+        yc = (labels == c).astype(float)
+        out.append(
+            {
+                "class_index": c,
+                "support": int(yc.sum()),
+                "ece": _reliability_ece(probs[:, c], yc, n_bins),
+            }
+        )
+    return out
+
+
+def classwise_ece(probs: np.ndarray, labels: np.ndarray, n_bins: int = 15) -> float:
+    """Classwise-ECE / Static Calibration Error: mean per-class one-vs-rest ECE.
+
+    For each class ``c`` it bins ``probs[:, c]`` and compares the mean predicted
+    probability to the empirical frequency of that class in the bin, then
+    averages over classes. Unlike top-1 ECE this exposes per-class over/under-
+    confidence a single global temperature cannot fix (Kull et al. 2019).
+
+    NOTE: this is the *unweighted* mean over classes. On an imbalanced
+    many-class problem it is diluted toward 0 by near-empty classes — read it
+    alongside :func:`classwise_ece_weighted` and :func:`classwise_ece_per_class`.
+    """
+    per_class = classwise_ece_per_class(probs, labels, n_bins)
+    return float(np.mean([e["ece"] for e in per_class])) if per_class else 0.0
+
+
+def classwise_ece_weighted(
+    probs: np.ndarray, labels: np.ndarray, n_bins: int = 15
+) -> float:
+    """Support-weighted classwise-ECE: per-class ECE weighted by class frequency.
+
+    De-dilutes the plain mean: a miscalibrated populated class dominates instead
+    of being averaged away against many empty classes. This is the classwise
+    number that actually bears on "would a per-class recalibrator help here?".
+    """
+    per_class = classwise_ece_per_class(probs, labels, n_bins)
+    n = len(np.asarray(labels))
+    if n == 0 or not per_class:
+        return 0.0
+    return float(sum(e["ece"] * e["support"] for e in per_class) / n)
+
+
+def brier_score(probs: np.ndarray, labels: np.ndarray) -> float:
+    """Multiclass Brier score: mean sum_c (p_c - onehot_c)^2, range [0, 2]."""
+    probs = np.asarray(probs, dtype=float)
+    labels = np.asarray(labels)
+    oh = _onehot(labels, probs.shape[1])
+    return float(np.mean(np.sum((probs - oh) ** 2, axis=1)))
+
+
+def nll_score(probs: np.ndarray, labels: np.ndarray, eps: float = 1e-12) -> float:
+    """Negative log-likelihood (multiclass cross-entropy), matches log_loss."""
+    probs = np.asarray(probs, dtype=float)
+    labels = np.asarray(labels)
+    p_true = np.clip(probs[np.arange(len(labels)), labels], eps, 1.0)
+    return float(-np.mean(np.log(p_true)))
+
+
+def multiclass_calibration_report(
+    probs: np.ndarray, labels: np.ndarray, n_bins: int = 15
+) -> dict[str, float]:
+    """All calibration metrics for a multiclass prob matrix + integer labels."""
+    return {
+        "ece": top_label_ece(probs, labels, n_bins),
+        "adaptive_ece": adaptive_ece(probs, labels, n_bins),
+        "classwise_ece": classwise_ece(probs, labels, n_bins),
+        "classwise_ece_weighted": classwise_ece_weighted(probs, labels, n_bins),
+        "brier": brier_score(probs, labels),
+        "nll": nll_score(probs, labels),
+    }
+
+
+def binary_calibration_report(
+    p_toxic: np.ndarray, y_true: np.ndarray, n_bins: int = 15
+) -> dict[str, float]:
+    """Calibration metrics for a scalar P(toxic) score against 0/1 labels.
+
+    ``ece`` here is positive-class reliability (bin P(toxic), compare to the
+    empirical toxic frequency) — the exact quantity a separate binary
+    calibrator (:class:`PlattCalibrator`) targets. ``brier`` is the standard
+    single-event binary Brier ``mean((p - y)^2)`` (== sklearn brier_score_loss),
+    not the two-column multiclass sum.
+    """
+    p = np.asarray(p_toxic, dtype=float)
+    y = np.asarray(y_true, dtype=float)
+    return {
+        "ece": _reliability_ece(p, (y == 1).astype(float), n_bins),
+        "brier": float(np.mean((p - y) ** 2)),
+        "nll": nll_score(np.column_stack([1.0 - p, p]), y.astype(int)),
+    }
+
+
+class PlattCalibrator:
+    """Platt scaling for a single binary score: sigmoid(a * logit(s) + b).
+
+    Recalibrates the derived P(toxic) = 1 - sum(P(nontoxin)) score with its own
+    two parameters instead of inheriting the 38-class temperature. The map is
+    monotonic (a > 0 in practice), so it is rank-preserving: it changes ECE /
+    Brier / NLL and the fixed-0.5 operating point, but not ROC-AUC / PR-AUC.
+    """
+
+    def __init__(self, a: float = 1.0, b: float = 0.0, eps: float = 1e-6) -> None:
+        self.a = a
+        self.b = b
+        self.eps = eps
+
+    def _logit(self, s: np.ndarray) -> np.ndarray:
+        s = np.clip(np.asarray(s, dtype=float), self.eps, 1.0 - self.eps)
+        return np.log(s / (1.0 - s))
+
+    def fit(self, scores: np.ndarray, y: np.ndarray) -> PlattCalibrator:
+        from sklearn.linear_model import LogisticRegression
+
+        x = self._logit(scores).reshape(-1, 1)
+        y = np.asarray(y).astype(int)
+        # A single observed class (or <2 samples) has no calibration signal and
+        # would crash LogisticRegression — fall back to the identity map.
+        if len(y) < 2 or np.unique(y).size < 2:
+            self.a, self.b = 1.0, 0.0
+            return self
+        # Unregularized MLE — the canonical Platt fit for a single feature.
+        lr = LogisticRegression(penalty=None, solver="lbfgs", max_iter=1000)
+        # Well-separated scores make the L-BFGS line search touch large weights,
+        # which trips spurious BLAS "divide by zero / overflow in matmul" FP
+        # flags; the fit still converges. Silence just those FP flags.
+        with np.errstate(divide="ignore", over="ignore", invalid="ignore"):
+            lr.fit(x, y)
+        self.a = float(lr.coef_[0, 0])
+        self.b = float(lr.intercept_[0])
+        return self
+
+    def transform(self, scores: np.ndarray) -> np.ndarray:
+        z = self.a * self._logit(scores) + self.b
+        return np.clip(1.0 / (1.0 + np.exp(-z)), 0.0, 1.0)
+
+    def to_dict(self) -> dict[str, float]:
+        return {"a": self.a, "b": self.b, "eps": self.eps}
+
+    @classmethod
+    def from_dict(cls, d: dict[str, float]) -> PlattCalibrator:
+        return cls(a=d["a"], b=d["b"], eps=d.get("eps", 1e-6))
+
+
+def binary_calibration_analysis(
+    val_p_toxic: np.ndarray,
+    val_y: np.ndarray,
+    test_p_toxic: np.ndarray,
+    test_y: np.ndarray,
+    *,
+    n_bins: int = 15,
+    n_boot: int = 0,
+    seed: int = 0,
+) -> dict[str, Any]:
+    """Fit a Platt calibrator for P(toxic) on val, measure its effect on test.
+
+    Answers "does the derived binary score deserve its own calibrator?" — it
+    fits Platt on the validation P(toxic)/label pairs and reports the change in
+    calibration (ECE/Brier/NLL) on the held-out test set, plus a rank-preserving
+    sanity check that ROC-AUC is unchanged. Pure: numpy in, JSON-able dict out.
+
+    With ``n_boot > 0`` it adds ``delta_ci95``: percentile bootstrap 95% CIs for
+    each metric's change, resampling the test set with the (val-fixed) calibrator
+    held constant. Binned ECE is a positively-biased small-sample estimator, so
+    the point delta alone overstates certainty — the CI is what makes the effect
+    size interpretable.
+    """
+    cal = PlattCalibrator().fit(val_p_toxic, val_y)
+    test_p_toxic = np.asarray(test_p_toxic, dtype=float)
+    test_y = np.asarray(test_y)
+    test_cal = cal.transform(test_p_toxic)
+
+    raw = binary_calibration_report(test_p_toxic, test_y, n_bins)
+    calibrated = binary_calibration_report(test_cal, test_y, n_bins)
+    delta = {k: calibrated[k] - raw[k] for k in raw}
+
+    result = {
+        "platt": cal.to_dict(),
+        "n_bins": n_bins,
+        "test_raw": raw,
+        "test_calibrated": calibrated,
+        "delta": delta,
+        "roc_auc_raw": float(roc_auc_score(test_y, test_p_toxic)),
+        "roc_auc_calibrated": float(roc_auc_score(test_y, test_cal)),
+    }
+
+    if n_boot > 0:
+        rng = np.random.default_rng(seed)
+        n = len(test_y)
+        boot = {k: [] for k in delta}
+        for _ in range(n_boot):
+            idx = rng.integers(0, n, n)
+            r = binary_calibration_report(test_p_toxic[idx], test_y[idx], n_bins)
+            c = binary_calibration_report(test_cal[idx], test_y[idx], n_bins)
+            for k in delta:
+                boot[k].append(c[k] - r[k])
+        result["delta_ci95"] = {
+            k: [float(np.percentile(v, 2.5)), float(np.percentile(v, 97.5))]
+            for k, v in boot.items()
+        }
+        result["n_boot"] = n_boot
+
+    return result
+
+
 def find_optimal_threshold(
     y_true: np.ndarray,
     y_scores: np.ndarray,

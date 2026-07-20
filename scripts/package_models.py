@@ -54,6 +54,10 @@ KEEP_FILES = (
     # Records the split manifest the checkpoint was calibrated against. `eval` and
     # `predict test_set/val_set` refuse a checkpoint without it.
     "models/split_provenance.json",
+    # Deployed Platt calibrator + Youden threshold for the binary P(toxic) score.
+    # predict/eval apply it (model.inference._load_binary_calibrator); without it
+    # they fall back to the raw score + 0.5. Regenerate via `toxfam eval binary`.
+    "models/binary_calibrator.json",
 )
 
 

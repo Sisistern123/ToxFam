@@ -93,6 +93,25 @@ def load_calibrated_model(
     return scaled_model, model_config, idx_to_label
 
 
+def _load_binary_calibrator(model_dir: str | Path):
+    """Load the deployed binary P(toxic) calibrator, or None if absent.
+
+    ``models/binary_calibrator.json`` is written by ``run_binary_evaluation``
+    when a checkpoint is calibrated. Its absence (older checkpoints) means the
+    raw P(toxic) is used, so this returns None and the caller leaves the score
+    unchanged. See ``toxfam.evaluation.metrics.PlattCalibrator``.
+    """
+    from toxfam.evaluation.metrics import PlattCalibrator
+
+    path = Path(model_dir) / "models" / "binary_calibrator.json"
+    if not path.exists():
+        return None
+    try:
+        return PlattCalibrator.from_dict(json.loads(path.read_text()))
+    except (json.JSONDecodeError, KeyError, ValueError, OSError):
+        return None
+
+
 def _resolve_tax_h5(model_dir: Path) -> Path | None:
     """Read tax_h5_path from the saved config.yaml in the model directory."""
     config_yaml = model_dir / "config.yaml"
@@ -295,6 +314,16 @@ def run_topk_inference(
         p_toxic = 1.0 - cal_probs[:, nontox_indices].sum(dim=1)
     else:
         p_toxic = torch.ones(len(identifiers))
+
+    # Deployed binary calibration (recommendation #1): recalibrate the derived
+    # P(toxic) with the checkpoint's Platt calibrator when present. Monotonic, so
+    # it changes no ranking — only the probability value (and the 0.5 point).
+    # The family predictions/confidence above are NOT touched.
+    binary_calibrator = _load_binary_calibrator(model_dir)
+    if binary_calibrator is not None:
+        p_toxic = torch.as_tensor(
+            binary_calibrator.transform(p_toxic.numpy()), dtype=torch.float32
+        )
 
     if binary_only:
         return pd.DataFrame({"identifier": identifiers, "p_toxic": p_toxic.tolist()})
