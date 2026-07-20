@@ -681,17 +681,26 @@ def eval_binary(
             exists=True,
         ),
     ],
+    deploy: Annotated[
+        bool,
+        typer.Option(
+            "--deploy/--no-deploy",
+            help="Also re-deploy models/binary_calibrator.json + its provenance "
+            "stamp (default: diagnostic only — do not mutate the shipped calibrator).",
+        ),
+    ] = False,
 ) -> None:
     """Re-compute binary toxic/nontoxin metrics from a trained model.
 
     Loads the calibrated model and config from the model output directory,
     computes P(toxic) for val and test sets, optimizes the threshold on val
     (Youden's J), and evaluates on test with both default and optimized
-    thresholds. Saves binary_metrics.json and ROC/PR plots.
+    thresholds. Saves binary_metrics.json and ROC/PR plots. This is a diagnostic:
+    it does not re-deploy the shipped calibrator unless ``--deploy`` is passed.
     """
     from toxfam.evaluation.runner import run_binary_evaluation_from_dir
 
-    run_binary_evaluation_from_dir(model_dir)
+    run_binary_evaluation_from_dir(model_dir, deploy=deploy)
 
 
 # ---------- toxfam plot ----------

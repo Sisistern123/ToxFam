@@ -336,11 +336,16 @@ def run_prediction(
     # test_set / val_set come from the split, so the checkpoint must be pinned to it.
     # Any other input carries no split and needs no manifest.
     if _is_split_dataset(input_tsv):
-        from toxfam.data.split_manifest import verify_split_provenance
+        from toxfam.data.split_manifest import (
+            verify_binary_calibrator_provenance,
+            verify_split_provenance,
+        )
 
         verify_split_provenance(model_dir)
+        verify_binary_calibrator_provenance(model_dir)
         if standard_model_dir is not None:
             verify_split_provenance(standard_model_dir)
+            verify_binary_calibrator_provenance(standard_model_dir)
 
     df, default_h5 = _resolve_input(input_tsv)
     if embeddings_h5 is None and default_h5 is not None:

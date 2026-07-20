@@ -104,6 +104,8 @@ def run_binary_evaluation(
     config: TrainConfig,
     output_dir: Path,
     label_col: str = "Protein families",
+    *,
+    deploy: bool = True,
 ) -> dict:
     """Full binary evaluation: threshold optimization on val, evaluate on test.
 
@@ -169,15 +171,30 @@ def run_binary_evaluation(
 
     # Persist the deployed calibrator next to the checkpoint so it ships with the
     # model and predict/eval load it (see model.inference._load_binary_calibration).
-    models_dir = output_dir / "models"
-    models_dir.mkdir(exist_ok=True)
-    (models_dir / "binary_calibrator.json").write_text(
-        json.dumps(
-            {**calibrator.to_dict(), "threshold": opt_threshold,
-             "threshold_space": "platt"},
-            indent=4,
+    # Deploying is a TRAINING-time act; the diagnostic `toxfam eval binary` passes
+    # deploy=False so re-running it never mutates the shipped calibrator.
+    if deploy:
+        from toxfam.data.split_manifest import write_provenance
+
+        models_dir = output_dir / "models"
+        models_dir.mkdir(exist_ok=True)
+        calibrator_path = models_dir / "binary_calibrator.json"
+        calibrator_path.write_text(
+            json.dumps(
+                {**calibrator.to_dict(), "threshold": opt_threshold,
+                 "threshold_space": "platt"},
+                indent=4,
+            )
         )
-    )
+        # Bind the calibrator to the split it was fit on, so one left beside a
+        # re-trained checkpoint is detected (verify_binary_calibrator_provenance)
+        # rather than silently applied.
+        write_provenance(calibrator_path)
+    else:
+        console.print(
+            "  [dim]Diagnostic mode: not re-deploying "
+            "models/binary_calibrator.json[/]"
+        )
 
     # Save metrics — binary_metrics.json now reports the DEPLOYED (calibrated) score.
     metrics_dir = output_dir / "metrics"

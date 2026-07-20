@@ -55,9 +55,14 @@ KEEP_FILES = (
     # `predict test_set/val_set` refuse a checkpoint without it.
     "models/split_provenance.json",
     # Deployed Platt calibrator + Youden threshold for the binary P(toxic) score.
-    # predict/eval apply it (model.inference._load_binary_calibrator); without it
-    # they fall back to the raw score + 0.5. Regenerate via `toxfam eval binary`.
+    # predict/eval apply it (model.inference._load_binary_calibration); without it
+    # they fall back to the raw score + 0.5. Written at training time; to (re)deploy
+    # without retraining use `toxfam eval binary --deploy` (plain `eval binary` is a
+    # diagnostic and does NOT write it).
     "models/binary_calibrator.json",
+    # Binds the calibrator to its split, so `predict test_set/val_set` refuses a
+    # stale one (verify_binary_calibrator_provenance). Required like split_provenance.
+    "models/binary_calibrator.json.provenance.json",
 )
 
 

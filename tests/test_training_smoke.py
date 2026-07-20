@@ -96,6 +96,18 @@ def test_run_training_standard_smoke(tmp_path, monkeypatch, fake_split_manifest)
     assert binary_metrics["score_space"] == "platt_calibrated"
     assert binary_metrics["optimized_threshold"] == pytest.approx(calibrator["threshold"])
 
+    # Provenance: training (deploy=True) stamps the calibrator to its split.
+    assert (out_dir / "models" / "binary_calibrator.json.provenance.json").exists()
+
+    # The diagnostic re-run (deploy=False by default) must NOT re-deploy the
+    # calibrator — re-running `toxfam eval binary` cannot mutate the shipped artifact.
+    from toxfam.evaluation.runner import run_binary_evaluation_from_dir
+
+    cal_path = out_dir / "models" / "binary_calibrator.json"
+    before = cal_path.read_bytes()
+    run_binary_evaluation_from_dir(out_dir)  # deploy=False default
+    assert cal_path.read_bytes() == before
+
 
 def _tiny_training_setup(tmp_path, fake_split_manifest):
     """Synthetic training data + manifest + embeddings; returns a TrainConfig."""
