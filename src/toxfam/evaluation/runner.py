@@ -477,6 +477,12 @@ def run_model_evaluation(
     # Compute metrics
     task = _get_task(dataset)
     if task == "binary":
+        # This branch fires only for `non_metazoan` (the sole binary-task dataset),
+        # whose ground truth is single-class toxic. It reports the family head's
+        # discrete toxin-vs-nontoxin *label* transfer — deliberately NOT the deployed
+        # calibrated P(toxic)+threshold that predict/eval binary use (score-based, in
+        # binary_metrics.json). A score-based swap here would call roc_auc_score on
+        # single-class labels and raise; the label basis stays graceful (MCC=0).
         metrics = calculate_binary_metrics(
             df["Protein families"], inference_df["predicted_label"]
         )
@@ -517,7 +523,9 @@ def run_model_evaluation(
 # ---------------------------------------------------------------------------
 
 
-def run_binary_evaluation_from_dir(model_dir: str | Path) -> dict:
+def run_binary_evaluation_from_dir(
+    model_dir: str | Path, *, deploy: bool = False
+) -> dict:
     """Re-compute binary toxic/nontoxin metrics from a trained model directory.
 
     Loads the calibrated model and its saved ``config.yaml``, computes P(toxic)
@@ -526,6 +534,11 @@ def run_binary_evaluation_from_dir(model_dir: str | Path) -> dict:
     ``binary_metrics.json`` + ROC/PR plots into ``model_dir``. Returns the
     binary-metrics dict. This is the library entrypoint behind ``toxfam eval
     binary`` (which is a thin delegator to it).
+
+    ``deploy`` defaults to False: this is a re-runnable *diagnostic*, so it does
+    NOT re-write the shipped ``models/binary_calibrator.json`` (deploying is a
+    training-time act). Pass ``deploy=True`` (``toxfam eval binary --deploy``) to
+    deliberately re-deploy the calibrator without retraining.
     """
     from toxfam.config import TrainConfig
     from toxfam.data.dataset import ToxDataset, analyze_data_splits
@@ -561,6 +574,7 @@ def run_binary_evaluation_from_dir(model_dir: str | Path) -> dict:
             )
         results = run_binary_evaluation(
             scaled_model, train_ds.le, val_df, test_df, config, model_dir,
+            deploy=deploy,
         )
     finally:
         train_ds.close()

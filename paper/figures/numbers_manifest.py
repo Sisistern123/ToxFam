@@ -124,6 +124,23 @@ def _gate_on_pipeline_verification() -> None:
     verify_or_raise("test_set")
 
 
+def _require_deployed_binary_head(bm: dict, bpath, run: str) -> None:
+    """Refuse a pre-deploy (raw) binary_metrics.json.
+
+    Its ROC-AUC/PR-AUC/MCC/F1/threshold are on the RAW P(toxic), not the deployed
+    Platt-calibrated score, and would become silently-wrong manuscript numbers —
+    the same failure mode ``_gate_on_pipeline_verification`` exists to prevent.
+    """
+    if bm.get("score_space") != "platt_calibrated":
+        raise SystemExit(
+            f"{bpath} reports score_space={bm.get('score_space')!r}, not "
+            "'platt_calibrated' — it predates the deployed binary P(toxic) calibrator "
+            "and its numbers are raw (pre-deploy).\n"
+            f"Re-run 'uv run toxfam eval binary model/model_output/{run} --deploy' "
+            "to regenerate it before emitting manuscript numbers."
+        )
+
+
 def main() -> None:
     _gate_on_pipeline_verification()
     classes = test_set_class_list()
@@ -268,6 +285,7 @@ def main() -> None:
         bpath = model_run_dir(run) / "metrics" / "binary_metrics.json"
         if bpath.exists():
             bm = json.loads(bpath.read_text())
+            _require_deployed_binary_head(bm, bpath, run)
             td = bm.get("test_default", {})
             binary[model_name] = {
                 "roc_auc": td.get("roc_auc"), "pr_auc": td.get("pr_auc"),

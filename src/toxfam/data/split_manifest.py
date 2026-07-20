@@ -337,3 +337,19 @@ def verify_split_provenance(model_dir: str | Path) -> None:
             "commit whose data/splits/split_manifest.csv matches this checkpoint."
         ),
     )
+
+
+def verify_binary_calibrator_provenance(model_dir: str | Path) -> None:
+    """Raise unless the deployed binary P(toxic) calibrator matches the split on disk.
+
+    A no-op when ``models/binary_calibrator.json`` is absent (predict then falls
+    back to the raw score — nothing to pin). When present it must carry a fresh
+    ``.provenance.json`` sidecar, so a calibrator left beside a re-trained
+    checkpoint is caught rather than silently applied to it. Verified only where a
+    split is scored (predict on test_set/val_set), never on arbitrary proteins.
+    """
+    calibrator = Path(model_dir) / "models" / "binary_calibrator.json"
+    if calibrator.exists():
+        verify_provenance(
+            calibrator, label=f"{Path(model_dir).name} (binary calibrator)"
+        )

@@ -24,7 +24,9 @@ from toxfam.data.split_manifest import (
     manifest_sha256,
     provenance_path,
     sha256_of,
+    verify_binary_calibrator_provenance,
     verify_split_provenance,
+    write_provenance,
     write_split_provenance,
 )
 
@@ -175,6 +177,51 @@ def test_checkpoint_is_refused_after_the_split_moves(tmp_path, fake_split_manife
 
     with pytest.raises(SplitManifestError, match="different train/val/test split"):
         verify_split_provenance(model_dir)
+
+
+def _write_calibrator(model_dir, *, stamp: bool):
+    """Create models/binary_calibrator.json, optionally with a fresh sidecar."""
+    (model_dir / "models").mkdir(parents=True, exist_ok=True)
+    cal = model_dir / "models" / "binary_calibrator.json"
+    cal.write_text('{"a": 0.7, "b": -2.3, "eps": 1e-6, "threshold": 0.03}')
+    if stamp:
+        write_provenance(cal)
+    return cal
+
+
+def test_binary_calibrator_provenance_is_noop_when_absent(tmp_path, fake_split_manifest):
+    fake_split_manifest(SPLITS)
+    model_dir = tmp_path / "run"
+    (model_dir / "models").mkdir(parents=True)
+    verify_binary_calibrator_provenance(model_dir)  # no calibrator -> must not raise
+
+
+def test_binary_calibrator_pinned_to_current_split_is_accepted(
+    tmp_path, fake_split_manifest
+):
+    fake_split_manifest(SPLITS)
+    model_dir = tmp_path / "run"
+    _write_calibrator(model_dir, stamp=True)
+    verify_binary_calibrator_provenance(model_dir)  # fresh sidecar -> must not raise
+
+
+def test_unstamped_binary_calibrator_is_refused(tmp_path, fake_split_manifest):
+    fake_split_manifest(SPLITS)
+    model_dir = tmp_path / "run"
+    _write_calibrator(model_dir, stamp=False)  # present but no sidecar (pre-feature)
+    with pytest.raises(SplitManifestError, match="not pinned to a split manifest"):
+        verify_binary_calibrator_provenance(model_dir)
+
+
+def test_stale_binary_calibrator_is_refused_after_split_moves(
+    tmp_path, fake_split_manifest
+):
+    fake_split_manifest(SPLITS)
+    model_dir = tmp_path / "run"
+    _write_calibrator(model_dir, stamp=True)
+    fake_split_manifest({"P1": "test", "P2": "train", "P3": "val", "P4": "train"})
+    with pytest.raises(SplitManifestError, match="different train/val/test split"):
+        verify_binary_calibrator_provenance(model_dir)
 
 
 def test_provenance_is_unreadable_when_corrupt(tmp_path, fake_split_manifest):
