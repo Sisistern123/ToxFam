@@ -312,12 +312,18 @@ def _reliability_ece(
     return float(ece)
 
 
-def top_label_ece(probs: np.ndarray, labels: np.ndarray, n_bins: int = 15) -> float:
-    """Top-1 confidence ECE (Guo et al.'s notion): calibration of max prob."""
+def _top_conf_acc(
+    probs: np.ndarray, labels: np.ndarray
+) -> tuple[np.ndarray, np.ndarray]:
+    """Per-sample top-1 confidence (max prob) and 0/1 correctness of the argmax."""
     probs = np.asarray(probs, dtype=float)
     labels = np.asarray(labels)
-    confidences = probs.max(axis=1)
-    accuracies = (probs.argmax(axis=1) == labels).astype(float)
+    return probs.max(axis=1), (probs.argmax(axis=1) == labels).astype(float)
+
+
+def top_label_ece(probs: np.ndarray, labels: np.ndarray, n_bins: int = 15) -> float:
+    """Top-1 confidence ECE (Guo et al.'s notion): calibration of max prob."""
+    confidences, accuracies = _top_conf_acc(probs, labels)
     return _reliability_ece(confidences, accuracies, n_bins)
 
 
@@ -327,10 +333,7 @@ def adaptive_ece(probs: np.ndarray, labels: np.ndarray, n_bins: int = 15) -> flo
     Removes ECE's sensitivity to empty/underpopulated high-confidence bins by
     putting an equal number of samples in each bin (Nixon et al. 2019).
     """
-    probs = np.asarray(probs, dtype=float)
-    labels = np.asarray(labels)
-    confidences = probs.max(axis=1)
-    accuracies = (probs.argmax(axis=1) == labels).astype(float)
+    confidences, accuracies = _top_conf_acc(probs, labels)
     n = len(confidences)
     if n == 0:
         return 0.0
@@ -423,11 +426,20 @@ def multiclass_calibration_report(
     probs: np.ndarray, labels: np.ndarray, n_bins: int = 15
 ) -> dict[str, float]:
     """All calibration metrics for a multiclass prob matrix + integer labels."""
+    # Reduce the per-class reliability pass two ways (unweighted + support-weighted)
+    # from a single computation, rather than looping every class × bin twice.
+    per_class = classwise_ece_per_class(probs, labels, n_bins)
+    eces = [e["ece"] for e in per_class]
+    n = len(np.asarray(labels))
     return {
         "ece": top_label_ece(probs, labels, n_bins),
         "adaptive_ece": adaptive_ece(probs, labels, n_bins),
-        "classwise_ece": classwise_ece(probs, labels, n_bins),
-        "classwise_ece_weighted": classwise_ece_weighted(probs, labels, n_bins),
+        "classwise_ece": float(np.mean(eces)) if eces else 0.0,
+        "classwise_ece_weighted": (
+            float(sum(e["ece"] * e["support"] for e in per_class) / n)
+            if n and per_class
+            else 0.0
+        ),
         "brier": brier_score(probs, labels),
         "nll": nll_score(probs, labels),
     }

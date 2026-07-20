@@ -168,7 +168,7 @@ def run_binary_evaluation(
     )
 
     # Persist the deployed calibrator next to the checkpoint so it ships with the
-    # model and predict/eval load it (see model.inference._load_binary_calibrator).
+    # model and predict/eval load it (see model.inference._load_binary_calibration).
     models_dir = output_dir / "models"
     models_dir.mkdir(exist_ok=True)
     (models_dir / "binary_calibrator.json").write_text(

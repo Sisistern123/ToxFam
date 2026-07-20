@@ -132,15 +132,14 @@ def _read_optimized_threshold(model_dir: Path) -> float:
     ``run_topk_inference`` now emits. Older checkpoints fall back to the raw
     Youden threshold in ``metrics/binary_metrics.json``.
     """
-    cal_path = model_dir / "models" / "binary_calibrator.json"
-    if cal_path.exists():
-        try:
-            threshold = json.loads(cal_path.read_text()).get("threshold")
-            if threshold is not None:
-                return float(threshold)
-        except (ValueError, json.JSONDecodeError):
-            pass
+    from toxfam.model.inference import _load_binary_calibration
 
+    binary_cal = _load_binary_calibration(model_dir)
+    if binary_cal is not None:
+        return binary_cal.threshold
+
+    # Back-compat: older checkpoints (no calibrator) store a raw-space Youden
+    # threshold here, consistent with the raw P(toxic) emitted in that case.
     path = model_dir / "metrics" / "binary_metrics.json"
     if not path.exists():
         return 0.5

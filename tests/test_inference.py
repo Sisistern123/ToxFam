@@ -190,17 +190,20 @@ def _write_binary_calibrator(model_dir, *, a, b, threshold=0.5, eps=1e-6):
     )
 
 
-def test_load_binary_calibrator_roundtrip_and_missing(tmp_path):
+def test_load_binary_calibration_roundtrip_and_missing(tmp_path):
     from toxfam.evaluation.metrics import PlattCalibrator
-    from toxfam.model.inference import _load_binary_calibrator
+    from toxfam.model.inference import _load_binary_calibration
 
     model_dir = _make_model_dir(tmp_path)
-    assert _load_binary_calibrator(model_dir) is None  # nothing written yet
+    assert _load_binary_calibration(model_dir) is None  # nothing written yet
 
     _write_binary_calibrator(model_dir, a=0.7, b=-2.3, threshold=0.2)
-    cal = _load_binary_calibrator(model_dir)
+    bc = _load_binary_calibration(model_dir)
     x = np.array([0.1, 0.5, 0.9])
-    np.testing.assert_allclose(cal.transform(x), PlattCalibrator(a=0.7, b=-2.3).transform(x))
+    np.testing.assert_allclose(
+        bc.calibrator.transform(x), PlattCalibrator(a=0.7, b=-2.3).transform(x)
+    )
+    assert bc.threshold == 0.2  # threshold loaded as a matched unit with the calibrator
 
 
 def test_run_topk_inference_applies_binary_calibrator(tmp_path, sample_h5):
