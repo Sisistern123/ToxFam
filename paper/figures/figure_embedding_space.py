@@ -16,13 +16,17 @@ restated in the caption -- UMAP is seed dependent.
 """
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
 import pandas as pd
+from sklearn.model_selection import cross_val_score
+from sklearn.neighbors import KNeighborsClassifier
 
 from paper._paths import protspace_bundle_dir
+from toxfam._paths import raw_dir
 from paper.figures._common import DOUBLE_COL, apply_style, console, save_fig
 
 PROJECTION = "ProtT5 — UMAP 2"
@@ -170,6 +174,88 @@ def axis_glyph(ax) -> None:
             color=INK, va="bottom", ha="left", rotation=90)
 
 
+# Sub-family colours for the inset. Three classes only, so these are drawn from the
+# validated six-slot set and stay clear of the family hues used in the main panel.
+SVMP_CLASSES = ["P-I", "P-II", "P-III"]
+SVMP_COLORS = {"P-I": "#009E73", "P-II": "#E69F00", "P-III": "#56B4E9"}
+
+
+def svmp_class(families: str) -> str | None:
+    """P-I / P-II / P-III from the RAW hierarchical UniProt family string.
+
+    UniProt writes "Venom metalloproteinase (M12B) family, P-III subfamily, P-IIIa
+    sub-subfamily"; preprocessing collapses that to the top-level family, so this label
+    is absent from the training data and anything it recovers is unsupervised.
+    """
+    match = re.search(r"(P-I{1,3})\s+subfamily", str(families))
+    return match.group(1) if match else None
+
+
+def svmp_inset(ax, tox: pd.DataFrame) -> tuple[float, float, int]:
+    """Zoom on the venom metalloproteinases, recoloured by domain-architecture class.
+
+    P-I is the metalloproteinase domain alone, P-II adds a disintegrin domain, and P-III
+    adds disintegrin-like + cysteine-rich domains -- whole domains, which a
+    whole-sequence embedding separates cleanly. Returns (5-NN accuracy, majority
+    baseline, n) so the caption can quote measured separability rather than assert it.
+    """
+    raw = pd.read_csv(raw_dir() / "0800.tsv", sep="\t").rename(columns={"Entry": "identifier"})
+    svmp = tox.merge(raw[["identifier", "Protein families"]], on="identifier", how="left")
+    svmp = svmp[svmp["family"].str.contains("metalloproteinase", case=False, na=False)].copy()
+    svmp["cls"] = svmp["Protein families"].map(svmp_class)
+    svmp = svmp.dropna(subset=["cls"])
+
+    # Window on the MAIN MASS only. A few SVMPs sit far away in the projection, and
+    # including them stretches the zoom until the class structure it exists to show is
+    # unreadable. Select by distance from the median (robust to those outliers), then pad.
+    # The distance-from-median distribution has a hard gap (80% of SVMPs within 0.85,
+    # then a jump to >7): a distinct group of 20 P-II sequences sits far away in the
+    # projection. Three times the median distance separates the two cleanly without
+    # hard-coding a data-space constant. Those 20 stay in the main panel and in the
+    # reported accuracy; they are only outside the ZOOM WINDOW.
+    centre = svmp[["x", "y"]].median()
+    dist = ((svmp[["x", "y"]] - centre) ** 2).sum(axis=1) ** 0.5
+    core = svmp[dist <= 3 * dist.median()]
+    x0, x1 = core["x"].min(), core["x"].max()
+    y0, y1 = core["y"].min(), core["y"].max()
+    dx, dy = (x1 - x0) * 0.25, (y1 - y0) * 0.25
+    x0, x1, y0, y1 = x0 - dx, x1 + dx, y0 - dy, y1 + dy
+
+    # Match the inset's aspect to the source window's, so the zoom magnifies rather than
+    # stretches. A square inset over a wide, flat source region distorts the very
+    # separation the inset exists to show.
+    ins_w = 0.32
+    ins_h = max(0.18, min(0.42, ins_w * (y1 - y0) / (x1 - x0)))
+    ins = ax.inset_axes([0.985 - ins_w, 0.04, ins_w, ins_h])
+    near = tox[tox["x"].between(x0, x1) & tox["y"].between(y0, y1)]
+    ins.scatter(near["x"], near["y"], s=1.5, c=GREY, linewidths=0, rasterized=True)
+    for cls in SVMP_CLASSES:
+        g = svmp[svmp["cls"] == cls]
+        ins.scatter(g["x"], g["y"], s=4, c=SVMP_COLORS[cls], linewidths=0, rasterized=True)
+        inside = g[g["x"].between(x0, x1) & g["y"].between(y0, y1)]
+        if len(inside):  # direct labels instead of a second legend box
+            # Offsets differ per class: P-I and P-III sit nearly on top of each other
+            # vertically, so labelling both above their own points collides.
+            dx_pt, dy_pt, ha = {"P-I": (-6, 0, "right"), "P-II": (0, 4, "center"),
+                                "P-III": (6, 0, "left")}[cls]
+            anchor = (inside["x"].median(), inside["y"].max() if cls == "P-II"
+                      else inside["y"].median())
+            ins.annotate(cls, anchor, textcoords="offset points", xytext=(dx_pt, dy_pt),
+                         ha=ha, va="center", fontsize=6, color=SVMP_COLORS[cls],
+                         fontweight="bold")
+    ins.set_xlim(x0, x1); ins.set_ylim(y0, y1)
+    ins.set_xticks([]); ins.set_yticks([])
+    for sp in ins.spines.values():
+        sp.set_linewidth(0.5); sp.set_color(INK)
+    ins.set_title("metalloproteinase classes", fontsize=6, pad=2, loc="left")
+    ax.indicate_inset_zoom(ins, edgecolor=INK, linewidth=0.5, alpha=0.9)
+
+    X, y = svmp[["x", "y"]].values, svmp["cls"].values
+    acc = cross_val_score(KNeighborsClassifier(5), X, y, cv=5).mean()
+    base = max(svmp["cls"].value_counts()) / len(svmp)
+    return acc, base, len(svmp)
+
+
 def load(out_dir: Path) -> pd.DataFrame:
     data = out_dir / "projections_data.parquet"
     if not data.exists():
@@ -242,6 +328,7 @@ def main(
     ax_b.legend(handles=split_columns(handles), loc="upper right", ncol=2,
                 columnspacing=1.0, **LEGEND_KW)
     panel_header(ax_b, "B", f"toxins only, refitted UMAP (n={len(tox):,})")
+    svmp_acc, svmp_base, svmp_n = svmp_inset(ax_b, tox)
 
     # Headroom for the in-axes legends, added at the TOP only -- ax.margins() is
     # symmetric and would leave as much dead space below the cloud as it opens above.
@@ -263,6 +350,7 @@ def main(
     fig.tight_layout()
     save_fig(fig, "figure_embedding_space")
 
+    console.print(f"SVMP class 5-NN acc {svmp_acc:.3f} (baseline {svmp_base:.3f}), n={svmp_n}")
     stats = cluster_stats(toxin_dir)
     console.print(
         "toxin UMAP vs family: "
