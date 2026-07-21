@@ -9,7 +9,8 @@ ToxFam is a research project for classifying animal toxin protein sequences into
 ## Setup & Dependencies
 
 - Python >=3.11, managed with [uv](https://github.com/astral-sh/uv)
-- Install: `uv sync`
+- Install: `make setup` (runs `uv sync` and enables the pre-push hook; plain `uv sync` works but leaves the hook off)
+- Before pushing: `make check` — `ruff check` + `ruff format --check` + `pytest`, identical to CI. The pre-push hook runs it automatically once `make setup` has been run.
 - Key deps: PyTorch, transformers (ProtT5), scikit-learn, h5py, pymmseqs, protspace, iterative-stratification, taxopy, pydantic, typer
 - SignalP6 only needed if re-running signal peptide removal (setup: `docs/signalp6_setup.md`); the cache is included in `toxfam download-data`
 - Large processed data files (HDF5, CSV) are distributed via GitHub Releases; download with `uv run toxfam download-data`

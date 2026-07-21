@@ -28,5 +28,8 @@ jobs:
       - name: Lint
         run: uv run ruff check src tests paper
 
+      - name: Format
+        run: uv run ruff format --check src tests paper
+
       - name: Test
         run: uv run pytest

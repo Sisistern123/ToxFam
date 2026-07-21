@@ -22,7 +22,21 @@
 
 PY := uv run python -m paper.figures
 
-.PHONY: figures numbers verify fig-pipeline fig-capability fig-confidence-curation \
+## One-time per clone: install deps and point git at .githooks, so `git push`
+## runs `make check` first. core.hooksPath is per-clone local config and cannot
+## be committed, which is why this target exists rather than a tracked file.
+setup:
+	uv sync
+	git config core.hooksPath .githooks
+	@echo "hooks enabled -- 'git push' now runs 'make check' (bypass: --no-verify)"
+
+## Exactly what CI runs. Keep in lockstep with .github/workflows/ci.yml.
+check:
+	uv run ruff check src tests paper
+	uv run ruff format --check src tests paper
+	uv run pytest -q
+
+.PHONY: setup check figures numbers verify fig-pipeline fig-capability fig-confidence-curation \
         fig-supp-accuracy fig-supp-perfamily fig-supp-nonmetazoan fig-supp-unreviewed \
         fig-supp-embedding-space fig-supplementary protspace coverage
 

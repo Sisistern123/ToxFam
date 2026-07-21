@@ -1,15 +1,12 @@
 #!/usr/bin/env bash
-# Run exactly what .github/workflows/ci.yml runs, before the push leaves the machine.
-# Two CI failures on main (both ruff I001) were pushes that would have been caught here.
+# Run the CI checks before the push leaves the machine. Two CI failures on main
+# (both ruff I001) were pushes that would have been caught here.
 #
-# Enable once per clone:  git config core.hooksPath .githooks
+# Enable once per clone:  make setup
 # Bypass deliberately:    git push --no-verify
+#
+# Delegates to `make check` so the check list is defined once (Makefile) and
+# mirrored only in .github/workflows/ci.yml.
 set -euo pipefail
 
-echo "pre-push: ruff check"
-uv run ruff check src tests paper
-
-echo "pre-push: pytest"
-uv run pytest -q
-
-echo "pre-push: OK"
+exec make check
