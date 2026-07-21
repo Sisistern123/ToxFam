@@ -24,7 +24,7 @@ PY := uv run python -m paper.figures
 
 .PHONY: figures numbers verify fig-pipeline fig-capability fig-confidence-curation \
         fig-supp-accuracy fig-supp-perfamily fig-supp-nonmetazoan fig-supp-unreviewed \
-        fig-supp-embedding-space fig-supp-subclasses fig-supplementary protspace coverage
+        fig-supp-embedding-space fig-supplementary protspace coverage
 
 ## Ad-hoc test-coverage report (no CI gate; run occasionally).
 coverage:
@@ -40,7 +40,7 @@ verify:
 ## the explicit `verify` prerequisite gives an early, clear failure.
 figures: verify numbers fig-pipeline fig-capability fig-confidence-curation \
          fig-supp-accuracy fig-supp-perfamily fig-supp-nonmetazoan \
-         fig-supp-unreviewed fig-supp-embedding-space fig-supp-subclasses fig-supplementary
+         fig-supp-unreviewed fig-supp-embedding-space fig-supplementary
 
 ## Build the ProtSpace UMAP bundles (protspace/out_{all,toxin}).
 ## Skips if already built; `make protspace FORCE=--force` recomputes from scratch.
@@ -81,11 +81,6 @@ fig-supp-unreviewed:
 ## Requires `make protspace` (see the header chain).
 fig-supp-embedding-space:
 	$(PY).figure_embedding_space
-
-## Sub-family structure within two families, from the RAW (un-collapsed) UniProt
-## family string -- labels the model never saw. Requires `make protspace`.
-fig-supp-subclasses:
-	$(PY).figure_embedding_subclasses
 
 fig-supplementary:
 	$(PY).supplementary
