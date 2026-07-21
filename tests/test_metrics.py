@@ -201,7 +201,10 @@ def test_find_optimal_threshold_target_precision():
     y_true = np.array([0, 0, 0, 1, 1, 1])
     y_scores = np.array([0.1, 0.2, 0.3, 0.7, 0.8, 0.9])
     result = find_optimal_threshold(
-        y_true, y_scores, method="target_precision", target_precision=0.9,
+        y_true,
+        y_scores,
+        method="target_precision",
+        target_precision=0.9,
     )
     assert result["method"] == "target_precision"
     assert "achieved_precision" in result

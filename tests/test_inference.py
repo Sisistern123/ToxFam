@@ -184,8 +184,13 @@ def test_run_topk_inference_binary_only(tmp_path, sample_h5):
 def _write_binary_calibrator(model_dir, *, a, b, threshold=0.5, eps=1e-6):
     (model_dir / "models" / "binary_calibrator.json").write_text(
         json.dumps(
-            {"a": a, "b": b, "eps": eps, "threshold": threshold,
-             "threshold_space": "platt"}
+            {
+                "a": a,
+                "b": b,
+                "eps": eps,
+                "threshold": threshold,
+                "threshold_space": "platt",
+            }
         )
     )
 

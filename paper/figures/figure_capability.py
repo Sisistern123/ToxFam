@@ -21,6 +21,7 @@ average suffers at the short end, and so faithfully renders the *graded* homolog
 collapse (~0.9 down to ~25 aa, then falling to ~0.4 on the shortest toxins) that a
 single <30 aa bin would hide.
 """
+
 from __future__ import annotations
 
 import matplotlib.pyplot as plt
@@ -56,7 +57,7 @@ from toxfam.evaluation.hbi import NO_HIT_LABEL
 
 XTICKS = [10, 30, 50, 100, 300, 1000]
 XLIM = (9, 1900)
-BW = 0.16                       # local-linear bandwidth in log10 length (tuned to the data)
+BW = 0.16  # local-linear bandwidth in log10 length (tuned to the data)
 HIST_GREY = "#d9d9d9"
 GREY_D, ORANGE_D = METHOD_DARK["hbi"], METHOD_DARK["nn_combined_run"]
 
@@ -88,14 +89,36 @@ def _panel_mcc(ax):
     for i, k in enumerate(METHOD_ORDER):
         _, color = METHODS[k]
         d = load_preds("test_set", k)
-        ci = bootstrap_label_metric_ci(d["actual_label"].values, d["predicted_label"].values,
-                                       overall_mcc, n_boot=MCC_CI_N_BOOT)
-        ax.bar(i, ci["point"], 0.62, yerr=ci["two_se"], capsize=3, color=color,
-               edgecolor="white", linewidth=0.0, error_kw={"elinewidth": 0.8, "capthick": 0.8})
-        ax.text(i, ci["point"] + ci["two_se"] + 0.006, fmt_pm(ci["point"], ci["two_se"], sep="\n±"),
-                ha="center", va="bottom", fontsize=7.5, linespacing=0.95)
+        ci = bootstrap_label_metric_ci(
+            d["actual_label"].values,
+            d["predicted_label"].values,
+            overall_mcc,
+            n_boot=MCC_CI_N_BOOT,
+        )
+        ax.bar(
+            i,
+            ci["point"],
+            0.62,
+            yerr=ci["two_se"],
+            capsize=3,
+            color=color,
+            edgecolor="white",
+            linewidth=0.0,
+            error_kw={"elinewidth": 0.8, "capthick": 0.8},
+        )
+        ax.text(
+            i,
+            ci["point"] + ci["two_se"] + 0.006,
+            fmt_pm(ci["point"], ci["two_se"], sep="\n±"),
+            ha="center",
+            va="bottom",
+            fontsize=7.5,
+            linespacing=0.95,
+        )
     ax.set_xticks(np.arange(len(METHOD_ORDER)))
-    ax.set_xticklabels([METHODS[k][0].replace(" (", "\n(") for k in METHOD_ORDER], fontsize=7)
+    ax.set_xticklabels(
+        [METHODS[k][0].replace(" (", "\n(") for k in METHOD_ORDER], fontsize=7
+    )
     ax.set_ylim(0.75, 0.95)
     ax.set_ylabel("Multiclass MCC")
 
@@ -107,7 +130,9 @@ def _panel_length(ax, axtop, hbi, nn, lengths, rng):
 
     # --- top marginal: length distribution (own count axis; not overlaid on accuracy) ---
     edges = np.logspace(np.log10(lnH.min()), np.log10(lnH.max()), 24)
-    counts, _, _ = axtop.hist(lnH, bins=edges, color=HIST_GREY, edgecolor="white", linewidth=0.3)
+    counts, _, _ = axtop.hist(
+        lnH, bins=edges, color=HIST_GREY, edgecolor="white", linewidth=0.3
+    )
     peak = int(counts.max())
     axtop.set_xscale("log")
     axtop.set_xlim(*XLIM)
@@ -115,7 +140,9 @@ def _panel_length(ax, axtop, hbi, nn, lengths, rng):
     axtop.set_yticks([0, peak])
     axtop.tick_params(axis="y", labelsize=6, colors="#999999", length=2)
     axtop.tick_params(axis="x", labelbottom=False, length=0)
-    axtop.set_ylabel("toxins", fontsize=6.5, color="#999999", rotation=0, ha="right", va="center")
+    axtop.set_ylabel(
+        "toxins", fontsize=6.5, color="#999999", rotation=0, ha="right", va="center"
+    )
     for sp in ("top", "right"):
         axtop.spines[sp].set_visible(False)
 
@@ -125,11 +152,15 @@ def _panel_length(ax, axtop, hbi, nn, lengths, rng):
     keep = length_support_mask(lnH, grid, bandwidth=BW)
     gk = grid[keep]
     series = {}
-    for key, ln_m, corr_m, dark in (("hbi", lnH, corrH, GREY_D),
-                                    ("nn_combined_run", lnN, corrN, ORANGE_D)):
+    for key, ln_m, corr_m, dark in (
+        ("hbi", lnH, corrH, GREY_D),
+        ("nn_combined_run", lnN, corrN, ORANGE_D),
+    ):
         y = local_linear_accuracy(ln_m, corr_m, grid, bandwidth=BW)[keep]
         s = local_linear_band(ln_m, corr_m, grid, bandwidth=BW, rng=rng)[keep]
-        ax.fill_between(gk, y - s, y + s, color=METHODS[key][1], alpha=0.20, lw=0, zorder=2)
+        ax.fill_between(
+            gk, y - s, y + s, color=METHODS[key][1], alpha=0.20, lw=0, zorder=2
+        )
         ax.plot(gk, y, color=dark, ls=METHOD_LINESTYLE[key], lw=1.7, zorder=3)
         series[key] = (y, s)
     yN, sN = series["nn_combined_run"]
@@ -141,19 +172,50 @@ def _panel_length(ax, axtop, hbi, nn, lengths, rng):
     xcross = band_separation_length(gk, yH + sH, yN - sN)
     if xcross is not None:
         ax.axvline(xcross, color="#9a9a9a", ls=(0, (1, 1.6)), lw=0.8, zorder=1)
-        ax.text(xcross * 1.07, 0.30, f"$\\approx${xcross:.0f} aa", fontsize=7,
-                color="#8a8a8a", ha="left", va="bottom")
+        ax.text(
+            xcross * 1.07,
+            0.30,
+            f"$\\approx${xcross:.0f} aa",
+            fontsize=7,
+            color="#8a8a8a",
+            ha="left",
+            va="bottom",
+        )
 
     # direct end-labels in the empty right region (data ends ~400 aa, axis runs to 1900)
     xr = gk[-1] * 1.25
-    ax.text(xr, yN[-1] + 0.005, "ToxFam", color=ORANGE_D, fontsize=8,
-            fontweight="bold", ha="left", va="center")
-    ax.text(xr, yH[-1] - 0.005, "HBI", color=GREY_D, fontsize=8,
-            fontweight="bold", ha="left", va="center")
-    ax.annotate("homology degrades\non the shortest toxins", xy=(11, 0.45), xytext=(70, 0.58),
-                fontsize=6.6, color="#777777", ha="left", va="center",
-                arrowprops=dict(arrowstyle="->", color="#aaaaaa", lw=0.7,
-                                connectionstyle="arc3,rad=-0.15"))
+    ax.text(
+        xr,
+        yN[-1] + 0.005,
+        "ToxFam",
+        color=ORANGE_D,
+        fontsize=8,
+        fontweight="bold",
+        ha="left",
+        va="center",
+    )
+    ax.text(
+        xr,
+        yH[-1] - 0.005,
+        "HBI",
+        color=GREY_D,
+        fontsize=8,
+        fontweight="bold",
+        ha="left",
+        va="center",
+    )
+    ax.annotate(
+        "homology degrades\non the shortest toxins",
+        xy=(11, 0.45),
+        xytext=(70, 0.58),
+        fontsize=6.6,
+        color="#777777",
+        ha="left",
+        va="center",
+        arrowprops=dict(
+            arrowstyle="->", color="#aaaaaa", lw=0.7, connectionstyle="arc3,rad=-0.15"
+        ),
+    )
     _logx(ax)
     ax.set_ylim(0.28, 1.04)
     ax.set_ylabel("Toxin-only accuracy")
@@ -173,8 +235,17 @@ def _panel_coverage(ax, hbi, nn):
         se2.append(ci["two_se"])
     x = np.arange(len(groups))
     _, orange = METHODS["nn_combined_run"]
-    ax.bar(x, acc, 0.55, yerr=se2, capsize=3, color=orange, edgecolor="white",
-           linewidth=0.0, error_kw={"elinewidth": 0.7, "capthick": 0.7})
+    ax.bar(
+        x,
+        acc,
+        0.55,
+        yerr=se2,
+        capsize=3,
+        color=orange,
+        edgecolor="white",
+        linewidth=0.0,
+        error_kw={"elinewidth": 0.7, "capthick": 0.7},
+    )
     for xi, a, s in zip(x, acc, se2):
         ax.text(xi, a + s + 0.015, fmt_pm(a, s), ha="center", va="bottom", fontsize=7.5)
     ax.set_xlim(-0.6, 1.6)
@@ -192,8 +263,9 @@ def main() -> None:
     rng = np.random.default_rng(0)
 
     fig = plt.figure(figsize=(DOUBLE_COL, 3.35), layout="constrained")
-    gs = fig.add_gridspec(2, 3, height_ratios=[1, 6.2],
-                          width_ratios=[1.0, 1.75, 1.05], hspace=0.05)
+    gs = fig.add_gridspec(
+        2, 3, height_ratios=[1, 6.2], width_ratios=[1.0, 1.75, 1.05], hspace=0.05
+    )
     # Every column has a top-row axes carrying its header, so all three titles and panel
     # letters align by construction. Only column B's top row is a visible marginal (the
     # length histogram); A and C use blank spacers.
@@ -210,9 +282,11 @@ def main() -> None:
     _panel_length(axB, axBtop, hbi, nn, lengths, rng)
     _panel_coverage(axC, hbi, nn)
 
-    for axtop, letter, title in ((axAtop, "A", "Family-level performance"),
-                                 (axBtop, "B", "Robustness to sequence length"),
-                                 (axCtop, "C", "No-homolog coverage")):
+    for axtop, letter, title in (
+        (axAtop, "A", "Family-level performance"),
+        (axBtop, "B", "Robustness to sequence length"),
+        (axCtop, "C", "No-homolog coverage"),
+    ):
         axtop.set_title(title, loc="left", pad=4, fontsize=8.5)
         panel_label(axtop, letter)
     save_fig(fig, "figure_capability")

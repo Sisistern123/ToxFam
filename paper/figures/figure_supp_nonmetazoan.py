@@ -16,6 +16,7 @@ they point at different fixes:
 This is a negative result that motivates future work (non-metazoan training data, domain
 adaptation, a taxonomy vocabulary beyond Metazoa), not an application claim.
 """
+
 from __future__ import annotations
 
 import matplotlib.pyplot as plt
@@ -37,8 +38,15 @@ def main() -> None:
     preds = load_predict("non_metazoan")
     s = nonmetazoan_toxicity_recall(preds, threshold=THRESHOLD)
 
-    fig, ax = plt.subplots(figsize=(SINGLE_COL, SINGLE_COL * 0.72), layout="constrained")
-    ax.hist(preds["p_toxic"], bins=30, color=METHODS["nn_combined_run"][1], edgecolor="white")
+    fig, ax = plt.subplots(
+        figsize=(SINGLE_COL, SINGLE_COL * 0.72), layout="constrained"
+    )
+    ax.hist(
+        preds["p_toxic"],
+        bins=30,
+        color=METHODS["nn_combined_run"][1],
+        edgecolor="white",
+    )
     ax.axvline(THRESHOLD, color="#333333", ls=":", lw=1.0)
     ax.annotate(
         f"threshold {THRESHOLD:.2f}",

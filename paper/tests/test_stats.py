@@ -1,4 +1,5 @@
 """Tests for paper.stats — manuscript statistics."""
+
 from __future__ import annotations
 
 import numpy as np
@@ -63,7 +64,13 @@ def test_toxin_mask_case_insensitive():
     # actual: non-toxin at idx1 (nontox) and idx3 (NonTox) -> False there.
     assert toxin_mask(df).tolist() == [True, False, True, False, True]
     # predicted: only idx2 ("nontoxic") is a non-toxin label.
-    assert toxin_mask(df, label_col="predicted_label").tolist() == [True, True, False, True, True]
+    assert toxin_mask(df, label_col="predicted_label").tolist() == [
+        True,
+        True,
+        False,
+        True,
+        True,
+    ]
 
 
 def test_aligned_correctness_paired_and_disjoint():
@@ -128,7 +135,9 @@ def test_mcnemar_exact_binomial():
     correct_b = np.array([1, 0, 0, 0, 1])  # b01=2, b10=0, n=2
     res = mcnemar_test(correct_a, correct_b, exact=True)
     assert res["method"] == "exact_binomial"
-    assert res["p_value"] == pytest.approx(0.5, abs=1e-4)  # two-sided exact binomial, n=2
+    assert res["p_value"] == pytest.approx(
+        0.5, abs=1e-4
+    )  # two-sided exact binomial, n=2
     # default (chi2) path differs in p_value and method.
     with pytest.warns(UserWarning):
         res_default = mcnemar_test(correct_a, correct_b)
@@ -138,7 +147,9 @@ def test_mcnemar_exact_binomial():
 def test_paired_bootstrap_diff_sign_and_ci():
     rng_correct_a = np.array([1] * 90 + [0] * 10)
     rng_correct_b = np.array([1] * 80 + [0] * 20)
-    res = paired_bootstrap_accuracy_diff(rng_correct_a, rng_correct_b, n_boot=2000, seed=42)
+    res = paired_bootstrap_accuracy_diff(
+        rng_correct_a, rng_correct_b, n_boot=2000, seed=42
+    )
     assert res["diff"] == pytest.approx(0.10, abs=1e-9)
     assert res["ci_low"] < res["diff"] < res["ci_high"]
 
@@ -186,15 +197,21 @@ def test_rolling_accuracy_monotone_length_sorted():
 def test_local_linear_accuracy_constant():
     length = np.linspace(10, 300, 40)
     grid = np.array([20.0, 100.0])
-    assert np.allclose(local_linear_accuracy(length, np.ones(40), grid, bandwidth=0.3), 1.0)
-    assert np.allclose(local_linear_accuracy(length, np.zeros(40), grid, bandwidth=0.3), 0.0)
+    assert np.allclose(
+        local_linear_accuracy(length, np.ones(40), grid, bandwidth=0.3), 1.0
+    )
+    assert np.allclose(
+        local_linear_accuracy(length, np.zeros(40), grid, bandwidth=0.3), 0.0
+    )
 
 
 def test_local_linear_accuracy_tracks_length_trend():
     # correct only for longer sequences -> curve lower at short, higher at long
     length = np.array([10, 12, 15, 20, 30, 50, 80, 120, 200, 300], float)
     correct = np.array([0, 0, 0, 0, 1, 1, 1, 1, 1, 1], float)
-    curve = local_linear_accuracy(length, correct, np.array([12.0, 250.0]), bandwidth=0.4)
+    curve = local_linear_accuracy(
+        length, correct, np.array([12.0, 250.0]), bandwidth=0.4
+    )
     assert curve[0] < curve[1]
     assert np.all((curve >= 0) & (curve <= 1))
 
@@ -210,31 +227,65 @@ def test_length_support_mask_windows():
 def test_local_linear_band_zero_variance_and_positive():
     length = np.linspace(10, 200, 40)
     grid = np.array([20.0, 100.0])
-    zero = local_linear_band(length, np.ones(40), grid, bandwidth=0.3,
-                             rng=np.random.default_rng(0), n_boot=64)
-    assert np.all(zero >= 0) and np.all(zero < 1e-9)   # all-correct -> no bootstrap variance
-    varied = local_linear_band(length, np.tile([0.0, 1.0], 20), grid, bandwidth=0.3,
-                               rng=np.random.default_rng(0), n_boot=64)
+    zero = local_linear_band(
+        length,
+        np.ones(40),
+        grid,
+        bandwidth=0.3,
+        rng=np.random.default_rng(0),
+        n_boot=64,
+    )
+    assert np.all(zero >= 0) and np.all(
+        zero < 1e-9
+    )  # all-correct -> no bootstrap variance
+    varied = local_linear_band(
+        length,
+        np.tile([0.0, 1.0], 20),
+        grid,
+        bandwidth=0.3,
+        rng=np.random.default_rng(0),
+        n_boot=64,
+    )
     assert np.all(varied > 0)
 
 
 def test_band_separation_length():
     grid = np.array([10, 20, 30, 40, 50], float)
-    lower = np.array([0.90, 0.90, 0.85, 0.80, 0.80])   # stronger method's lower band edge
-    upper = np.array([0.50, 0.70, 0.86, 0.85, 0.82])   # weaker method's upper band edge
+    lower = np.array(
+        [0.90, 0.90, 0.85, 0.80, 0.80]
+    )  # stronger method's lower band edge
+    upper = np.array([0.50, 0.70, 0.86, 0.85, 0.82])  # weaker method's upper band edge
     # sep = lower > upper -> [T, T, F, F, F]; first separated->overlapping at grid[2]
     assert band_separation_length(grid, upper, lower) == 30.0
-    assert band_separation_length(grid, np.full(5, 0.6), np.full(5, 0.5)) is None  # always overlap
-    assert band_separation_length(grid, np.full(5, 0.1), np.full(5, 0.9)) is None  # never overlap
+    assert (
+        band_separation_length(grid, np.full(5, 0.6), np.full(5, 0.5)) is None
+    )  # always overlap
+    assert (
+        band_separation_length(grid, np.full(5, 0.1), np.full(5, 0.9)) is None
+    )  # never overlap
 
 
 def _two_method_preds():
     actual = ["A"] * 5 + ["B"] * 5 + ["nontox"] * 5
-    a_pred = ["A"] * 5 + ["B"] * 4 + ["A"] + ["nontox"] * 5          # NN-like
-    b_pred = ["A"] * 4 + ["no hit"] + ["B"] * 5 + ["nontox"] * 5     # HBI-like (one no hit)
+    a_pred = ["A"] * 5 + ["B"] * 4 + ["A"] + ["nontox"] * 5  # NN-like
+    b_pred = (
+        ["A"] * 4 + ["no hit"] + ["B"] * 5 + ["nontox"] * 5
+    )  # HBI-like (one no hit)
     return (
-        pd.DataFrame({"identifier": [f"x{i}" for i in range(15)], "actual_label": actual, "predicted_label": a_pred}),
-        pd.DataFrame({"identifier": [f"x{i}" for i in range(15)], "actual_label": actual, "predicted_label": b_pred}),
+        pd.DataFrame(
+            {
+                "identifier": [f"x{i}" for i in range(15)],
+                "actual_label": actual,
+                "predicted_label": a_pred,
+            }
+        ),
+        pd.DataFrame(
+            {
+                "identifier": [f"x{i}" for i in range(15)],
+                "actual_label": actual,
+                "predicted_label": b_pred,
+            }
+        ),
     )
 
 
@@ -256,7 +307,9 @@ def test_per_family_f1_difference_columns():
 
 def test_macro_f1_by_support_threshold():
     a, b = _two_method_preds()
-    out = macro_f1_by_support(a, b, class_list=["A", "B", "nontox"], support_threshold=4)
+    out = macro_f1_by_support(
+        a, b, class_list=["A", "B", "nontox"], support_threshold=4
+    )
     assert {"group", "macro_f1_a", "macro_f1_b", "n_families"}.issubset(out.columns)
     g = out.set_index("group")
     # Both toxin families have support 5 > 4 -> all in the high bucket.
@@ -447,7 +500,9 @@ def test_per_family_mcc_difference_columns():
 
 def test_macro_mcc_by_support_columns():
     a, b = _two_method_preds()
-    out = macro_mcc_by_support(a, b, class_list=["A", "B", "nontox"], support_threshold=4)
+    out = macro_mcc_by_support(
+        a, b, class_list=["A", "B", "nontox"], support_threshold=4
+    )
     assert {"group", "macro_mcc_a", "macro_mcc_b", "n_families"}.issubset(out.columns)
     g = out.set_index("group")
     hi = g.loc["support>4"]
@@ -479,19 +534,21 @@ def test_accuracy_by_identity_bins():
         }
     )
     out = accuracy_by_identity_bins(
-        hbi, other, bins=[0, 0.4, 0.6, 0.8, 1.0001],
+        hbi,
+        other,
+        bins=[0, 0.4, 0.6, 0.8, 1.0001],
         labels=["<0.4", "0.4-0.6", "0.6-0.8", ">0.8"],
     )
     by = {r["bin_label"]: r for _, r in out.iterrows()}
     # Only occupied bins after toxin-only + no-hit exclusion: x1->0.4-0.6, x0&x4->>0.8.
     assert set(by) == {"0.4-0.6", ">0.8"}
     assert by["0.4-0.6"]["n"] == 1
-    assert by["0.4-0.6"]["hbi_accuracy"] == pytest.approx(0.0)      # x1 hbi wrong
-    assert by["0.4-0.6"]["other_accuracy"] == pytest.approx(1.0)    # x1 other right
+    assert by["0.4-0.6"]["hbi_accuracy"] == pytest.approx(0.0)  # x1 hbi wrong
+    assert by["0.4-0.6"]["other_accuracy"] == pytest.approx(1.0)  # x1 other right
     assert by["0.4-0.6"]["diff"] == pytest.approx(1.0)
     assert by[">0.8"]["n"] == 2
-    assert by[">0.8"]["hbi_accuracy"] == pytest.approx(1.0)         # x0,x4 hbi right
-    assert by[">0.8"]["other_accuracy"] == pytest.approx(0.5)       # x4 other wrong
+    assert by[">0.8"]["hbi_accuracy"] == pytest.approx(1.0)  # x0,x4 hbi right
+    assert by[">0.8"]["other_accuracy"] == pytest.approx(0.5)  # x4 other wrong
     assert by[">0.8"]["diff"] == pytest.approx(-0.5)
     # no-hit (x2) and non-toxin (x3) excluded -> total n is 3, not 5.
     assert int(out["n"].sum()) == 3
@@ -531,8 +588,11 @@ def test_accuracy_by_identity_bins_with_ci():
         }
     )
     out = accuracy_by_identity_bins(
-        hbi, other, bins=[0, 0.4, 0.6, 0.8, 1.0001],
-        labels=["<0.4", "0.4-0.6", "0.6-0.8", ">0.8"], n_boot=500,
+        hbi,
+        other,
+        bins=[0, 0.4, 0.6, 0.8, 1.0001],
+        labels=["<0.4", "0.4-0.6", "0.6-0.8", ">0.8"],
+        n_boot=500,
     )
     assert {"diff_ci_low", "diff_ci_high"}.issubset(out.columns)
     by = {r["bin_label"]: r for _, r in out.iterrows()}
@@ -546,7 +606,9 @@ def test_accuracy_by_identity_bins_with_ci():
         assert r["diff_ci_low"] <= r["diff"] <= r["diff_ci_high"]
     # Without n_boot the CI columns are absent (backward-compatible default).
     plain = accuracy_by_identity_bins(
-        hbi, other, bins=[0, 0.4, 0.6, 0.8, 1.0001],
+        hbi,
+        other,
+        bins=[0, 0.4, 0.6, 0.8, 1.0001],
         labels=["<0.4", "0.4-0.6", "0.6-0.8", ">0.8"],
     )
     assert "diff_ci_low" not in plain.columns
@@ -559,19 +621,39 @@ def test_nonmetazoan_toxicity_recall_counts_only_at_or_above_threshold():
     preds = pd.DataFrame({"p_toxic": [0.05, 0.10, 0.50, 0.90]})
     s = nonmetazoan_toxicity_recall(preds, threshold=0.5)
     assert s["n"] == 4
-    assert s["n_flagged"] == 2          # 0.50 is inclusive
+    assert s["n_flagged"] == 2  # 0.50 is inclusive
     assert s["recall"] == pytest.approx(0.5)
     assert s["median_p_toxic"] == pytest.approx(0.30)
 
 
 def _unreviewed_fixture():
     # 5 proteins: two with an in-vocab family, one out-of-vocab, two unannotated.
-    preds = pd.DataFrame({
-        "identifier": ["A", "B", "C", "D", "E"],
-        "pred_1": ["Conotoxin family", "nontox", "Conotoxin family", "Melittin family", "other"],
-        "pred_2": ["Melittin family", "Conotoxin family", "nontox", "nontox", "nontox"],
-        "pred_3": ["nontox", "Melittin family", "Melittin family", "Conotoxin family", "Melittin family"],
-    })
+    preds = pd.DataFrame(
+        {
+            "identifier": ["A", "B", "C", "D", "E"],
+            "pred_1": [
+                "Conotoxin family",
+                "nontox",
+                "Conotoxin family",
+                "Melittin family",
+                "other",
+            ],
+            "pred_2": [
+                "Melittin family",
+                "Conotoxin family",
+                "nontox",
+                "nontox",
+                "nontox",
+            ],
+            "pred_3": [
+                "nontox",
+                "Melittin family",
+                "Melittin family",
+                "Conotoxin family",
+                "Melittin family",
+            ],
+        }
+    )
     families = pd.Series(
         ["Conotoxin family", "Conotoxin family", "Wildly Unknown family", None, None],
         index=preds.index,
@@ -585,7 +667,7 @@ def test_unreviewed_annotation_summary_ranks_and_coverage():
     s = unreviewed_annotation_summary(preds, families, vocab=vocab, top_k=3)
 
     assert s["n"] == 5
-    assert s["n_unannotated"] == 2                 # D and E carry no family
+    assert s["n_unannotated"] == 2  # D and E carry no family
     assert s["frac_unannotated"] == pytest.approx(0.4)
 
     # C's family is outside the model's vocabulary -> collapsed to "other".
@@ -594,8 +676,8 @@ def test_unreviewed_annotation_summary_ranks_and_coverage():
 
     # Only A and B are comparable: C is "other", D/E are unannotated.
     assert s["n_comparable"] == 2
-    assert s["rank_counts"]["top_1"] == 1          # A: pred_1 matches
-    assert s["rank_counts"]["top_2"] == 1          # B: pred_2 matches
+    assert s["rank_counts"]["top_1"] == 1  # A: pred_1 matches
+    assert s["rank_counts"]["top_2"] == 1  # B: pred_2 matches
     assert s["rank_counts"]["not_in_top_k"] == 0
     assert s["top_1"] == pytest.approx(0.5)
     assert s["top_k"] == pytest.approx(1.0)
@@ -612,5 +694,5 @@ def test_unreviewed_annotation_summary_excludes_other_from_agreement():
     # force the pathological case: make C predict "other" first.
     preds.loc[preds["identifier"] == "C", "pred_1"] = "other"
     s = unreviewed_annotation_summary(preds, families, vocab=vocab, top_k=3)
-    assert s["n_comparable"] == 2                  # C still excluded
-    assert s["rank_counts"]["top_1"] == 1          # only A, not C
+    assert s["n_comparable"] == 2  # C still excluded
+    assert s["rank_counts"]["top_1"] == 1  # only A, not C

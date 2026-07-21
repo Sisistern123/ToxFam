@@ -189,7 +189,9 @@ def _write_calibrator(model_dir, *, stamp: bool):
     return cal
 
 
-def test_binary_calibrator_provenance_is_noop_when_absent(tmp_path, fake_split_manifest):
+def test_binary_calibrator_provenance_is_noop_when_absent(
+    tmp_path, fake_split_manifest
+):
     fake_split_manifest(SPLITS)
     model_dir = tmp_path / "run"
     (model_dir / "models").mkdir(parents=True)

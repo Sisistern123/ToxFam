@@ -1,4 +1,5 @@
 """Emit paper/figures/output/results_numbers.json — every cited number."""
+
 from __future__ import annotations
 
 import json
@@ -44,7 +45,9 @@ from toxfam.evaluation.metrics import is_nontoxin
 console = Console()
 
 
-def _boot_two_se(y_true, y_pred, metric_fn, *, n_boot: int = MCC_CI_N_BOOT, seed: int = 42) -> dict:
+def _boot_two_se(
+    y_true, y_pred, metric_fn, *, n_boot: int = MCC_CI_N_BOOT, seed: int = 42
+) -> dict:
     """Point estimate of ``metric_fn`` plus +/-2 bootstrap standard errors.
 
     Thin wrapper over the shared :func:`bootstrap_label_metric_ci` (which backs the
@@ -153,38 +156,61 @@ def main() -> None:
     c_nn, c_hbi = aligned_correctness(nn, hbi)
     out = {
         "n_test": int(len(nn)),
-        "non_toxin_prior": round(float((nn["actual_label"].str.lower() == "nontox").mean()), 4),
+        "non_toxin_prior": round(
+            float((nn["actual_label"].str.lower() == "nontox").mean()), 4
+        ),
         "toxin_only_n": int(toxin_mask(nn).sum()),
-        "toxin_only_acc": {"nn_combined": subset_accuracy(nn, toxin_mask(nn)),
-                            "nn_standard": subset_accuracy(std, toxin_mask(std)),
-                            "hbi": subset_accuracy(hbi, toxin_mask(hbi))},
-        "all_class_acc": {"nn_combined": subset_accuracy(nn),
-                          "nn_standard": subset_accuracy(std), "hbi": subset_accuracy(hbi)},
+        "toxin_only_acc": {
+            "nn_combined": subset_accuracy(nn, toxin_mask(nn)),
+            "nn_standard": subset_accuracy(std, toxin_mask(std)),
+            "hbi": subset_accuracy(hbi, toxin_mask(hbi)),
+        },
+        "all_class_acc": {
+            "nn_combined": subset_accuracy(nn),
+            "nn_standard": subset_accuracy(std),
+            "hbi": subset_accuracy(hbi),
+        },
         "mcnemar": mcnemar_test(c_nn, c_hbi),
         "paired_bootstrap": paired_bootstrap_accuracy_diff(c_nn, c_hbi),
-        "no_hit": {"n": int(nohit.sum()), "n_toxin": int(toxin_mask(nn_nh).sum()),
-                   "nn_acc": subset_accuracy(nn_nh)},
+        "no_hit": {
+            "n": int(nohit.sum()),
+            "n_toxin": int(toxin_mask(nn_nh).sum()),
+            "nn_acc": subset_accuracy(nn_nh),
+        },
         "mcc": {
-            m: {"overall": overall_mcc(d["actual_label"], d["predicted_label"]),
-                "micro": micro_mcc(d["actual_label"], d["predicted_label"], class_list=classes)}
+            m: {
+                "overall": overall_mcc(d["actual_label"], d["predicted_label"]),
+                "micro": micro_mcc(
+                    d["actual_label"], d["predicted_label"], class_list=classes
+                ),
+            }
             for m, d in [("hbi", hbi), ("nn_standard", std), ("nn_combined", nn)]
         },
         "mcc_ci_nn_combined": bootstrap_label_metric_ci(
-            nn["actual_label"].values, nn["predicted_label"].values, overall_mcc, n_boot=MCC_CI_N_BOOT),
+            nn["actual_label"].values,
+            nn["predicted_label"].values,
+            overall_mcc,
+            n_boot=MCC_CI_N_BOOT,
+        ),
         # Family capability matrix (Table: binary + family). All-class accuracy and
         # overall MCC, each with +/-2 bootstrap SE, for the three family-capable methods
         # (the external toxin predictors are binary-only and absent here).
         "family_capability": {
             m: {
                 "accuracy": _boot_two_se(
-                    d["actual_label"].values, d["predicted_label"].values,
-                    lambda a, b: float((a == b).mean())),
+                    d["actual_label"].values,
+                    d["predicted_label"].values,
+                    lambda a, b: float((a == b).mean()),
+                ),
                 "mcc": _boot_two_se(
-                    d["actual_label"].values, d["predicted_label"].values, overall_mcc),
+                    d["actual_label"].values, d["predicted_label"].values, overall_mcc
+                ),
             }
             for m, d in [("hbi", hbi), ("eat", eat), ("nn_combined", nn)]
         },
-        "macro_mcc_by_support": macro_mcc_by_support(nn, hbi, class_list=classes).to_dict("records"),
+        "macro_mcc_by_support": macro_mcc_by_support(
+            nn, hbi, class_list=classes
+        ).to_dict("records"),
         "curation": curation_summary(curated_verdicts_tsv(), curation_key_tsv()),
     }
 
@@ -193,11 +219,15 @@ def main() -> None:
     # has no ROC-AUC/PR-AUC; only the discrete-call MCC is defined. Evaluated on the same
     # common subset as the external-tool binary comparison so the MCC is directly
     # comparable to the score-based methods (read from the committed snapshot).
-    scores_dir = get_project_root() / "scripts" / "external_tools" / "results" / "scores"
+    scores_dir = (
+        get_project_root() / "scripts" / "external_tools" / "results" / "scores"
+    )
     common_ids = None
     for sm in ("toxfam_embtax", "eat", "toxinpred3", "toxdl2"):
         s = pd.read_csv(scores_dir / sm / "test_scores.csv")
-        ids = set(s.loc[pd.to_numeric(s["score"], errors="coerce").notna(), "identifier"])
+        ids = set(
+            s.loc[pd.to_numeric(s["score"], errors="coerce").notna(), "identifier"]
+        )
         common_ids = ids if common_ids is None else (common_ids & ids)
     # The snapshot is committed, the test split comes from the manifest, and nothing ties
     # them together: a snapshot produced against an older split silently intersects down
@@ -217,13 +247,18 @@ def main() -> None:
     cids = hbi_c["identifier"].tolist()
     y_true_bin = (~hbi_c["actual_label"].map(is_nontoxin)).to_numpy(dtype=int)
     y_pred_bin = (
-        (~hbi_c["predicted_label"].map(is_nontoxin)) & (hbi_c["predicted_label"] != NO_HIT_LABEL)
+        (~hbi_c["predicted_label"].map(is_nontoxin))
+        & (hbi_c["predicted_label"] != NO_HIT_LABEL)
     ).to_numpy(dtype=int)
     # Paired-bootstrap CI of the binary-MCC difference vs ToxFam (call = score >= 0.5),
     # same n / seed as the external-tool paired tests so the "tie" claim is backed.
     tox_call = (
         pd.read_csv(scores_dir / "toxfam_embtax" / "test_scores.csv")
-        .drop_duplicates("identifier").set_index("identifier").loc[cids, "score"].to_numpy() >= 0.5
+        .drop_duplicates("identifier")
+        .set_index("identifier")
+        .loc[cids, "score"]
+        .to_numpy()
+        >= 0.5
     ).astype(int)
     rng_hb = np.random.default_rng(42)
     diffs = np.empty(MCC_CI_N_BOOT, dtype=float)
@@ -231,7 +266,9 @@ def main() -> None:
         warnings.simplefilter("ignore")
         for i in range(MCC_CI_N_BOOT):
             bi = rng_hb.integers(0, len(cids), size=len(cids))
-            diffs[i] = overall_mcc(y_true_bin[bi], y_pred_bin[bi]) - overall_mcc(y_true_bin[bi], tox_call[bi])
+            diffs[i] = overall_mcc(y_true_bin[bi], y_pred_bin[bi]) - overall_mcc(
+                y_true_bin[bi], tox_call[bi]
+            )
     out["hbi_binary"] = {
         "n": int(len(hbi_c)),
         "subset": f"common_{len(hbi_c)}",
@@ -250,11 +287,15 @@ def main() -> None:
 
     def _len_block(d: pd.DataFrame) -> dict:
         b = accuracy_by_length_bins(d[toxin_mask(d)], lengths, bins=LEN_BINS)
-        return {r["bin_label"]: {"accuracy": float(r["accuracy"]), "n": int(r["n"])}
-                for _, r in b.iterrows()}
+        return {
+            r["bin_label"]: {"accuracy": float(r["accuracy"]), "n": int(r["n"])}
+            for _, r in b.iterrows()
+        }
 
     out["length_bins_toxin_only"] = {
-        "bins": LEN_BINS, "hbi": _len_block(hbi), "nn_combined": _len_block(nn),
+        "bins": LEN_BINS,
+        "hbi": _len_block(hbi),
+        "nn_combined": _len_block(nn),
     }
 
     # Toxin-only accuracy stratified by HBI best-hit sequence identity (the honest
@@ -265,15 +306,20 @@ def main() -> None:
     # and the CIs -- the binning is not re-derived here.
     id_bins = [0, 0.3, 0.4, 0.6, 0.8, 1.0001]
     id_labels = ["<0.3", "0.3-0.4", "0.4-0.6", "0.6-0.8", ">0.8"]
-    id_tbl = accuracy_by_identity_bins(hbi, nn, bins=id_bins, labels=id_labels, n_boot=2000)
+    id_tbl = accuracy_by_identity_bins(
+        hbi, nn, bins=id_bins, labels=id_labels, n_boot=2000
+    )
     out["identity_bins_toxin_only"] = {
         "bins": id_bins,
         "records": [
             {
-                "bin": r["bin_label"], "n": int(r["n"]),
-                "hbi_acc": float(r["hbi_accuracy"]), "toxfam_acc": float(r["other_accuracy"]),
+                "bin": r["bin_label"],
+                "n": int(r["n"]),
+                "hbi_acc": float(r["hbi_accuracy"]),
+                "toxfam_acc": float(r["other_accuracy"]),
                 "diff": float(r["diff"]),
-                "diff_ci_low": float(r["diff_ci_low"]), "diff_ci_high": float(r["diff_ci_high"]),
+                "diff_ci_low": float(r["diff_ci_low"]),
+                "diff_ci_high": float(r["diff_ci_high"]),
             }
             for _, r in id_tbl.iterrows()
         ],
@@ -281,15 +327,21 @@ def main() -> None:
 
     # Binary toxic/non-toxic head metrics (gitignored artifact; include if present).
     binary = {}
-    for model_name, run in (("nn_combined", "combined_run"), ("nn_standard", "standard_run")):
+    for model_name, run in (
+        ("nn_combined", "combined_run"),
+        ("nn_standard", "standard_run"),
+    ):
         bpath = model_run_dir(run) / "metrics" / "binary_metrics.json"
         if bpath.exists():
             bm = json.loads(bpath.read_text())
             _require_deployed_binary_head(bm, bpath, run)
             td = bm.get("test_default", {})
             binary[model_name] = {
-                "roc_auc": td.get("roc_auc"), "pr_auc": td.get("pr_auc"),
-                "mcc": td.get("mcc"), "f1": td.get("f1"), "accuracy": td.get("accuracy"),
+                "roc_auc": td.get("roc_auc"),
+                "pr_auc": td.get("pr_auc"),
+                "mcc": td.get("mcc"),
+                "f1": td.get("f1"),
+                "accuracy": td.get("accuracy"),
                 "optimized_threshold": bm.get("optimized_threshold"),
             }
     if binary:
@@ -309,7 +361,9 @@ def main() -> None:
         }
 
     FIG_DIR.mkdir(parents=True, exist_ok=True)
-    (FIG_DIR / "results_numbers.json").write_text(json.dumps(out, indent=2, default=float))
+    (FIG_DIR / "results_numbers.json").write_text(
+        json.dumps(out, indent=2, default=float)
+    )
     _emit_latex_macros(out, FIG_DIR / "results_numbers.tex")
     # Write the macros straight into the manuscript checkout too (when present) so the
     # \input{results_numbers} copy never drifts from the generated one. The figure PDFs

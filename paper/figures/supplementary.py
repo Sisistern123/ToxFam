@@ -3,6 +3,7 @@
 (Identity-binned null and confusion matrices are produced elsewhere; this script
 adds the calibration + convention artifacts that did not previously exist.)
 """
+
 from __future__ import annotations
 
 import matplotlib.pyplot as plt
@@ -31,8 +32,10 @@ def reliability_panel() -> None:
     # multiclass reliability from calibrated vs uncalibrated max-confidence
     correct = (nn["predicted_label"] == nn["actual_label"]).astype(float).values
     fig, ax = plt.subplots(figsize=(4.5, 4.2))
-    for col, name, color in (("confidence", "calibrated", "#c0504d"),
-                             ("confidence_uncalibrated", "uncalibrated", "#7f7f7f")):
+    for col, name, color in (
+        ("confidence", "calibrated", "#c0504d"),
+        ("confidence_uncalibrated", "uncalibrated", "#7f7f7f"),
+    ):
         if col not in nn.columns:
             continue
         conf = nn[col].values
@@ -58,10 +61,13 @@ def convention_table() -> None:
     classes = test_set_class_list()
     hbi = load_preds("test_set", "hbi")
     conv = macro_f1_conventions(hbi, class_list=classes)
-    out = pd.DataFrame([
-        {"method": "HBI", **conv},
-    ])
+    out = pd.DataFrame(
+        [
+            {"method": "HBI", **conv},
+        ]
+    )
     from paper.figures._common import FIG_DIR
+
     FIG_DIR.mkdir(parents=True, exist_ok=True)
     out.to_csv(FIG_DIR / "supp_macro_f1_conventions.csv", index=False)
     console.print(out.to_string(index=False))

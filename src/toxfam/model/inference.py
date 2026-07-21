@@ -166,7 +166,9 @@ def _load_tax_vectors(
     model's saved ``config.yaml`` (training taxonomy H5). Proteins absent from
     the H5 fall back to a zero vector. Returns ``None`` if no H5 is available.
     """
-    resolved = Path(tax_h5_path) if tax_h5_path is not None else _resolve_tax_h5(model_dir)
+    resolved = (
+        Path(tax_h5_path) if tax_h5_path is not None else _resolve_tax_h5(model_dir)
+    )
     if resolved is None or not resolved.exists():
         console.print(
             "   [yellow]Warning: taxonomy H5 not found, "
@@ -263,8 +265,12 @@ def run_inference(
         tax_vectors = _load_tax_vectors(model_dir, identifiers, tax_dim, tax_h5_path)
 
     cal_probs, uncal_probs = _calibrated_probs_in_batches(
-        model, embeddings, tax_vectors,
-        is_multi_input=is_multi_input, tax_dim=tax_dim, device=device,
+        model,
+        embeddings,
+        tax_vectors,
+        is_multi_input=is_multi_input,
+        tax_dim=tax_dim,
+        device=device,
     )
 
     confs, pred_idxs = cal_probs.max(dim=1)
@@ -318,8 +324,12 @@ def run_topk_inference(
         tax_vectors = _load_tax_vectors(model_dir, identifiers, tax_dim, tax_h5_path)
 
     cal_probs, _ = _calibrated_probs_in_batches(
-        model, embeddings, tax_vectors,
-        is_multi_input=is_multi_input, tax_dim=tax_dim, device=device,
+        model,
+        embeddings,
+        tax_vectors,
+        is_multi_input=is_multi_input,
+        tax_dim=tax_dim,
+        device=device,
     )
 
     # P(toxic) = 1 - sum over nontoxin class probabilities. Index by actual output

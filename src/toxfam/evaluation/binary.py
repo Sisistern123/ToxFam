@@ -51,7 +51,8 @@ def build_eval_loader(
     )
     loader = DataLoader(ds, batch_size=config.batch_size, shuffle=False)
     selector = DataSelector(
-        loader, "both" if config.training_strategy == "combined" else "emb_only",
+        loader,
+        "both" if config.training_strategy == "combined" else "emb_only",
     )
     return ds, selector
 
@@ -181,8 +182,11 @@ def run_binary_evaluation(
         calibrator_path = models_dir / "binary_calibrator.json"
         calibrator_path.write_text(
             json.dumps(
-                {**calibrator.to_dict(), "threshold": opt_threshold,
-                 "threshold_space": "platt"},
+                {
+                    **calibrator.to_dict(),
+                    "threshold": opt_threshold,
+                    "threshold_space": "platt",
+                },
                 indent=4,
             )
         )
@@ -192,16 +196,19 @@ def run_binary_evaluation(
         write_provenance(calibrator_path)
     else:
         console.print(
-            "  [dim]Diagnostic mode: not re-deploying "
-            "models/binary_calibrator.json[/]"
+            "  [dim]Diagnostic mode: not re-deploying models/binary_calibrator.json[/]"
         )
 
     # Save metrics — binary_metrics.json now reports the DEPLOYED (calibrated) score.
     metrics_dir = output_dir / "metrics"
     metrics_dir.mkdir(exist_ok=True)
     _curve_keys = {
-        "fpr", "tpr", "precision_curve", "recall_curve",
-        "roc_thresholds", "pr_thresholds",
+        "fpr",
+        "tpr",
+        "precision_curve",
+        "recall_curve",
+        "roc_thresholds",
+        "pr_thresholds",
     }
     binary_results = {
         "optimized_threshold": opt_threshold,
@@ -220,12 +227,16 @@ def run_binary_evaluation(
     plots_dir = output_dir / "plots"
     plots_dir.mkdir(exist_ok=True)
     plot_binary_roc(
-        test_default["fpr"], test_default["tpr"], test_default["roc_auc"],
+        test_default["fpr"],
+        test_default["tpr"],
+        test_default["roc_auc"],
         plots_dir / "binary_roc.png",
     )
     plot_binary_pr(
-        test_default["precision_curve"], test_default["recall_curve"],
-        test_default["pr_auc"], plots_dir / "binary_pr.png",
+        test_default["precision_curve"],
+        test_default["recall_curve"],
+        test_default["pr_auc"],
+        plots_dir / "binary_pr.png",
     )
 
     return binary_results

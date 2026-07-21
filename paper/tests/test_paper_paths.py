@@ -17,7 +17,9 @@ def test_figures_output_dir_layout():
 
 def test_curation_files_live_in_paper_data_curation():
     curated, key = _paths.curated_verdicts_tsv(), _paths.curation_key_tsv()
-    assert curated.parent == _paths.curation_dir() == _paths.paper_data_dir() / "curation"
+    assert (
+        curated.parent == _paths.curation_dir() == _paths.paper_data_dir() / "curation"
+    )
     assert curated.name == "confident_errors_curated.tsv"
     assert key.parent == _paths.curation_dir()
     assert key.name == "confident_errors_key.tsv"
@@ -34,7 +36,9 @@ def test_manuscript_tex_target_respects_env_override(monkeypatch, tmp_path):
     assert _paths.manuscript_tex_target() is None
 
 
-def test_manuscript_tex_target_relative_override_anchors_to_project_root(monkeypatch, tmp_path):
+def test_manuscript_tex_target_relative_override_anchors_to_project_root(
+    monkeypatch, tmp_path
+):
     # A RELATIVE override must resolve under the project root, not the CWD, to honour
     # the module's "stable regardless of the current working directory" contract.
     monkeypatch.setattr(_paths, "get_project_root", lambda: tmp_path)

@@ -18,7 +18,16 @@ def test_app_has_expected_commands():
     assert result.exit_code == 0
 
     # Top-level commands
-    top_level = ["download-data", "preprocess", "embed", "taxonomy", "train", "predict", "eval", "plot"]
+    top_level = [
+        "download-data",
+        "preprocess",
+        "embed",
+        "taxonomy",
+        "train",
+        "predict",
+        "eval",
+        "plot",
+    ]
     for cmd in top_level:
         assert cmd in result.output, f"Command '{cmd}' not found in CLI help"
 
@@ -127,8 +136,15 @@ def test_predict_forwards_flags(tmp_path, monkeypatch):
 
     result = runner.invoke(
         app,
-        ["predict", "in.tsv", "--model-dir", str(model_dir),
-         "--top-k", "5", "--toxicity-only"],
+        [
+            "predict",
+            "in.tsv",
+            "--model-dir",
+            str(model_dir),
+            "--top-k",
+            "5",
+            "--toxicity-only",
+        ],
     )
 
     assert result.exit_code == 0, result.output
@@ -173,9 +189,7 @@ def test_eval_model_forwards_dataset_and_dir(monkeypatch):
 def test_eval_binary_delegates(tmp_path, monkeypatch):
     """eval binary is a thin delegator to the runner entrypoint (post S11/C4)."""
     rec = _Recorder()
-    monkeypatch.setattr(
-        "toxfam.evaluation.runner.run_binary_evaluation_from_dir", rec
-    )
+    monkeypatch.setattr("toxfam.evaluation.runner.run_binary_evaluation_from_dir", rec)
     model_dir = tmp_path / "model"  # positional arg has exists=True
     model_dir.mkdir()
 

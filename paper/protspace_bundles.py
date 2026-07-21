@@ -87,15 +87,24 @@ def _write_toxin_h5(identifiers: set[str], source: Path, dest: Path) -> int:
 def _prepare(embeddings: Path, annotations: Path, out: Path, *, stats: bool) -> None:
     """One `protspace prepare` run, emitting both bundled and unbundled outputs."""
     base = [
-        "protspace", "prepare",
-        "-i", f"{embeddings}:prot_t5",
-        "-a", str(annotations),
-        "-m", METHODS,
-        "-o", str(out),
-        "--random-state", str(RANDOM_STATE),
-        "--n-neighbors", str(N_NEIGHBORS),
-        "--min-dist", str(MIN_DIST),
-        "--metric", METRIC,
+        "protspace",
+        "prepare",
+        "-i",
+        f"{embeddings}:prot_t5",
+        "-a",
+        str(annotations),
+        "-m",
+        METHODS,
+        "-o",
+        str(out),
+        "--random-state",
+        str(RANDOM_STATE),
+        "--n-neighbors",
+        str(N_NEIGHBORS),
+        "--min-dist",
+        str(MIN_DIST),
+        "--metric",
+        METRIC,
     ]
     if stats:
         # NOTE: the flag is singular -- `--stats-annotations` does not exist.
@@ -123,13 +132,17 @@ def main(argv: list[str] | None = None) -> None:
         console.print("[yellow]ProtSpace bundles present; use --force to rebuild.")
         return
 
-    df = split_manifest.apply_manifest(pd.read_csv(processed_dir() / "training_data.csv"))
+    df = split_manifest.apply_manifest(
+        pd.read_csv(processed_dir() / "training_data.csv")
+    )
     ann = _annotations(df)
     ann_all = root / "annotations_all.csv"
     ann_tox = root / "annotations_toxin.csv"
     ann.to_csv(ann_all, index=False)
     ann[ann["toxic"] == "toxin"].to_csv(ann_tox, index=False)
-    console.print(f"annotations: {len(ann):,} proteins, {ann['family'].nunique()} families")
+    console.print(
+        f"annotations: {len(ann):,} proteins, {ann['family'].nunique()} families"
+    )
 
     embeddings = processed_dir() / "embeddings.h5"
     toxin_h5 = root / "toxin_embeddings.h5"

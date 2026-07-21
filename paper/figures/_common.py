@@ -10,6 +10,7 @@ docs/superpowers/specs/2026-06-30-figure-overhaul-design.md):
 * Okabe-Ito method palette (grey/blue/orange) + Paul Tol high-contrast
   adjudication ramp (blue/amber/red, luminance-ordered, greyscale-safe).
 """
+
 from __future__ import annotations
 
 import math
@@ -34,7 +35,7 @@ console = Console()
 FIG_DIR = figures_output_dir()
 
 # --- Bioinformatics (OUP) column widths, inches (verified: 86 mm / 178 mm) ---
-SINGLE_COL = 86 / 25.4   # 3.386 in
+SINGLE_COL = 86 / 25.4  # 3.386 in
 DOUBLE_COL = 178 / 25.4  # 7.008 in
 
 # Consistent, colour-blind-safe method colours/labels across all figures.
@@ -47,7 +48,11 @@ METHODS = {
 }
 # Redundant (non-colour) encoding so series survive total colour loss.
 METHOD_MARKER = {"hbi": "o", "nn_standard_run": "^", "nn_combined_run": "s"}
-METHOD_LINESTYLE = {"hbi": (0, (5, 2)), "nn_standard_run": (0, (1, 1)), "nn_combined_run": "-"}
+METHOD_LINESTYLE = {
+    "hbi": (0, (5, 2)),
+    "nn_standard_run": (0, (1, 1)),
+    "nn_combined_run": "-",
+}
 # Canonical method order (the METHODS insertion order). Single source of truth so the
 # figure scripts never re-hardcode the key list and drift from the palette.
 METHOD_ORDER = list(METHODS)
@@ -148,8 +153,8 @@ def save_fig(fig: plt.Figure, name: str) -> None:
     so a broken render never lands in the manuscript automatically.
     """
     FIG_DIR.mkdir(parents=True, exist_ok=True)
-    fig.savefig(FIG_DIR / f"{name}.pdf")            # vector, fonts embedded (rcParams)
-    fig.savefig(FIG_DIR / f"{name}.png", dpi=600)   # raster preview
+    fig.savefig(FIG_DIR / f"{name}.pdf")  # vector, fonts embedded (rcParams)
+    fig.savefig(FIG_DIR / f"{name}.png", dpi=600)  # raster preview
     plt.close(fig)
     console.print(f"saved {name}.pdf / .png")
 
@@ -160,34 +165,47 @@ def apply_style() -> None:
     Font floor is 7 pt at final width (OUP minimum); body 8 pt. Built at true
     column width so nothing is shrunk afterwards, keeping every label legible.
     """
-    mpl.rcParams.update({
-        # fonts (>= 7 pt floor at final size; OUP/Nature minimum)
-        "font.family": "sans-serif",
-        "font.sans-serif": ["Arial", "Helvetica", "DejaVu Sans"],
-        "font.size": 8,
-        "axes.titlesize": 9, "axes.titleweight": "bold",
-        "axes.labelsize": 8,
-        "xtick.labelsize": 7, "ytick.labelsize": 7,
-        "legend.fontsize": 7, "figure.titlesize": 9,
-        # lines / ticks (OUP 0.35-1.5 pt; no hairlines)
-        "axes.linewidth": 0.5,
-        "lines.linewidth": 1.0, "lines.markersize": 4,
-        "xtick.major.width": 0.5, "ytick.major.width": 0.5,
-        "grid.linewidth": 0.4, "patch.linewidth": 0.5,
-        # chartjunk off
-        "axes.spines.top": False, "axes.spines.right": False,
-        "axes.grid": False,
-        # export: embed TrueType (not Type-3), keep text as text
-        "pdf.fonttype": 42, "ps.fonttype": 42, "svg.fonttype": "none",
-        # white opaque background, vector-first. NB: NO savefig.bbox="tight" -- a tight
-        # crop changes the saved width away from the exact figsize (overhanging labels
-        # expand it), so \includegraphics[width=\columnwidth] then rescales the figure and
-        # the journal shrinks the fonts below the 7 pt floor. layout="constrained" already
-        # fits decorations inside the canvas, so saving at the built width keeps fonts at spec.
-        "figure.facecolor": "white", "axes.facecolor": "white",
-        "savefig.facecolor": "white", "figure.dpi": 150,
-        "legend.frameon": False,
-    })
+    mpl.rcParams.update(
+        {
+            # fonts (>= 7 pt floor at final size; OUP/Nature minimum)
+            "font.family": "sans-serif",
+            "font.sans-serif": ["Arial", "Helvetica", "DejaVu Sans"],
+            "font.size": 8,
+            "axes.titlesize": 9,
+            "axes.titleweight": "bold",
+            "axes.labelsize": 8,
+            "xtick.labelsize": 7,
+            "ytick.labelsize": 7,
+            "legend.fontsize": 7,
+            "figure.titlesize": 9,
+            # lines / ticks (OUP 0.35-1.5 pt; no hairlines)
+            "axes.linewidth": 0.5,
+            "lines.linewidth": 1.0,
+            "lines.markersize": 4,
+            "xtick.major.width": 0.5,
+            "ytick.major.width": 0.5,
+            "grid.linewidth": 0.4,
+            "patch.linewidth": 0.5,
+            # chartjunk off
+            "axes.spines.top": False,
+            "axes.spines.right": False,
+            "axes.grid": False,
+            # export: embed TrueType (not Type-3), keep text as text
+            "pdf.fonttype": 42,
+            "ps.fonttype": 42,
+            "svg.fonttype": "none",
+            # white opaque background, vector-first. NB: NO savefig.bbox="tight" -- a tight
+            # crop changes the saved width away from the exact figsize (overhanging labels
+            # expand it), so \includegraphics[width=\columnwidth] then rescales the figure and
+            # the journal shrinks the fonts below the 7 pt floor. layout="constrained" already
+            # fits decorations inside the canvas, so saving at the built width keeps fonts at spec.
+            "figure.facecolor": "white",
+            "axes.facecolor": "white",
+            "savefig.facecolor": "white",
+            "figure.dpi": 150,
+            "legend.frameon": False,
+        }
+    )
 
 
 def panel_label(ax, letter, *, dx=-0.06, dy=1.02):
@@ -196,8 +214,16 @@ def panel_label(ax, letter, *, dx=-0.06, dy=1.02):
     Placed just outside the top-left of the axes; ``letter`` should be the bare
     letter (``"a"``), rendered as a bold lowercase tag.
     """
-    ax.text(dx, dy, letter, transform=ax.transAxes, fontsize=9, fontweight="bold",
-            va="bottom", ha="right")
+    ax.text(
+        dx,
+        dy,
+        letter,
+        transform=ax.transAxes,
+        fontsize=9,
+        fontweight="bold",
+        va="bottom",
+        ha="right",
+    )
 
 
 def fmt_pm(value, unc, *, sep=" ± "):

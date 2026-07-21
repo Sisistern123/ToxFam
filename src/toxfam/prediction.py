@@ -179,7 +179,9 @@ def _ensure_embeddings(
             existing = set(f.keys())
         missing = identifiers - existing
         if not missing:
-            console.print(f"   Using precomputed embeddings: {Path(embeddings_h5).name}")
+            console.print(
+                f"   Using precomputed embeddings: {Path(embeddings_h5).name}"
+            )
             return Path(embeddings_h5)
         # Non-destructive: copy, then append only the missing ones.
         work_h5 = work_dir / "embeddings.h5"
@@ -191,7 +193,9 @@ def _ensure_embeddings(
     else:
         work_h5 = work_dir / "embeddings.h5"
         missing = identifiers
-        console.print(f"   No embeddings supplied; generating for {len(missing)} sequences")
+        console.print(
+            f"   No embeddings supplied; generating for {len(missing)} sequences"
+        )
 
     if "Sequence" not in df.columns:
         raise ValueError(
@@ -291,8 +295,12 @@ def _predict_pool(
     if tax_h5 is not None:
         _report_taxonomy_coverage(df_pool, tax_h5, output_path)
     preds = run_topk_inference(
-        df_pool, embeddings_h5, model_dir,
-        tax_h5_path=tax_h5, top_k=top_k, binary_only=toxicity_only,
+        df_pool,
+        embeddings_h5,
+        model_dir,
+        tax_h5_path=tax_h5,
+        top_k=top_k,
+        binary_only=toxicity_only,
     )
     threshold = _read_optimized_threshold(model_dir)
     preds["predicted_toxic"] = preds["p_toxic"] >= threshold
@@ -365,12 +373,21 @@ def run_prediction(
                     "already a standard (embeddings-only) model[/]"
                 )
             emb = _ensure_embeddings(
-                df, embeddings_h5, work_dir,
-                max_residues=max_residues, max_batch=max_batch,
+                df,
+                embeddings_h5,
+                work_dir,
+                max_residues=max_residues,
+                max_batch=max_batch,
             )
             preds = _predict_pool(
-                df, emb, model_dir, work_dir, output,
-                is_combined=False, top_k=top_k, toxicity_only=toxicity_only,
+                df,
+                emb,
+                model_dir,
+                work_dir,
+                output,
+                is_combined=False,
+                top_k=top_k,
+                toxicity_only=toxicity_only,
             )
             _write_tsv(preds, output)
             return [output]
@@ -395,12 +412,21 @@ def run_prediction(
                     "--model-dir, or supply organism IDs."
                 )
             emb = _ensure_embeddings(
-                pool_tax, embeddings_h5, work_dir,
-                max_residues=max_residues, max_batch=max_batch,
+                pool_tax,
+                embeddings_h5,
+                work_dir,
+                max_residues=max_residues,
+                max_batch=max_batch,
             )
             preds = _predict_pool(
-                pool_tax, emb, model_dir, work_dir, output,
-                is_combined=True, top_k=top_k, toxicity_only=toxicity_only,
+                pool_tax,
+                emb,
+                model_dir,
+                work_dir,
+                output,
+                is_combined=True,
+                top_k=top_k,
+                toxicity_only=toxicity_only,
             )
             _write_tsv(preds, output)
             return [output]
@@ -415,8 +441,11 @@ def run_prediction(
             )
 
         emb = _ensure_embeddings(
-            df, embeddings_h5, work_dir,
-            max_residues=max_residues, max_batch=max_batch,
+            df,
+            embeddings_h5,
+            work_dir,
+            max_residues=max_residues,
+            max_batch=max_batch,
         )
         written: list[Path] = []
 
@@ -426,24 +455,40 @@ def run_prediction(
         if len(pool_tax):
             console.print(f"\n[bold]Combined pool[/]: {len(pool_tax)} proteins")
             preds_c = _predict_pool(
-                pool_tax, emb, model_dir, work_dir, out_c,
-                is_combined=True, top_k=top_k, toxicity_only=toxicity_only,
+                pool_tax,
+                emb,
+                model_dir,
+                work_dir,
+                out_c,
+                is_combined=True,
+                top_k=top_k,
+                toxicity_only=toxicity_only,
             )
             _write_tsv(preds_c, out_c)
             written.append(out_c)
         else:
-            console.print("   [yellow]No proteins with an organism ID (combined pool empty)[/]")
+            console.print(
+                "   [yellow]No proteins with an organism ID (combined pool empty)[/]"
+            )
 
         if len(pool_notax):
             console.print(f"\n[bold]Standard pool[/]: {len(pool_notax)} proteins")
             preds_s = _predict_pool(
-                pool_notax, emb, standard_model_dir, work_dir, out_s,
-                is_combined=False, top_k=top_k, toxicity_only=toxicity_only,
+                pool_notax,
+                emb,
+                standard_model_dir,
+                work_dir,
+                out_s,
+                is_combined=False,
+                top_k=top_k,
+                toxicity_only=toxicity_only,
             )
             _write_tsv(preds_s, out_s)
             written.append(out_s)
         else:
-            console.print("   [yellow]No proteins without an organism ID (standard pool empty)[/]")
+            console.print(
+                "   [yellow]No proteins without an organism ID (standard pool empty)[/]"
+            )
 
         return written
     finally:

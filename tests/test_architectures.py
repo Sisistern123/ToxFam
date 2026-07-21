@@ -63,6 +63,4 @@ class TestMultiInputMLP:
 
     def test_empty_hidden_dims_raises(self):
         with pytest.raises(ValueError, match="hidden_dims must contain"):
-            MultiInputMLP(
-                embed_dim=1024, tax_dim=50, hidden_dims=[], num_classes=5
-            )
+            MultiInputMLP(embed_dim=1024, tax_dim=50, hidden_dims=[], num_classes=5)

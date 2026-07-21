@@ -16,6 +16,7 @@ Panel B is restricted to entries whose collapsed family is a *specific* family: 
 with the "other" catch-all or with "nontox" would say nothing about naming the right
 family, and including them would inflate the agreement rate.
 """
+
 from __future__ import annotations
 
 import matplotlib.pyplot as plt

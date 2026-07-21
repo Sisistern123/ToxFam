@@ -213,8 +213,12 @@ def test_binary_calibration_analysis_has_expected_structure():
     test_p, test_y = _overconfident_binary(rng, 500)
     out = binary_calibration_analysis(val_p, val_y, test_p, test_y)
     assert set(out) >= {
-        "platt", "test_raw", "test_calibrated", "delta",
-        "roc_auc_raw", "roc_auc_calibrated",
+        "platt",
+        "test_raw",
+        "test_calibrated",
+        "delta",
+        "roc_auc_raw",
+        "roc_auc_calibrated",
     }
     assert set(out["platt"]) >= {"a", "b"}
     assert set(out["test_raw"]) >= {"ece", "brier", "nll"}
@@ -243,9 +247,7 @@ def test_binary_calibration_analysis_bootstrap_ci_brackets_point_delta():
     rng = np.random.default_rng(23)
     val_p, val_y = _overconfident_binary(rng, 1500)
     test_p, test_y = _overconfident_binary(rng, 1500)
-    out = binary_calibration_analysis(
-        val_p, val_y, test_p, test_y, n_boot=300, seed=0
-    )
+    out = binary_calibration_analysis(val_p, val_y, test_p, test_y, n_boot=300, seed=0)
     assert set(out["delta_ci95"]) >= {"ece", "brier", "nll"}
     for k in ("ece", "brier", "nll"):
         lo, hi = out["delta_ci95"][k]
@@ -306,7 +308,9 @@ def _many_class_one_populated_miscalibrated():
 def test_classwise_ece_weighted_zero_when_calibrated():
     probs = np.tile([0.6, 0.4], (100, 1))
     labels = np.array([0] * 60 + [1] * 40)
-    assert classwise_ece_weighted(probs, labels, n_bins=10) == pytest.approx(0.0, abs=1e-9)
+    assert classwise_ece_weighted(probs, labels, n_bins=10) == pytest.approx(
+        0.0, abs=1e-9
+    )
 
 
 def test_classwise_ece_weighted_exceeds_unweighted_under_dilution():

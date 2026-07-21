@@ -13,6 +13,7 @@ Left panel  — held-out test set: calibrated-confidence rainclouds (half-violin
 Right panel — the confident errors decomposed by curator verdict (vindicated /
               partial / false-positive), filled = held-out test, hollow = train/val.
 """
+
 from __future__ import annotations
 
 import matplotlib.pyplot as plt
@@ -30,7 +31,11 @@ from paper.figures._common import (
 )
 from paper.stats import load_curated_verdicts
 
-BLUE, AMBER, RED = ADJUDICATION["correct"], ADJUDICATION["partial"], ADJUDICATION["incorrect"]
+BLUE, AMBER, RED = (
+    ADJUDICATION["correct"],
+    ADJUDICATION["partial"],
+    ADJUDICATION["incorrect"],
+)
 GREY = "#BBBBBB"
 COL = {"correct": BLUE, "partial": AMBER, "incorrect": RED}
 MARK = {"correct": "o", "partial": "^", "incorrect": "s"}
@@ -48,15 +53,27 @@ def _load():
     adj = load_curated_verdicts(curated_verdicts_tsv(), curation_key_tsv())
     adj["is_test"] = adj["split"].eq("test").to_numpy()
     a = adj["assessment"]
-    verdict = {k: {"conf": adj.loc[a == k, "confidence"].to_numpy(),
-                   "is_test": adj.loc[a == k, "is_test"].to_numpy()} for k in ORDER}
+    verdict = {
+        k: {
+            "conf": adj.loc[a == k, "confidence"].to_numpy(),
+            "is_test": adj.loc[a == k, "is_test"].to_numpy(),
+        }
+        for k in ORDER
+    }
     n = {k: int((a == k).sum()) for k in ORDER}
     return ca[correct], ca[~correct], verdict, n
 
 
 def _half_violin(ax, vals, base, color, width=0.42, bw=0.06):
-    parts = ax.violinplot([vals], positions=[base], vert=True, widths=width * 2,
-                          showextrema=False, bw_method=bw, side="low")
+    parts = ax.violinplot(
+        [vals],
+        positions=[base],
+        vert=True,
+        widths=width * 2,
+        showextrema=False,
+        bw_method=bw,
+        side="low",
+    )
     for b in parts["bodies"]:
         v = b.get_paths()[0].vertices
         v[:, 1] = np.clip(v[:, 1], None, 1.0)
@@ -71,7 +88,16 @@ def _points_right(ax, vals, base, color, half=0.36, s=6, a=0.55, seed=0, sub=Non
     if sub and len(vals) > sub:
         vals = r.choice(vals, sub, replace=False)
     off = base + 0.06 + r.uniform(0, half, len(vals))
-    ax.scatter(off, vals, s=s, color=color, alpha=a, edgecolor="none", rasterized=True, zorder=3)
+    ax.scatter(
+        off,
+        vals,
+        s=s,
+        color=color,
+        alpha=a,
+        edgecolor="none",
+        rasterized=True,
+        zorder=3,
+    )
     return float(off.min()), float(off.max())
 
 
@@ -88,16 +114,29 @@ def main() -> None:
     # -- left: correct(left) + incorrect(right); violin-left, points-right --
     inc_xmin = inc_xmax = 1.0
     for i, (name, vals, col, ps, pa) in enumerate(
-            [("correct", cc, BLUE, 2.0, 0.10), ("incorrect", ci, RED, 20, 0.6)]):
+        [("correct", cc, BLUE, 2.0, 0.10), ("incorrect", ci, RED, 20, 0.6)]
+    ):
         _half_violin(axL, vals, i, col)
-        xmin, xmax = _points_right(axL, vals, i, col, s=ps, a=pa, seed=i,
-                                   sub=2500 if name == "correct" else None)
+        xmin, xmax = _points_right(
+            axL,
+            vals,
+            i,
+            col,
+            s=ps,
+            a=pa,
+            seed=i,
+            sub=2500 if name == "correct" else None,
+        )
         if name == "incorrect":
             inc_xmin, inc_xmax = xmin, xmax
-        axL.plot([i - 0.42, i + 0.02], [np.median(vals)] * 2, color=col, lw=1.2, zorder=5)
+        axL.plot(
+            [i - 0.42, i + 0.02], [np.median(vals)] * 2, color=col, lw=1.2, zorder=5
+        )
     axL.axhline(0.8, color=GREY, ls=(0, (4, 3)), lw=0.7, zorder=1)
     axL.set_xticks([0, 1])
-    axL.set_xticklabels([f"correct\n($n$={len(cc):,})", f"incorrect\n($n$={len(ci)})"], fontsize=7)
+    axL.set_xticklabels(
+        [f"correct\n($n$={len(cc):,})", f"incorrect\n($n$={len(ci)})"], fontsize=7
+    )
     for t, c in zip(axL.get_xticklabels(), [BLUE, RED]):
         t.set_color(c)
     axL.set_xlim(-0.55, 1.6)
@@ -109,9 +148,18 @@ def main() -> None:
         axL.spines[s].set_visible(False)
 
     bx0, bx1, by0, by1 = inc_xmin - 0.03, inc_xmax + 0.05, 0.8, 1.005
-    axL.add_patch(FancyBboxPatch((bx0, by0), bx1 - bx0, by1 - by0,
-                                 boxstyle="round,pad=0.002,rounding_size=0.008",
-                                 fill=False, edgecolor="0.35", lw=1.0, zorder=6))
+    axL.add_patch(
+        FancyBboxPatch(
+            (bx0, by0),
+            bx1 - bx0,
+            by1 - by0,
+            boxstyle="round,pad=0.002,rounding_size=0.008",
+            fill=False,
+            edgecolor="0.35",
+            lw=1.0,
+            zorder=6,
+        )
+    )
 
     # -- right: confident errors zoomed; y-axis on right; filled/hollow split --
     for i, k in enumerate(ORDER):
@@ -120,13 +168,35 @@ def main() -> None:
         ist = V[k]["is_test"]
         col = COL[k]
         jit = base + rng.uniform(-0.30, 0.30, len(x))
-        axR.scatter(jit[ist], x[ist], s=27, marker=MARK[k], facecolor=col, edgecolor="white",
-                    linewidth=0.3, alpha=0.9, zorder=3)
-        axR.scatter(jit[~ist], x[~ist], s=27, marker=MARK[k], facecolor="none", edgecolor=col,
-                    linewidth=0.9, alpha=0.9, zorder=3)
-        axR.plot([base - 0.34, base + 0.34], [x.mean()] * 2, color=col, lw=1.2, zorder=5)
+        axR.scatter(
+            jit[ist],
+            x[ist],
+            s=27,
+            marker=MARK[k],
+            facecolor=col,
+            edgecolor="white",
+            linewidth=0.3,
+            alpha=0.9,
+            zorder=3,
+        )
+        axR.scatter(
+            jit[~ist],
+            x[~ist],
+            s=27,
+            marker=MARK[k],
+            facecolor="none",
+            edgecolor=col,
+            linewidth=0.9,
+            alpha=0.9,
+            zorder=3,
+        )
+        axR.plot(
+            [base - 0.34, base + 0.34], [x.mean()] * 2, color=col, lw=1.2, zorder=5
+        )
     axR.set_xticks([2, 1, 0])
-    axR.set_xticklabels([f"{VLABEL[k]}\n{N[k]}/{tot} ({N[k]/tot:.0%})" for k in ORDER], fontsize=7)
+    axR.set_xticklabels(
+        [f"{VLABEL[k]}\n{N[k]}/{tot} ({N[k] / tot:.0%})" for k in ORDER], fontsize=7
+    )
     for t, k in zip(axR.get_xticklabels(), ORDER):
         t.set_color(COL[k])
     axR.set_xlim(-0.55, 2.55)
@@ -141,13 +211,37 @@ def main() -> None:
     axR.spines["right"].set_visible(True)
     axR.spines["right"].set_linewidth(0.6)
     axR.legend(
-        handles=[Line2D([], [], marker="o", ls="none", mfc="0.3", mec="0.3", ms=5, label="test"),
-                 Line2D([], [], marker="o", ls="none", mfc="none", mec="0.3", ms=5, label="train/val")],
-        loc="lower right", fontsize=6, handletextpad=0.3, borderpad=0.3)
+        handles=[
+            Line2D(
+                [], [], marker="o", ls="none", mfc="0.3", mec="0.3", ms=5, label="test"
+            ),
+            Line2D(
+                [],
+                [],
+                marker="o",
+                ls="none",
+                mfc="none",
+                mec="0.3",
+                ms=5,
+                label="train/val",
+            ),
+        ],
+        loc="lower right",
+        fontsize=6,
+        handletextpad=0.3,
+        borderpad=0.3,
+    )
 
     for yb in (by0, by1):
-        con = ConnectionPatch(xyA=(bx1, yb), coordsA=axL.transData, xyB=(-0.55, yb),
-                              coordsB=axR.transData, color="0.55", lw=0.7, ls=(0, (3, 2)))
+        con = ConnectionPatch(
+            xyA=(bx1, yb),
+            coordsA=axL.transData,
+            xyB=(-0.55, yb),
+            coordsB=axR.transData,
+            color="0.55",
+            lw=0.7,
+            ls=(0, (3, 2)),
+        )
         con.set_in_layout(False)
         fig.add_artist(con)
 

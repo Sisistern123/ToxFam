@@ -5,6 +5,7 @@ subset/toxin-only accuracy, paired significance (McNemar + paired bootstrap),
 accuracy-vs-length, per-family F1 differences, macro-F1 conventions, binary
 calibration/reliability, and the confident-error adjudication summary.
 """
+
 from __future__ import annotations
 
 import warnings
@@ -23,10 +24,12 @@ from toxfam.evaluation.metrics import NONTOXIN_LABELS, calculate_metrics
 
 def correctness(preds: pd.DataFrame) -> np.ndarray:
     """Boolean array: predicted_label == actual_label."""
-    return (preds["predicted_label"].values == preds["actual_label"].values)
+    return preds["predicted_label"].values == preds["actual_label"].values
 
 
-def subset_accuracy(preds: pd.DataFrame, mask: np.ndarray | pd.Series | None = None) -> float:
+def subset_accuracy(
+    preds: pd.DataFrame, mask: np.ndarray | pd.Series | None = None
+) -> float:
     """Accuracy over all rows, or over rows where ``mask`` is True."""
     correct = correctness(preds)
     if mask is not None:
@@ -40,7 +43,9 @@ def toxin_mask(preds: pd.DataFrame, label_col: str = "actual_label") -> np.ndarr
     return ~preds[label_col].str.lower().isin(NONTOXIN_LABELS).values
 
 
-def aligned_correctness(preds_a: pd.DataFrame, preds_b: pd.DataFrame) -> tuple[np.ndarray, np.ndarray]:
+def aligned_correctness(
+    preds_a: pd.DataFrame, preds_b: pd.DataFrame
+) -> tuple[np.ndarray, np.ndarray]:
     """Identifier-aligned correctness vectors for two methods (a, b).
 
     Paired statistics (McNemar, paired bootstrap) require row i of both vectors to refer to the
@@ -59,12 +64,18 @@ def aligned_correctness(preds_a: pd.DataFrame, preds_b: pd.DataFrame) -> tuple[n
                 f"|a&b|={len(set(ids_a) & set(b_indexed.index))})"
             )
         preds_b = b_indexed.reindex(ids_a).reset_index()
-    if not np.array_equal(preds_a["actual_label"].to_numpy(), preds_b["actual_label"].to_numpy()):
-        raise ValueError("ground-truth actual_label disagrees between the two prediction frames")
+    if not np.array_equal(
+        preds_a["actual_label"].to_numpy(), preds_b["actual_label"].to_numpy()
+    ):
+        raise ValueError(
+            "ground-truth actual_label disagrees between the two prediction frames"
+        )
     return correctness(preds_a), correctness(preds_b)
 
 
-def mcnemar_test(correct_a: np.ndarray, correct_b: np.ndarray, *, exact: bool = False) -> dict:
+def mcnemar_test(
+    correct_a: np.ndarray, correct_b: np.ndarray, *, exact: bool = False
+) -> dict:
     """Paired McNemar test on two boolean correctness vectors (a vs b).
 
     b01 = a-correct & b-wrong; b10 = a-wrong & b-correct. Uses the
@@ -78,15 +89,24 @@ def mcnemar_test(correct_a: np.ndarray, correct_b: np.ndarray, *, exact: bool = 
     chi2 = ((abs(b01 - b10) - 1) ** 2) / n if n > 0 else 0.0
     if exact:
         from scipy.stats import binomtest
+
         p = float(binomtest(min(b01, b10), n, 0.5).pvalue) if n > 0 else 1.0
     else:
         p = float(_chi2.sf(chi2, df=1)) if n > 0 else 1.0
     if 0 < n < 25 and not exact:
         warnings.warn(
             f"McNemar chi-square approximation is unreliable for n_discordant<25 (got {n}); "
-            "consider exact=True", stacklevel=2)
-    return {"b01": b01, "b10": b10, "n_discordant": n, "chi2": float(chi2), "p_value": p,
-            "method": "exact_binomial" if exact else "chi2_continuity"}
+            "consider exact=True",
+            stacklevel=2,
+        )
+    return {
+        "b01": b01,
+        "b10": b10,
+        "n_discordant": n,
+        "chi2": float(chi2),
+        "p_value": p,
+        "method": "exact_binomial" if exact else "chi2_continuity",
+    }
 
 
 def paired_bootstrap_accuracy_diff(
@@ -114,8 +134,11 @@ def _lengths_for(preds: pd.DataFrame, lengths: pd.Series) -> np.ndarray:
     ids = preds["identifier"].to_numpy()
     missing = ~pd.Index(ids).isin(lengths.index)
     if missing.any():
-        warnings.warn(f"{int(missing.sum())} identifier(s) absent from lengths; their length is NaN "
-                      "and they may be dropped from length-binned stats", stacklevel=2)
+        warnings.warn(
+            f"{int(missing.sum())} identifier(s) absent from lengths; their length is NaN "
+            "and they may be dropped from length-binned stats",
+            stacklevel=2,
+        )
     return lengths.reindex(ids).to_numpy(dtype=float)
 
 
@@ -172,8 +195,13 @@ def local_linear_accuracy(
 
 
 def local_linear_band(
-    length: np.ndarray, correct: np.ndarray, grid: np.ndarray, *,
-    bandwidth: float, rng: np.random.Generator, n_boot: int = 800,
+    length: np.ndarray,
+    correct: np.ndarray,
+    grid: np.ndarray,
+    *,
+    bandwidth: float,
+    rng: np.random.Generator,
+    n_boot: int = 800,
 ) -> np.ndarray:
     """``+-2`` bootstrap SE band for :func:`local_linear_accuracy` (~95% pointwise).
 
@@ -186,7 +214,9 @@ def local_linear_band(
     boots = np.empty((n_boot, len(grid)))
     for i in range(n_boot):
         idx = rng.integers(0, n, size=n)
-        boots[i] = local_linear_accuracy(length[idx], correct[idx], grid, bandwidth=bandwidth)
+        boots[i] = local_linear_accuracy(
+            length[idx], correct[idx], grid, bandwidth=bandwidth
+        )
     return 2.0 * np.nanstd(boots, axis=0)
 
 
@@ -251,11 +281,13 @@ def accuracy_by_identity_bins(
     if labels is None:
         labels = [f"{bins[i]}-{bins[i + 1]}" for i in range(len(bins) - 1)]
     cat = pd.cut(ident, bins=bins, labels=labels, include_lowest=True, right=False)
-    df = pd.DataFrame({
-        "bin_label": cat,
-        "hbi_correct": correctness(h).astype(float),
-        "other_correct": h["identifier"].map(other_correct).to_numpy(dtype=float),
-    })
+    df = pd.DataFrame(
+        {
+            "bin_label": cat,
+            "hbi_correct": correctness(h).astype(float),
+            "other_correct": h["identifier"].map(other_correct).to_numpy(dtype=float),
+        }
+    )
     g = df.groupby("bin_label", observed=True)
     out = g.agg(
         n=("hbi_correct", "size"),
@@ -269,8 +301,10 @@ def accuracy_by_identity_bins(
         # (including empty bins absent from `ci`).
         ci = {
             label: paired_bootstrap_accuracy_diff(
-                grp["other_correct"].to_numpy(), grp["hbi_correct"].to_numpy(),
-                n_boot=n_boot, seed=seed,
+                grp["other_correct"].to_numpy(),
+                grp["hbi_correct"].to_numpy(),
+                n_boot=n_boot,
+                seed=seed,
             )
             for label, grp in g
         }
@@ -280,7 +314,9 @@ def accuracy_by_identity_bins(
 
 
 def _per_class_f1(preds: pd.DataFrame, class_list: list[str]) -> dict[str, dict]:
-    m = calculate_metrics(preds["actual_label"], preds["predicted_label"], class_list=class_list)
+    m = calculate_metrics(
+        preds["actual_label"], preds["predicted_label"], class_list=class_list
+    )
     return m.classification_report
 
 
@@ -313,7 +349,11 @@ def per_family_f1_difference(
 
 
 def macro_f1_by_support(
-    preds_a: pd.DataFrame, preds_b: pd.DataFrame, *, class_list: list[str], support_threshold: int = 5
+    preds_a: pd.DataFrame,
+    preds_b: pd.DataFrame,
+    *,
+    class_list: list[str],
+    support_threshold: int = 5,
 ) -> pd.DataFrame:
     """Macro-F1 of each method split by family support (> vs <= threshold)."""
     fam = per_family_f1_difference(preds_a, preds_b, class_list=class_list)
@@ -340,13 +380,21 @@ def macro_f1_conventions(preds: pd.DataFrame, *, class_list: list[str]) -> dict:
     - nohit_wrong: no-hit predictions kept (map to OOV → lower true-class recall).
     - restricted: drop rows whose prediction is 'no hit' before scoring.
     """
-    m_all = calculate_metrics(preds["actual_label"], preds["predicted_label"], class_list=class_list)
+    m_all = calculate_metrics(
+        preds["actual_label"], preds["predicted_label"], class_list=class_list
+    )
     keep = preds["predicted_label"] != NO_HIT_LABEL
     sub = preds[keep]
-    m_res = calculate_metrics(sub["actual_label"], sub["predicted_label"], class_list=class_list)
+    m_res = calculate_metrics(
+        sub["actual_label"], sub["predicted_label"], class_list=class_list
+    )
     return {
-        "macro_f1_nohit_wrong": float(m_all.classification_report["macro avg"]["f1-score"]),
-        "macro_f1_restricted": float(m_res.classification_report["macro avg"]["f1-score"]),
+        "macro_f1_nohit_wrong": float(
+            m_all.classification_report["macro avg"]["f1-score"]
+        ),
+        "macro_f1_restricted": float(
+            m_res.classification_report["macro avg"]["f1-score"]
+        ),
         "n_no_hit": int((~keep).sum()),
     }
 
@@ -388,17 +436,28 @@ def bootstrap_accuracy_ci(correct, *, n_boot: int = 2000, seed: int = 42) -> dic
     c = np.asarray(correct, dtype=float)
     n = len(c)
     if n == 0:
-        return {"point": float("nan"), "ci_low": float("nan"), "ci_high": float("nan"),
-                "two_se": float("nan"), "n": 0}
+        return {
+            "point": float("nan"),
+            "ci_low": float("nan"),
+            "ci_high": float("nan"),
+            "two_se": float("nan"),
+            "n": 0,
+        }
     rng = np.random.default_rng(seed)
     idx = rng.integers(0, n, size=(n_boot, n))
     means = c[idx].mean(axis=1)
-    return {"point": float(c.mean()), "ci_low": float(np.percentile(means, 2.5)),
-            "ci_high": float(np.percentile(means, 97.5)),
-            "two_se": float(2.0 * means.std(ddof=1)), "n": n}
+    return {
+        "point": float(c.mean()),
+        "ci_low": float(np.percentile(means, 2.5)),
+        "ci_high": float(np.percentile(means, 97.5)),
+        "two_se": float(2.0 * means.std(ddof=1)),
+        "n": n,
+    }
 
 
-def bootstrap_label_metric_ci(y_true, y_pred, metric_fn, *, n_boot: int = 1000, seed: int = 42) -> dict:
+def bootstrap_label_metric_ci(
+    y_true, y_pred, metric_fn, *, n_boot: int = 1000, seed: int = 42
+) -> dict:
     """Percentile bootstrap 95% CI for ``metric_fn(y_true, y_pred)`` (e.g. MCC).
 
     Resamples (y_true, y_pred) pairs with replacement — used for statistics that
@@ -415,9 +474,13 @@ def bootstrap_label_metric_ci(y_true, y_pred, metric_fn, *, n_boot: int = 1000, 
         for i in range(n_boot):
             idx = rng.integers(0, n, size=n)
             vals[i] = metric_fn(yt[idx], yp[idx])
-    return {"point": point, "ci_low": float(np.percentile(vals, 2.5)),
-            "ci_high": float(np.percentile(vals, 97.5)),
-            "two_se": float(2.0 * vals.std(ddof=1)), "n": n}
+    return {
+        "point": point,
+        "ci_low": float(np.percentile(vals, 2.5)),
+        "ci_high": float(np.percentile(vals, 97.5)),
+        "two_se": float(2.0 * vals.std(ddof=1)),
+        "n": n,
+    }
 
 
 def _ovr_mcc(is_true: np.ndarray, is_pred: np.ndarray) -> float:
@@ -440,23 +503,29 @@ def per_family_mcc_difference(
     for fam in class_list:
         if fam.lower() in NONTOXIN_LABELS:
             continue
-        ta = (preds_a["actual_label"].values == fam)
-        pa = (preds_a["predicted_label"].values == fam)
-        tb = (preds_b["actual_label"].values == fam)
-        pb = (preds_b["predicted_label"].values == fam)
-        rows.append({
-            "family": fam,
-            "mcc_a": _ovr_mcc(ta, pa),
-            "mcc_b": _ovr_mcc(tb, pb),
-            "support": int(ta.sum()),
-        })
+        ta = preds_a["actual_label"].values == fam
+        pa = preds_a["predicted_label"].values == fam
+        tb = preds_b["actual_label"].values == fam
+        pb = preds_b["predicted_label"].values == fam
+        rows.append(
+            {
+                "family": fam,
+                "mcc_a": _ovr_mcc(ta, pa),
+                "mcc_b": _ovr_mcc(tb, pb),
+                "support": int(ta.sum()),
+            }
+        )
     out = pd.DataFrame(rows)
     out["diff"] = out["mcc_a"] - out["mcc_b"]
     return out.sort_values("diff").reset_index(drop=True)
 
 
 def macro_mcc_by_support(
-    preds_a: pd.DataFrame, preds_b: pd.DataFrame, *, class_list: list[str], support_threshold: int = 5
+    preds_a: pd.DataFrame,
+    preds_b: pd.DataFrame,
+    *,
+    class_list: list[str],
+    support_threshold: int = 5,
 ) -> pd.DataFrame:
     """Macro (mean per-family one-vs-rest) MCC of each method, split by support."""
     fam = per_family_mcc_difference(preds_a, preds_b, class_list=class_list)
@@ -465,13 +534,15 @@ def macro_mcc_by_support(
         (f"support>{support_threshold}", fam[fam["support"] > support_threshold]),
         (f"support<={support_threshold}", fam[fam["support"] <= support_threshold]),
     ):
-        rows.append({
-            "group": label,
-            "macro_mcc_a": float(sub["mcc_a"].mean()) if len(sub) else float("nan"),
-            "macro_mcc_b": float(sub["mcc_b"].mean()) if len(sub) else float("nan"),
-            "n_families": int(len(sub)),
-            "n_sequences": int(sub["support"].sum()),
-        })
+        rows.append(
+            {
+                "group": label,
+                "macro_mcc_a": float(sub["mcc_a"].mean()) if len(sub) else float("nan"),
+                "macro_mcc_b": float(sub["mcc_b"].mean()) if len(sub) else float("nan"),
+                "n_families": int(len(sub)),
+                "n_sequences": int(sub["support"].sum()),
+            }
+        )
     return pd.DataFrame(rows)
 
 
@@ -505,11 +576,18 @@ def binary_reliability(
             accs.append(np.nan)
             confs.append(np.nan)
             props.append(0.0)
-    return {"bin_center": centers, "bin_accuracy": accs, "bin_confidence": confs,
-            "bin_proportion": props, "ece": float(ece)}
+    return {
+        "bin_center": centers,
+        "bin_accuracy": accs,
+        "bin_confidence": confs,
+        "bin_proportion": props,
+        "ece": float(ece),
+    }
 
 
-def load_curated_verdicts(curated_path: str | Path, key_path: str | Path) -> pd.DataFrame:
+def load_curated_verdicts(
+    curated_path: str | Path, key_path: str | Path
+) -> pd.DataFrame:
     """Join the returned curation sheet to its un-blinding key.
 
     The sheet is deliberately blind — it carries no ``split`` or ``confidence``, so a
@@ -614,7 +692,9 @@ def _collapse_to_vocab(families: pd.Series, vocab: set[str]) -> pd.DataFrame:
     from toxfam.data.normalization import normalize_protein_families
 
     norm = normalize_protein_families(
-        families.rename("Protein families").to_frame(), column="Protein families", min_count=1
+        families.rename("Protein families").to_frame(),
+        column="Protein families",
+        min_count=1,
     )["Protein families"]
     norm = norm.where(families.notna(), other=pd.NA)
     collapsed = norm.where(norm.isin(vocab) | norm.isna(), other="other")

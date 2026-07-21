@@ -81,7 +81,9 @@ def test_p_toxic_and_confidence_exact_values(tmp_path):
     ref_df = pd.DataFrame(
         {"identifier": ["R1", "R2"], "Protein families": ["alpha", "nontoxin"]}
     )
-    row = run_eat_search(query_h5, ref_h5, ref_df, ["Q"], metric="euclidean").predictions.iloc[0]
+    row = run_eat_search(
+        query_h5, ref_h5, ref_df, ["Q"], metric="euclidean"
+    ).predictions.iloc[0]
 
     assert row["eat_prediction"] == "alpha"
     # d_nearest_toxic = 1, d_nearest_nontoxin = 2 -> p_toxic = sigmoid(2 - 1) = sigmoid(1)
@@ -129,8 +131,12 @@ def test_cosine_uses_angle_not_magnitude(tmp_path):
     ref_df = pd.DataFrame(
         {"identifier": ["Rpar", "Rorth"], "Protein families": ["alpha", "nontoxin"]}
     )
-    euc = run_eat_search(query_h5, ref_h5, ref_df, ["Q"], metric="euclidean").predictions.iloc[0]
-    cos = run_eat_search(query_h5, ref_h5, ref_df, ["Q"], metric="cosine").predictions.iloc[0]
+    euc = run_eat_search(
+        query_h5, ref_h5, ref_df, ["Q"], metric="euclidean"
+    ).predictions.iloc[0]
+    cos = run_eat_search(
+        query_h5, ref_h5, ref_df, ["Q"], metric="cosine"
+    ).predictions.iloc[0]
     assert euc["eat_prediction"] == "nontoxin"  # closest by magnitude (dist √2 < 99)
     assert cos["eat_prediction"] == "alpha"  # closest by angle (parallel)
 
@@ -154,7 +160,7 @@ def test_run_eat_evaluation_keeps_nontoxin_for_p_toxic(
         ("Ttox1", "alpha", "train", [10.0, 0.0]),
         ("Ttox2", "beta", "train", [0.0, 10.0]),
         ("Tnon", "nontox", "train", [-10.0, 0.0]),
-        ("Qtox", "alpha", "test", [9.0, 0.0]),   # near a toxic ref  -> p_toxic high
+        ("Qtox", "alpha", "test", [9.0, 0.0]),  # near a toxic ref  -> p_toxic high
         ("Qnon", "alpha", "test", [-9.0, 0.0]),  # near the nontox ref -> p_toxic low
     ]
     pd.DataFrame(

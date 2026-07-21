@@ -72,7 +72,11 @@ def test_run_training_standard_smoke(tmp_path, monkeypatch, fake_split_manifest)
     assert "numeric_metrics" in test_metrics
     # Recommendation #2: richer calibration metrics are emitted per split.
     assert set(test_metrics["calibration_metrics"]) >= {
-        "ece", "adaptive_ece", "classwise_ece", "brier", "nll"
+        "ece",
+        "adaptive_ece",
+        "classwise_ece",
+        "brier",
+        "nll",
     }
 
     binary_metrics = json.loads(
@@ -89,12 +93,12 @@ def test_run_training_standard_smoke(tmp_path, monkeypatch, fake_split_manifest)
 
     # Recommendation #1 DEPLOYED: the calibrator ships with the checkpoint, and the
     # reported binary metrics/threshold are in calibrated score space.
-    calibrator = json.loads(
-        (out_dir / "models" / "binary_calibrator.json").read_text()
-    )
+    calibrator = json.loads((out_dir / "models" / "binary_calibrator.json").read_text())
     assert set(calibrator) >= {"a", "b", "threshold", "threshold_space"}
     assert binary_metrics["score_space"] == "platt_calibrated"
-    assert binary_metrics["optimized_threshold"] == pytest.approx(calibrator["threshold"])
+    assert binary_metrics["optimized_threshold"] == pytest.approx(
+        calibrator["threshold"]
+    )
 
     # Provenance: training (deploy=True) stamps the calibrator to its split.
     assert (out_dir / "models" / "binary_calibrator.json.provenance.json").exists()
@@ -175,9 +179,10 @@ def test_multiseed_promotes_best_on_val(tmp_path, monkeypatch, fake_split_manife
     assert summary["best_seed"] in (42, 7)
     assert len(summary["per_seed"]) == 2
     # Best seed's val MCC is the maximum of the two.
-    assert summary["best_seed"] == max(
-        summary["per_seed"], key=lambda r: r["val_mcc"]
-    )["seed"]
+    assert (
+        summary["best_seed"]
+        == max(summary["per_seed"], key=lambda r: r["val_mcc"])["seed"]
+    )
 
 
 def test_multiseed_rejects_too_many(tmp_path, monkeypatch, fake_split_manifest):

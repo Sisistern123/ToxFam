@@ -339,14 +339,19 @@ def embed(
     input_fasta: Annotated[
         Optional[Path],
         typer.Option(
-            "-i", "--input", help="Input FASTA file", exists=True,
+            "-i",
+            "--input",
+            help="Input FASTA file",
+            exists=True,
             show_default="data/intermediate/mmseqs/representatives/all.fasta",
         ),
     ] = None,
     output: Annotated[
         Optional[Path],
         typer.Option(
-            "-o", "--output", help="Output H5 file",
+            "-o",
+            "--output",
+            help="Output H5 file",
             show_default="data/processed/embeddings.h5",
         ),
     ] = None,
@@ -405,14 +410,16 @@ def taxonomy(
     input_csv: Annotated[
         Optional[Path],
         typer.Option(
-            help="Training CSV with 'Organism (ID)' column", exists=True,
+            help="Training CSV with 'Organism (ID)' column",
+            exists=True,
             show_default="data/processed/training_data.csv",
         ),
     ] = None,
     input_h5: Annotated[
         Optional[Path],
         typer.Option(
-            help="Input H5 with protein embeddings", exists=True,
+            help="Input H5 with protein embeddings",
+            exists=True,
             show_default="data/processed/embeddings.h5",
         ),
     ] = None,

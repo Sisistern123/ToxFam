@@ -469,7 +469,9 @@ def run_model_evaluation(
         if _needs_built_taxonomy(model_dir, df):
             from toxfam.data.taxonomy import build_taxonomy_h5
 
-            console.print("   Building taxonomy vectors from the dataset's organism IDs")
+            console.print(
+                "   Building taxonomy vectors from the dataset's organism IDs"
+            )
             tax_h5 = build_taxonomy_h5(df, Path(tmp_tax_dir))
 
         inference_df = run_inference(df, h5_path, model_dir, tax_h5_path=tax_h5)
@@ -573,7 +575,12 @@ def run_binary_evaluation_from_dir(
                 "was trained. Re-run eval against the CSV the model was trained on."
             )
         results = run_binary_evaluation(
-            scaled_model, train_ds.le, val_df, test_df, config, model_dir,
+            scaled_model,
+            train_ds.le,
+            val_df,
+            test_df,
+            config,
+            model_dir,
             deploy=deploy,
         )
     finally:

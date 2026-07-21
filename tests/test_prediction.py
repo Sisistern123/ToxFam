@@ -138,8 +138,15 @@ def _write_binary_calibrator(model_dir: Path, threshold: float) -> None:
     models = model_dir / "models"
     models.mkdir(parents=True, exist_ok=True)
     (models / "binary_calibrator.json").write_text(
-        json.dumps({"a": 0.7, "b": -2.3, "eps": 1e-6, "threshold": threshold,
-                    "threshold_space": "platt"})
+        json.dumps(
+            {
+                "a": 0.7,
+                "b": -2.3,
+                "eps": 1e-6,
+                "threshold": threshold,
+                "threshold_space": "platt",
+            }
+        )
     )
 
 
@@ -178,7 +185,9 @@ def test_threshold_calibrated_metrics_without_calibrator_is_half(tmp_path):
 
 
 def test_suffixed_inserts_tag_before_suffix():
-    assert _suffixed(Path("out/preds.tsv"), "combined") == Path("out/preds_combined.tsv")
+    assert _suffixed(Path("out/preds.tsv"), "combined") == Path(
+        "out/preds_combined.tsv"
+    )
 
 
 def test_suffixed_handles_no_suffix():

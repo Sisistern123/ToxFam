@@ -62,7 +62,9 @@ def reference_disjoint_from_holdout(
     name = "hbi_reference_disjoint"
     path = reference_csv or (processed_dir() / HBI_REFERENCE_CSV)
     if not path.exists():
-        return InvariantResult(name, ok=True, detail=f"{path.name} absent", skipped=True)
+        return InvariantResult(
+            name, ok=True, detail=f"{path.name} absent", skipped=True
+        )
     try:
         ref_ids = set(pd.read_csv(path, usecols=["identifier"])["identifier"])
         holdout = _holdout_ids()
@@ -91,7 +93,9 @@ def _h5_covers_manifest(
 ) -> InvariantResult:
     """Every manifest protein must have a key in the H5 at ``path``."""
     if not path.exists():
-        return InvariantResult(name, ok=True, detail=f"{path.name} absent", skipped=True)
+        return InvariantResult(
+            name, ok=True, detail=f"{path.name} absent", skipped=True
+        )
     try:
         man_ids = set(load_manifest()["identifier"])
         keys = _h5_keys(path)

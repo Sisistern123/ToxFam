@@ -29,7 +29,11 @@ def _write_method(
             "classification_report": {},
         }
     else:  # foreign (external-tool) score-based schema
-        metrics = {"method": "ToxFam (emb+tax)", "test_default": {}, "test_optimized": {}}
+        metrics = {
+            "method": "ToxFam (emb+tax)",
+            "test_default": {},
+            "test_optimized": {},
+        }
     (method_dir / "metrics.json").write_text(json.dumps(metrics))
     pd.DataFrame({"identifier": ids if ids is not None else ["a", "b"]}).to_csv(
         method_dir / "predictions.csv", index=False

@@ -68,7 +68,9 @@ def _benchmark_rows(current: str, dataset: str | None) -> list[CheckRow]:
     root = benchmark_dir()
     if not root.exists():
         return []
-    datasets = [root / dataset] if dataset else sorted(p for p in root.iterdir() if p.is_dir())
+    datasets = (
+        [root / dataset] if dataset else sorted(p for p in root.iterdir() if p.is_dir())
+    )
     rows: list[CheckRow] = []
     for ds_dir in datasets:
         if not ds_dir.is_dir():
@@ -93,7 +95,9 @@ def _benchmark_rows(current: str, dataset: str | None) -> list[CheckRow]:
 
 
 def _invariant_row(r: InvariantResult) -> CheckRow:
-    return CheckRow(r.name, "skip" if r.skipped else ("ok" if r.ok else "fail"), r.detail)
+    return CheckRow(
+        r.name, "skip" if r.skipped else ("ok" if r.ok else "fail"), r.detail
+    )
 
 
 def run_checks(dataset: str | None = None) -> list[CheckRow]:

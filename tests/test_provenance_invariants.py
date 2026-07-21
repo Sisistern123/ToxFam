@@ -87,7 +87,9 @@ def _ref_csv(path, ids):
 
 def test_reference_disjoint_passes_on_clean_reference(tmp_path, fake_split_manifest):
     fake_split_manifest(SPLITS)
-    ref = _ref_csv(tmp_path / "ref.csv", ["P1", "P2", "P5", "M1", "M2"])  # train + members
+    ref = _ref_csv(
+        tmp_path / "ref.csv", ["P1", "P2", "P5", "M1", "M2"]
+    )  # train + members
     r = reference_disjoint_from_holdout(ref)
     assert r.ok and not r.skipped
 
@@ -188,7 +190,9 @@ def test_verify_green_on_clean_setup(tmp_path, fake_split_manifest, monkeypatch)
     verify_mod.verify_or_raise()  # no raise
 
 
-def test_verify_flags_unstamped_benchmark_run(tmp_path, fake_split_manifest, monkeypatch):
+def test_verify_flags_unstamped_benchmark_run(
+    tmp_path, fake_split_manifest, monkeypatch
+):
     fake_split_manifest(SPLITS)
     from toxfam.data import invariants
     from toxfam.data import verify as verify_mod
@@ -210,7 +214,9 @@ def test_verify_flags_unstamped_benchmark_run(tmp_path, fake_split_manifest, mon
     assert bench_rows and all(r.status == "fail" for r in bench_rows)
 
 
-def test_benchmark_stamp_matching_manifest_passes(tmp_path, fake_split_manifest, monkeypatch):
+def test_benchmark_stamp_matching_manifest_passes(
+    tmp_path, fake_split_manifest, monkeypatch
+):
     fake_split_manifest(SPLITS)
     from toxfam.data import invariants
     from toxfam.data import verify as verify_mod

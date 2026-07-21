@@ -294,7 +294,13 @@ def run_training(config: TrainConfig) -> float:
     from toxfam.evaluation.binary import run_binary_evaluation
 
     run_binary_evaluation(
-        scaled_model, train_ds.le, val_df, test_df, config, out_root, effective_label_col
+        scaled_model,
+        train_ds.le,
+        val_df,
+        test_df,
+        config,
+        out_root,
+        effective_label_col,
     )
 
     train_ds.close()
@@ -341,8 +347,14 @@ def run_multiseed_training(config: TrainConfig, n_seeds: int) -> None:
         seed_cfg = config.model_copy(update={"seed": seed, "output_dir": seed_dir})
         val_mcc = run_training(seed_cfg)
         test_mcc = _read_metric(seed_dir / "metrics" / "test_metrics.json", "test_mcc")
-        records.append({"seed": seed, "dir": str(seed_dir),
-                        "val_mcc": val_mcc, "test_mcc": test_mcc})
+        records.append(
+            {
+                "seed": seed,
+                "dir": str(seed_dir),
+                "val_mcc": val_mcc,
+                "test_mcc": test_mcc,
+            }
+        )
 
     best = max(records, key=lambda r: r["val_mcc"])
     console.print(
@@ -381,8 +393,15 @@ def _read_metric(path: Path, key: str) -> float:
 
 def _promote_seed(seed_dir: Path, out_root: Path) -> None:
     """Copy the winning seed's artifacts up to the canonical run directory."""
-    for item in ("models", "metrics", "plots", "predictions", "config.yaml",
-                 "class_indices.json", "model_config.json"):
+    for item in (
+        "models",
+        "metrics",
+        "plots",
+        "predictions",
+        "config.yaml",
+        "class_indices.json",
+        "model_config.json",
+    ):
         src = seed_dir / item
         if not src.exists():
             continue

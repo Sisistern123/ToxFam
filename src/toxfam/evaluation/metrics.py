@@ -137,8 +137,7 @@ def calculate_metrics(
     # Unlike micro-MCC, this weights all families equally, so rare families
     # dominate — the axis on which homology (one hit suffices) tends to lead.
     per_class_mcc = [
-        matthews_corrcoef(y_true_bin[:, c], y_pred_bin[:, c])
-        for c in range(n_classes)
+        matthews_corrcoef(y_true_bin[:, c], y_pred_bin[:, c]) for c in range(n_classes)
     ]
     macro_mcc = float(np.mean(per_class_mcc)) if per_class_mcc else float("nan")
 
@@ -285,9 +284,7 @@ def _onehot(labels: np.ndarray, n_classes: int) -> np.ndarray:
     return oh
 
 
-def _reliability_ece(
-    scores: np.ndarray, positives: np.ndarray, n_bins: int
-) -> float:
+def _reliability_ece(scores: np.ndarray, positives: np.ndarray, n_bins: int) -> float:
     """Binned reliability gap E|conf - freq| for one score vs its outcome.
 
     ``scores`` is a per-sample probability, ``positives`` the matching 0/1

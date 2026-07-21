@@ -14,6 +14,7 @@ Projection hyperparameters are pinned in :mod:`paper.protspace_bundles`
 (n_neighbors=25, min_dist=0.1, metric=euclidean, random_state=42) and must be
 restated in the caption -- UMAP is seed dependent.
 """
+
 from __future__ import annotations
 
 import re
@@ -40,10 +41,15 @@ PROJECTION = "ProtT5 — UMAP 2"
 # put two near-identical dark reds 0.13 apart, inside the same cluster.
 # Re-check this binding by eye after any reprojection: a new seed moves the clusters.
 FAMILY_ORDER = [
-    "Conotoxin", "Neurotoxin", "Scoloptoxin",            # core
-    "Long scorpion toxin", "Short scorpion toxin",       # core
-    "Three-finger toxin", "Phospholipase",               # isolates
-    "Venom metalloproteinase", "Snaclec",                # isolates
+    "Conotoxin",
+    "Neurotoxin",
+    "Scoloptoxin",  # core
+    "Long scorpion toxin",
+    "Short scorpion toxin",  # core
+    "Three-finger toxin",
+    "Phospholipase",  # isolates
+    "Venom metalloproteinase",
+    "Snaclec",  # isolates
 ]
 
 # Kelly's first nine "maximum contrast" colours. Chosen over an Okabe-Ito-based
@@ -53,14 +59,23 @@ FAMILY_ORDER = [
 # so the ordering below matters. The five crowded-core families take the most separable
 # hues; Kelly's protan-confusable pair (#0067A5 vs #875692) is split across core and
 # isolate so the two never sit adjacent on the page.
-FAMILY_COLORS = ["#F38400", "#0067A5", "#BE0032", "#008856", "#875692",
-                 "#F3C300", "#E68FAC", "#C2B280", "#A1CAF1"]
+FAMILY_COLORS = [
+    "#F38400",
+    "#0067A5",
+    "#BE0032",
+    "#008856",
+    "#875692",
+    "#F3C300",
+    "#E68FAC",
+    "#C2B280",
+    "#A1CAF1",
+]
 FALLBACK_COLOR = "#999999"
 N_FAMILIES = len(FAMILY_ORDER)
 
-GREY = "#D9D9D9"      # backdrop / residual category
-TOXIN_DARK = "#333333"   # not blue: blue is a FAMILY colour in panel B, in both palettes
-INK = "#333333"       # axis glyph + panel furniture
+GREY = "#D9D9D9"  # backdrop / residual category
+TOXIN_DARK = "#333333"  # not blue: blue is a FAMILY colour in panel B, in both palettes
+INK = "#333333"  # axis glyph + panel furniture
 
 # Legends sit INSIDE the axes to buy plot width at fixed journal column width, so the
 # curated family names have to be shortened to fit. Counts stay: they carry the class
@@ -98,8 +113,15 @@ def legend_handle(color: str, name: str, count: int | None = None) -> Line2D:
     ``count=None`` omits the count; the per-family numbers live in the caption instead.
     """
     label = name if count is None else f"{name} ({count:,})"
-    return Line2D([], [], linestyle="", marker="o", markersize=LEGEND_MARKERSIZE,
-                  color=color, label=label)
+    return Line2D(
+        [],
+        [],
+        linestyle="",
+        marker="o",
+        markersize=LEGEND_MARKERSIZE,
+        color=color,
+        label=label,
+    )
 
 
 def split_columns(handles: list[Line2D]) -> list[Line2D]:
@@ -152,10 +174,25 @@ def panel_header(ax, letter: str, subtitle: str) -> None:
     subtitle regular: the bold letter is the panel's index, the subtitle is prose, and
     bolding both would leave nothing to distinguish them.
     """
-    ax.text(0, 1.03, letter, transform=ax.transAxes,
-            fontsize=8, fontweight="bold", va="baseline", ha="left")
-    ax.text(0.035, 1.03, subtitle, transform=ax.transAxes,
-            fontsize=7, va="baseline", ha="left")
+    ax.text(
+        0,
+        1.03,
+        letter,
+        transform=ax.transAxes,
+        fontsize=8,
+        fontweight="bold",
+        va="baseline",
+        ha="left",
+    )
+    ax.text(
+        0.035,
+        1.03,
+        subtitle,
+        transform=ax.transAxes,
+        fontsize=7,
+        va="baseline",
+        ha="left",
+    )
 
 
 def axis_glyph(ax) -> None:
@@ -168,10 +205,27 @@ def axis_glyph(ax) -> None:
     kw = {"transform": ax.transAxes, "color": INK, "lw": 0.6, "clip_on": False}
     ax.plot([0.0, 0.0], [0.0, 0.055], **kw)
     ax.plot([0.0, 0.055], [0.0, 0.0], **kw)
-    ax.text(0.068, -0.004, "UMAP 1", transform=ax.transAxes, fontsize=5,
-            color=INK, va="bottom", ha="left")
-    ax.text(-0.006, 0.068, "UMAP 2", transform=ax.transAxes, fontsize=5,
-            color=INK, va="bottom", ha="left", rotation=90)
+    ax.text(
+        0.068,
+        -0.004,
+        "UMAP 1",
+        transform=ax.transAxes,
+        fontsize=5,
+        color=INK,
+        va="bottom",
+        ha="left",
+    )
+    ax.text(
+        -0.006,
+        0.068,
+        "UMAP 2",
+        transform=ax.transAxes,
+        fontsize=5,
+        color=INK,
+        va="bottom",
+        ha="left",
+        rotation=90,
+    )
 
 
 # Sub-family colours for the inset. Three classes only, so these are drawn from the
@@ -199,12 +253,18 @@ def svmp_inset(ax, tox: pd.DataFrame) -> tuple[float, float, float, int]:
     whole-sequence embedding separates cleanly. Returns (5-NN accuracy, majority
     baseline, n) so the caption can quote measured separability rather than assert it.
     """
-    raw = pd.read_csv(raw_dir() / "0800.tsv", sep="\t").rename(columns={"Entry": "identifier"})
+    raw = pd.read_csv(raw_dir() / "0800.tsv", sep="\t").rename(
+        columns={"Entry": "identifier"}
+    )
     proc = pd.read_csv(processed_dir() / "training_data.csv")
-    proc["seqlen"] = proc["Sequence"].str.len()   # post-SignalP6, i.e. what was embedded
-    svmp = tox.merge(raw[["identifier", "Protein families"]], on="identifier", how="left")
+    proc["seqlen"] = proc["Sequence"].str.len()  # post-SignalP6, i.e. what was embedded
+    svmp = tox.merge(
+        raw[["identifier", "Protein families"]], on="identifier", how="left"
+    )
     svmp = svmp.merge(proc[["identifier", "seqlen"]], on="identifier", how="left")
-    svmp = svmp[svmp["family"].str.contains("metalloproteinase", case=False, na=False)].copy()
+    svmp = svmp[
+        svmp["family"].str.contains("metalloproteinase", case=False, na=False)
+    ].copy()
     svmp["cls"] = svmp["Protein families"].map(svmp_class)
     svmp = svmp.dropna(subset=["cls"])
 
@@ -234,7 +294,9 @@ def svmp_inset(ax, tox: pd.DataFrame) -> tuple[float, float, float, int]:
     ins.scatter(near["x"], near["y"], s=1.5, c=GREY, linewidths=0, rasterized=True)
     for cls in SVMP_CLASSES:
         g = svmp[svmp["cls"] == cls]
-        ins.scatter(g["x"], g["y"], s=4, c=SVMP_COLORS[cls], linewidths=0, rasterized=True)
+        ins.scatter(
+            g["x"], g["y"], s=4, c=SVMP_COLORS[cls], linewidths=0, rasterized=True
+        )
         inside = g[g["x"].between(x0, x1) & g["y"].between(y0, y1)]
         if len(inside):  # direct labels instead of a second legend box
             # Anchor each label to the EDGE of its own cluster, on the side with free
@@ -243,17 +305,42 @@ def svmp_inset(ax, tox: pd.DataFrame) -> tuple[float, float, float, int]:
             # "P-II" to the left lands on the second P-I group (the mature/precursor
             # split), which sits immediately beside it.
             if cls == "P-I":
-                anchor, off, ha, va = (inside["x"].max(), inside["y"].median()), (5, 0), "left", "center"
+                anchor, off, ha, va = (
+                    (inside["x"].max(), inside["y"].median()),
+                    (5, 0),
+                    "left",
+                    "center",
+                )
             elif cls == "P-II":
-                anchor, off, ha, va = (inside["x"].median(), inside["y"].min()), (0, -5), "center", "top"
+                anchor, off, ha, va = (
+                    (inside["x"].median(), inside["y"].min()),
+                    (0, -5),
+                    "center",
+                    "top",
+                )
             else:
-                anchor, off, ha, va = (inside["x"].max(), inside["y"].median()), (5, 0), "left", "center"
-            ins.annotate(cls, anchor, textcoords="offset points", xytext=off,
-                         ha=ha, va=va, fontsize=6, color=SVMP_COLORS[cls],
-                         fontweight="bold")
+                anchor, off, ha, va = (
+                    (inside["x"].max(), inside["y"].median()),
+                    (5, 0),
+                    "left",
+                    "center",
+                )
+            ins.annotate(
+                cls,
+                anchor,
+                textcoords="offset points",
+                xytext=off,
+                ha=ha,
+                va=va,
+                fontsize=6,
+                color=SVMP_COLORS[cls],
+                fontweight="bold",
+            )
 
-    ins.set_xlim(x0, x1); ins.set_ylim(y0, y1)
-    ins.set_xticks([]); ins.set_yticks([])
+    ins.set_xlim(x0, x1)
+    ins.set_ylim(y0, y1)
+    ins.set_xticks([])
+    ins.set_yticks([])
     for sp in ins.spines.values():
         # apply_style() hides top/right spines globally; an inset needs a CLOSED frame,
         # so re-enable them here rather than inheriting the panel convention.
@@ -262,8 +349,16 @@ def svmp_inset(ax, tox: pd.DataFrame) -> tuple[float, float, float, int]:
         sp.set_color(INK)
     # Title INSIDE the inset: as a set_title it sat above the inset frame, where the
     # panel edge clipped it.
-    ins.text(0.03, 0.03, "metalloproteinase classes", transform=ins.transAxes,
-             fontsize=5.5, fontweight="bold", va="bottom", ha="left")
+    ins.text(
+        0.03,
+        0.03,
+        "metalloproteinase classes",
+        transform=ins.transAxes,
+        fontsize=5.5,
+        fontweight="bold",
+        va="bottom",
+        ha="left",
+    )
     ax.indicate_inset_zoom(ins, edgecolor=INK, linewidth=0.5, alpha=0.9)
 
     # The SVMPs excluded from the zoom window are not noise: they are the mature
@@ -273,9 +368,18 @@ def svmp_inset(ax, tox: pd.DataFrame) -> tuple[float, float, float, int]:
     # accordingly -- so they get their own label in the main panel.
     far = svmp[dist > 3 * dist.median()]
     if len(far):
-        ax.annotate("released\ndisintegrins", (far["x"].median(), far["y"].min()),
-                    textcoords="offset points", xytext=(0, -5), ha="center", va="top",
-                    fontsize=5.5, color=INK, linespacing=0.95, fontweight="bold")
+        ax.annotate(
+            "released\ndisintegrins",
+            (far["x"].median(), far["y"].min()),
+            textcoords="offset points",
+            xytext=(0, -5),
+            ha="center",
+            va="top",
+            fontsize=5.5,
+            color=INK,
+            linespacing=0.95,
+            fontweight="bold",
+        )
 
     # Separability, WITH the control that matters. The three classes differ by whole
     # domains, so they differ in length almost by construction (median 238 / 458 / 591
@@ -283,8 +387,12 @@ def svmp_inset(ax, tox: pd.DataFrame) -> tuple[float, float, float, int]:
     # embedding's accuracy without that baseline would overstate what the projection
     # adds. Lengths are of the SignalP6-stripped sequences that were actually embedded.
     y = svmp["cls"].values
-    acc = cross_val_score(KNeighborsClassifier(5), svmp[["x", "y"]].values, y, cv=5).mean()
-    acc_len = cross_val_score(KNeighborsClassifier(5), svmp[["seqlen"]].values, y, cv=5).mean()
+    acc = cross_val_score(
+        KNeighborsClassifier(5), svmp[["x", "y"]].values, y, cv=5
+    ).mean()
+    acc_len = cross_val_score(
+        KNeighborsClassifier(5), svmp[["seqlen"]].values, y, cv=5
+    ).mean()
     base = max(svmp["cls"].value_counts()) / len(svmp)
     return acc, acc_len, base, len(svmp)
 
@@ -309,7 +417,8 @@ def cluster_stats(toxin_dir: Path) -> dict[str, float]:
     """
     stats = pd.read_parquet(toxin_dir / "statistics.parquet")
     umap = stats[
-        (stats["space_name"] == PROJECTION) & (stats["stat_family"] == "cluster_agreement")
+        (stats["space_name"] == PROJECTION)
+        & (stats["stat_family"] == "cluster_agreement")
     ]
     return dict(zip(umap["metric"], umap["value"]))
 
@@ -334,11 +443,22 @@ def main(
     # The backdrop is context, not a series: smaller and lighter than the focal points
     # so 61,763 grey markers cannot out-shout 3,416 blue ones.
     ax_a.scatter(non["x"], non["y"], s=0.8, c=GREY, linewidths=0, rasterized=True)
-    ax_a.scatter(tox_global["x"], tox_global["y"], s=2.0, c=TOXIN_DARK,
-                 linewidths=0, rasterized=True)
-    ax_a.legend(handles=[legend_handle(GREY, "non-toxin", len(non)),
-                         legend_handle(TOXIN_DARK, "toxin", len(tox_global))],
-                loc="upper right", **LEGEND_KW)
+    ax_a.scatter(
+        tox_global["x"],
+        tox_global["y"],
+        s=2.0,
+        c=TOXIN_DARK,
+        linewidths=0,
+        rasterized=True,
+    )
+    ax_a.legend(
+        handles=[
+            legend_handle(GREY, "non-toxin", len(non)),
+            legend_handle(TOXIN_DARK, "toxin", len(tox_global)),
+        ],
+        loc="upper right",
+        **LEGEND_KW,
+    )
     panel_header(ax_a, "A", f"all representatives (n={len(df):,})")
 
     # --- B: toxins only, coloured by the six largest families ---
@@ -358,9 +478,15 @@ def main(
     # families it absorbs rather than only how many proteins, so the reader sees a long
     # tail instead of one big unnamed group.
     handles.append(legend_handle(GREY, f"{n_rest_families} other families"))
-    ax_b.legend(handles=split_columns(handles), loc="upper right", ncol=2,
-                columnspacing=1.0, bbox_to_anchor=(1.02, 1.0), borderaxespad=0,
-                **LEGEND_KW)
+    ax_b.legend(
+        handles=split_columns(handles),
+        loc="upper right",
+        ncol=2,
+        columnspacing=1.0,
+        bbox_to_anchor=(1.02, 1.0),
+        borderaxespad=0,
+        **LEGEND_KW,
+    )
     panel_header(ax_b, "B", f"toxins only, refitted UMAP (n={len(tox):,})")
     svmp_acc, svmp_len_acc, svmp_base, svmp_n = svmp_inset(ax_b, tox)
 
@@ -384,8 +510,10 @@ def main(
     fig.tight_layout(pad=0.4)
     save_fig(fig, "figure_embedding_space")
 
-    console.print(f"SVMP class 5-NN acc {svmp_acc:.3f} | length-only {svmp_len_acc:.3f} "
-                  f"| baseline {svmp_base:.3f} | n={svmp_n}")
+    console.print(
+        f"SVMP class 5-NN acc {svmp_acc:.3f} | length-only {svmp_len_acc:.3f} "
+        f"| baseline {svmp_base:.3f} | n={svmp_n}"
+    )
     stats = cluster_stats(toxin_dir)
     console.print(
         "toxin UMAP vs family: "

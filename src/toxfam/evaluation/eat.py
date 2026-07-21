@@ -113,7 +113,9 @@ def run_eat_search(
         else:
             # Exact Euclidean: the matmul expansion (default at D>25) carries ~1e-2
             # float32 error that can re-order near-tie neighbours of different families.
-            d = torch.cdist(q, ref, compute_mode="donot_use_mm_for_euclid_dist")  # (B, R)
+            d = torch.cdist(
+                q, ref, compute_mode="donot_use_mm_for_euclid_dist"
+            )  # (B, R)
 
         nn_idx = d.argmin(dim=1)  # (B,) index of nearest reference
         d_nn = d.gather(1, nn_idx.unsqueeze(1)).squeeze(1)  # (B,) nearest distance
