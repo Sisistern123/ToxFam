@@ -227,7 +227,7 @@ def svmp_inset(ax, tox: pd.DataFrame) -> tuple[float, float, float, int]:
     # Match the inset's aspect to the source window's, so the zoom magnifies rather than
     # stretches. A square inset over a wide, flat source region distorts the very
     # separation the inset exists to show.
-    ins_w = 0.38
+    ins_w = 0.34
     ins_h = max(0.22, min(0.44, ins_w * (y1 - y0) / (x1 - x0)))
     ins = ax.inset_axes([0.995 - ins_w, 0.05, ins_w, ins_h])
     near = tox[tox["x"].between(x0, x1) & tox["y"].between(y0, y1)]
@@ -237,15 +237,21 @@ def svmp_inset(ax, tox: pd.DataFrame) -> tuple[float, float, float, int]:
         ins.scatter(g["x"], g["y"], s=4, c=SVMP_COLORS[cls], linewidths=0, rasterized=True)
         inside = g[g["x"].between(x0, x1) & g["y"].between(y0, y1)]
         if len(inside):  # direct labels instead of a second legend box
-            # Offsets differ per class: P-I and P-III sit nearly on top of each other
-            # vertically, so labelling both above their own points collides.
-            dx_pt, dy_pt, ha = {"P-I": (-6, 0, "right"), "P-II": (0, 4, "center"),
-                                "P-III": (6, 0, "left")}[cls]
-            anchor = (inside["x"].median(), inside["y"].max() if cls == "P-II"
-                      else inside["y"].median())
-            ins.annotate(cls, anchor, textcoords="offset points", xytext=(dx_pt, dy_pt),
-                         ha=ha, va="center", fontsize=6, color=SVMP_COLORS[cls],
+            # Anchor each label to the EDGE of its own cluster, on the side with free
+            # space. Every alternative collides: centring puts "P-III" on its own
+            # points, and putting "P-I" above runs it into the inset title, while
+            # "P-II" to the left lands on the second P-I group (the mature/precursor
+            # split), which sits immediately beside it.
+            if cls == "P-I":
+                anchor, off, ha, va = (inside["x"].max(), inside["y"].median()), (5, 0), "left", "center"
+            elif cls == "P-II":
+                anchor, off, ha, va = (inside["x"].median(), inside["y"].min()), (0, -5), "center", "top"
+            else:
+                anchor, off, ha, va = (inside["x"].max(), inside["y"].median()), (5, 0), "left", "center"
+            ins.annotate(cls, anchor, textcoords="offset points", xytext=off,
+                         ha=ha, va=va, fontsize=6, color=SVMP_COLORS[cls],
                          fontweight="bold")
+
     ins.set_xlim(x0, x1); ins.set_ylim(y0, y1)
     ins.set_xticks([]); ins.set_yticks([])
     for sp in ins.spines.values():
@@ -256,8 +262,8 @@ def svmp_inset(ax, tox: pd.DataFrame) -> tuple[float, float, float, int]:
         sp.set_color(INK)
     # Title INSIDE the inset: as a set_title it sat above the inset frame, where the
     # panel edge clipped it.
-    ins.text(0.03, 0.96, "metalloproteinase classes", transform=ins.transAxes,
-             fontsize=6, fontweight="bold", va="top", ha="left")
+    ins.text(0.03, 0.03, "metalloproteinase classes", transform=ins.transAxes,
+             fontsize=5.5, fontweight="bold", va="bottom", ha="left")
     ax.indicate_inset_zoom(ins, edgecolor=INK, linewidth=0.5, alpha=0.9)
 
     # The SVMPs excluded from the zoom window are not noise: they are the mature
