@@ -275,7 +275,7 @@ def svmp_inset(ax, tox: pd.DataFrame) -> tuple[float, float, float, int]:
     if len(far):
         ax.annotate("released\ndisintegrins", (far["x"].median(), far["y"].min()),
                     textcoords="offset points", xytext=(0, -5), ha="center", va="top",
-                    fontsize=5.5, color=INK, linespacing=0.95)
+                    fontsize=5.5, color=INK, linespacing=0.95, fontweight="bold")
 
     # Separability, WITH the control that matters. The three classes differ by whole
     # domains, so they differ in length almost by construction (median 238 / 458 / 591
