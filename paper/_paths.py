@@ -64,6 +64,27 @@ def curation_key_tsv() -> Path:
     return curation_dir() / "confident_errors_key.tsv"
 
 
+def protspace_dir() -> Path:
+    """Root of the ProtSpace working tree (gitignored; built by ``make protspace``).
+
+    Holds the two ``protspace prepare`` output directories plus the annotation CSVs
+    and toxin-only HDF5 they are built from. Gitignored like ``benchmark/``: every
+    artifact is reproducible from ``data/processed``.
+    """
+    return get_project_root() / "protspace"
+
+
+def protspace_bundle_dir(subset: str = "all") -> Path:
+    """Output directory of one ``protspace prepare`` run.
+
+    ``subset="all"`` projects every representative (figure panel A); ``subset="toxin"``
+    is refitted on the toxins alone (panel B). They are separate runs because a UMAP
+    fitted on a 95%-non-toxin set resolves no family structure among the toxins --
+    see :mod:`paper.protspace_bundles`.
+    """
+    return protspace_dir() / f"out_{subset}"
+
+
 def manuscript_tex_target() -> Path | None:
     """Optional target for auto-syncing ``results_numbers.tex`` into the manuscript.
 

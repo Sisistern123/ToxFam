@@ -18,7 +18,7 @@ dependencies = [
     "kaleido>=1.2.0",
     "iterative-stratification>=0.1.9",
     "protobuf>=6.33.5",
-    "protspace==3.3.1",
+    "protspace==4.8.0",
     "pydantic>=2.0",
     "pymmseqs>=1.0.4",
     "rich>=14.3.2",

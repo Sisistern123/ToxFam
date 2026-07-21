@@ -11,15 +11,20 @@
 #   4. uv run toxfam predict {non_metazoan,unreviewed} \
 #        --model-dir model/model_output/combined_run \
 #        -o benchmark/<set>/predict/predictions.tsv  # -> the two supp generalisation figs
-#   5. make figures                                # render everything
+#   5. make protspace                              # -> protspace/ (UMAP bundles)
+#   6. make figures                                # render everything
 #
 # Individual figures are `make fig-<name>`; `make figures` builds all of them.
+# `make protspace` is deliberately NOT a prerequisite of `figures`: it is minutes of
+# UMAP over 65k embeddings rather than a render, and its output is stable across
+# figure iterations. Run it once (step 5); fig-supp-embedding-space fails with a
+# clear message if you skip it.
 
 PY := uv run python -m paper.figures
 
 .PHONY: figures numbers verify fig-pipeline fig-capability fig-confidence-curation \
         fig-supp-accuracy fig-supp-perfamily fig-supp-nonmetazoan fig-supp-unreviewed \
-        fig-supplementary coverage
+        fig-supp-embedding-space fig-supplementary protspace coverage
 
 ## Ad-hoc test-coverage report (no CI gate; run occasionally).
 coverage:
@@ -35,7 +40,13 @@ verify:
 ## the explicit `verify` prerequisite gives an early, clear failure.
 figures: verify numbers fig-pipeline fig-capability fig-confidence-curation \
          fig-supp-accuracy fig-supp-perfamily fig-supp-nonmetazoan \
-         fig-supp-unreviewed fig-supplementary
+         fig-supp-unreviewed fig-supp-embedding-space fig-supplementary
+
+## Build the ProtSpace UMAP bundles (protspace/out_{all,toxin}).
+## Skips if already built; `make protspace FORCE=--force` recomputes from scratch.
+## Also emits the shareable .parquetbundle files for protspace.app/explore.
+protspace:
+	uv run python -m paper.protspace_bundles $(FORCE)
 
 ## Emit paper/figures/output/results_numbers.{json,tex} (every cited number).
 numbers:
@@ -65,6 +76,11 @@ fig-supp-nonmetazoan:
 
 fig-supp-unreviewed:
 	$(PY).figure_supp_unreviewed
+
+## ProtT5 embedding space: toxin/non-toxin globally + families in a toxin-only refit.
+## Requires `make protspace` (see the header chain).
+fig-supp-embedding-space:
+	$(PY).figure_embedding_space
 
 fig-supplementary:
 	$(PY).supplementary
