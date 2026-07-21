@@ -245,6 +245,78 @@ def svmp_class(families: str) -> str | None:
     return match.group(1) if match else None
 
 
+def conotoxin_separability(tox: pd.DataFrame) -> tuple[float, float, float, int]:
+    """How well the projection recovers conotoxin SIGNAL-PEPTIDE superfamilies.
+
+    The Discussion claims conotoxins split into several clusters because the UniProt
+    family is an umbrella over ~20-30 gene superfamilies. That is testable: the raw
+    family string carries the superfamily ("Conotoxin O1 superfamily"), preprocessing
+    collapses it to "Conotoxin", so it is absent from training and anything recovered
+    here is unsupervised.
+
+    Superfamilies are DEFINED by the signal peptide, which SignalP6 removed before
+    embedding -- so this is recovery from the mature region alone, and the length-only
+    control matters as much as it does for the SVMPs. Returns
+    (5-NN accuracy, length-only accuracy, majority baseline, n). Superfamilies with
+    fewer than five members are dropped: 5-fold CV of a 5-NN cannot score them.
+    """
+    raw = pd.read_csv(raw_dir() / "0800.tsv", sep="\t").rename(
+        columns={"Entry": "identifier"}
+    )
+    proc = pd.read_csv(processed_dir() / "training_data.csv")
+    proc["seqlen"] = proc["Sequence"].str.len()  # post-SignalP6, i.e. what was embedded
+    con = tox.merge(
+        raw[["identifier", "Protein families"]], on="identifier", how="left"
+    )
+    con = con.merge(proc[["identifier", "seqlen"]], on="identifier", how="left")
+    con = con[con["family"].str.contains("conotoxin", case=False, na=False)].copy()
+
+    con["superfamily"] = con["Protein families"].str.extract(
+        r"(Conotoxin [A-Z]\d? superfamily)", expand=False
+    )
+    con = con.dropna(subset=["superfamily", "seqlen"])
+    keep = con["superfamily"].value_counts()
+    con = con[con["superfamily"].isin(keep[keep >= 5].index)]
+
+    y = con["superfamily"]
+    base = y.value_counts(normalize=True).max()
+    acc = cross_val_score(
+        KNeighborsClassifier(5), con[["x", "y"]].values, y, cv=5
+    ).mean()
+    acc_len = cross_val_score(
+        KNeighborsClassifier(5), con[["seqlen"]].values, y, cv=5
+    ).mean()
+    return acc, acc_len, base, len(con)
+
+
+def family_purity(tox: pd.DataFrame, k: int = 10, min_n: int = 30) -> pd.Series:
+    """Per-family fraction of the k nearest neighbours sharing the family label.
+
+    Quantifies the "some families are coherent, others are dispersed" claim that is
+    otherwise only visible by eye. Scored on the projection the figure plots, so the
+    number describes exactly what the reader sees. Families under ``min_n`` members are
+    dropped: with k=10 the score is dominated by the family's own size below that.
+
+    The useful reference point is the ``other`` catch-all -- a family scoring at
+    ``other``'s level is, geometrically, no more coherent than a bag of leftovers.
+    """
+    from sklearn.neighbors import NearestNeighbors
+
+    tox = tox.copy()
+    tox["short"] = tox["family"].map(short_name)
+    # k+1 neighbours because the first is the query point itself.
+    _, idx = (
+        NearestNeighbors(n_neighbors=k + 1)
+        .fit(tox[["x", "y"]].values)
+        .kneighbors(tox[["x", "y"]].values)
+    )
+    fam = tox["short"].values
+    tox["purity"] = (fam[idx[:, 1:]] == fam[:, None]).mean(axis=1)
+    counts = tox["short"].value_counts()
+    keep = tox[tox["short"].isin(counts[counts >= min_n].index)]
+    return keep.groupby("short")["purity"].mean().sort_values()
+
+
 def svmp_inset(ax, tox: pd.DataFrame) -> tuple[float, float, float, int]:
     """Zoom on the venom metalloproteinases, recoloured by domain-architecture class.
 
@@ -513,6 +585,19 @@ def main(
     console.print(
         f"SVMP class 5-NN acc {svmp_acc:.3f} | length-only {svmp_len_acc:.3f} "
         f"| baseline {svmp_base:.3f} | n={svmp_n}"
+    )
+    con_acc, con_len_acc, con_base, con_n = conotoxin_separability(tox)
+    console.print(
+        f"conotoxin superfamily 5-NN acc {con_acc:.3f} | length-only {con_len_acc:.3f} "
+        f"| baseline {con_base:.3f} | n={con_n}"
+    )
+    purity = family_purity(tox)
+    console.print(
+        "10-NN family purity -- "
+        + ", ".join(
+            f"{name} {purity[name]:.3f}"
+            for name in ("Scoloptoxin", "other", "Conotoxin", "Three-finger toxin")
+        )
     )
     stats = cluster_stats(toxin_dir)
     console.print(
