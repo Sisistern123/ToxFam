@@ -227,7 +227,7 @@ def svmp_inset(ax, tox: pd.DataFrame) -> tuple[float, float, float, int]:
     # Match the inset's aspect to the source window's, so the zoom magnifies rather than
     # stretches. A square inset over a wide, flat source region distorts the very
     # separation the inset exists to show.
-    ins_w = 0.32
+    ins_w = 0.38
     ins_h = max(0.22, min(0.44, ins_w * (y1 - y0) / (x1 - x0)))
     ins = ax.inset_axes([0.995 - ins_w, 0.05, ins_w, ins_h])
     near = tox[tox["x"].between(x0, x1) & tox["y"].between(y0, y1)]
@@ -353,7 +353,8 @@ def main(
     # tail instead of one big unnamed group.
     handles.append(legend_handle(GREY, f"{n_rest_families} other families"))
     ax_b.legend(handles=split_columns(handles), loc="upper right", ncol=2,
-                columnspacing=1.0, **LEGEND_KW)
+                columnspacing=1.0, bbox_to_anchor=(1.02, 1.0), borderaxespad=0,
+                **LEGEND_KW)
     panel_header(ax_b, "B", f"toxins only, refitted UMAP (n={len(tox):,})")
     svmp_acc, svmp_len_acc, svmp_base, svmp_n = svmp_inset(ax_b, tox)
 
