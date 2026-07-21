@@ -9,9 +9,7 @@ from __future__ import annotations
 
 import numpy as np
 import pytest
-from sklearn.metrics import log_loss, roc_auc_score
-
-from sklearn.metrics import brier_score_loss
+from sklearn.metrics import brier_score_loss, log_loss, roc_auc_score
 
 from toxfam.evaluation.metrics import (
     PlattCalibrator,
@@ -26,7 +24,6 @@ from toxfam.evaluation.metrics import (
     nll_score,
     top_label_ece,
 )
-
 
 # ---------------------------------------------------------------------------
 # top-1 confidence ECE
