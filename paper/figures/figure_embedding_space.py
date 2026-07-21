@@ -26,7 +26,7 @@ from sklearn.model_selection import cross_val_score
 from sklearn.neighbors import KNeighborsClassifier
 
 from paper._paths import protspace_bundle_dir
-from toxfam._paths import raw_dir
+from toxfam._paths import processed_dir, raw_dir
 from paper.figures._common import DOUBLE_COL, apply_style, console, save_fig
 
 PROJECTION = "ProtT5 — UMAP 2"
@@ -191,7 +191,7 @@ def svmp_class(families: str) -> str | None:
     return match.group(1) if match else None
 
 
-def svmp_inset(ax, tox: pd.DataFrame) -> tuple[float, float, int]:
+def svmp_inset(ax, tox: pd.DataFrame) -> tuple[float, float, float, int]:
     """Zoom on the venom metalloproteinases, recoloured by domain-architecture class.
 
     P-I is the metalloproteinase domain alone, P-II adds a disintegrin domain, and P-III
@@ -200,7 +200,10 @@ def svmp_inset(ax, tox: pd.DataFrame) -> tuple[float, float, int]:
     baseline, n) so the caption can quote measured separability rather than assert it.
     """
     raw = pd.read_csv(raw_dir() / "0800.tsv", sep="\t").rename(columns={"Entry": "identifier"})
+    proc = pd.read_csv(processed_dir() / "training_data.csv")
+    proc["seqlen"] = proc["Sequence"].str.len()   # post-SignalP6, i.e. what was embedded
     svmp = tox.merge(raw[["identifier", "Protein families"]], on="identifier", how="left")
+    svmp = svmp.merge(proc[["identifier", "seqlen"]], on="identifier", how="left")
     svmp = svmp[svmp["family"].str.contains("metalloproteinase", case=False, na=False)].copy()
     svmp["cls"] = svmp["Protein families"].map(svmp_class)
     svmp = svmp.dropna(subset=["cls"])
@@ -218,15 +221,15 @@ def svmp_inset(ax, tox: pd.DataFrame) -> tuple[float, float, int]:
     core = svmp[dist <= 3 * dist.median()]
     x0, x1 = core["x"].min(), core["x"].max()
     y0, y1 = core["y"].min(), core["y"].max()
-    dx, dy = (x1 - x0) * 0.25, (y1 - y0) * 0.25
+    dx, dy = (x1 - x0) * 0.38, (y1 - y0) * 0.30
     x0, x1, y0, y1 = x0 - dx, x1 + dx, y0 - dy, y1 + dy
 
     # Match the inset's aspect to the source window's, so the zoom magnifies rather than
     # stretches. A square inset over a wide, flat source region distorts the very
     # separation the inset exists to show.
     ins_w = 0.32
-    ins_h = max(0.18, min(0.42, ins_w * (y1 - y0) / (x1 - x0)))
-    ins = ax.inset_axes([0.985 - ins_w, 0.04, ins_w, ins_h])
+    ins_h = max(0.22, min(0.44, ins_w * (y1 - y0) / (x1 - x0)))
+    ins = ax.inset_axes([0.95 - ins_w, 0.07, ins_w, ins_h])
     near = tox[tox["x"].between(x0, x1) & tox["y"].between(y0, y1)]
     ins.scatter(near["x"], near["y"], s=1.5, c=GREY, linewidths=0, rasterized=True)
     for cls in SVMP_CLASSES:
@@ -247,13 +250,22 @@ def svmp_inset(ax, tox: pd.DataFrame) -> tuple[float, float, int]:
     ins.set_xticks([]); ins.set_yticks([])
     for sp in ins.spines.values():
         sp.set_linewidth(0.5); sp.set_color(INK)
-    ins.set_title("metalloproteinase classes", fontsize=6, pad=2, loc="left")
+    # Title INSIDE the inset: as a set_title it sat above the inset frame, where the
+    # panel edge clipped it.
+    ins.text(0.03, 0.96, "metalloproteinase classes", transform=ins.transAxes,
+             fontsize=6, fontweight="bold", va="top", ha="left")
     ax.indicate_inset_zoom(ins, edgecolor=INK, linewidth=0.5, alpha=0.9)
 
-    X, y = svmp[["x", "y"]].values, svmp["cls"].values
-    acc = cross_val_score(KNeighborsClassifier(5), X, y, cv=5).mean()
+    # Separability, WITH the control that matters. The three classes differ by whole
+    # domains, so they differ in length almost by construction (median 238 / 458 / 591
+    # residues) -- a one-feature length classifier already reaches ~0.94. Quoting the
+    # embedding's accuracy without that baseline would overstate what the projection
+    # adds. Lengths are of the SignalP6-stripped sequences that were actually embedded.
+    y = svmp["cls"].values
+    acc = cross_val_score(KNeighborsClassifier(5), svmp[["x", "y"]].values, y, cv=5).mean()
+    acc_len = cross_val_score(KNeighborsClassifier(5), svmp[["seqlen"]].values, y, cv=5).mean()
     base = max(svmp["cls"].value_counts()) / len(svmp)
-    return acc, base, len(svmp)
+    return acc, acc_len, base, len(svmp)
 
 
 def load(out_dir: Path) -> pd.DataFrame:
@@ -328,7 +340,7 @@ def main(
     ax_b.legend(handles=split_columns(handles), loc="upper right", ncol=2,
                 columnspacing=1.0, **LEGEND_KW)
     panel_header(ax_b, "B", f"toxins only, refitted UMAP (n={len(tox):,})")
-    svmp_acc, svmp_base, svmp_n = svmp_inset(ax_b, tox)
+    svmp_acc, svmp_len_acc, svmp_base, svmp_n = svmp_inset(ax_b, tox)
 
     # Headroom for the in-axes legends, added at the TOP only -- ax.margins() is
     # symmetric and would leave as much dead space below the cloud as it opens above.
@@ -350,7 +362,8 @@ def main(
     fig.tight_layout()
     save_fig(fig, "figure_embedding_space")
 
-    console.print(f"SVMP class 5-NN acc {svmp_acc:.3f} (baseline {svmp_base:.3f}), n={svmp_n}")
+    console.print(f"SVMP class 5-NN acc {svmp_acc:.3f} | length-only {svmp_len_acc:.3f} "
+                  f"| baseline {svmp_base:.3f} | n={svmp_n}")
     stats = cluster_stats(toxin_dir)
     console.print(
         "toxin UMAP vs family: "
