@@ -20,14 +20,14 @@ import re
 from pathlib import Path
 
 import matplotlib.pyplot as plt
-from matplotlib.lines import Line2D
 import pandas as pd
+from matplotlib.lines import Line2D
 from sklearn.model_selection import cross_val_score
 from sklearn.neighbors import KNeighborsClassifier
 
 from paper._paths import protspace_bundle_dir
-from toxfam._paths import processed_dir, raw_dir
 from paper.figures._common import DOUBLE_COL, apply_style, console, save_fig
+from toxfam._paths import processed_dir, raw_dir
 
 PROJECTION = "ProtT5 — UMAP 2"
 
