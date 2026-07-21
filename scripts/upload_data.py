@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Upload raw and processed data to a GitHub Release.
 
-Developer-only script — re-creates the data-v1 release with:
+Developer-only script — re-creates the current data release with:
   - data/raw/0800.tsv             (frozen raw toxin data)
   - data/raw/nontox.tsv           (frozen raw non-toxin data)
   - data/processed/training_data.csv
@@ -12,7 +12,7 @@ Developer-only script — re-creates the data-v1 release with:
   - data/evaluation/              (zipped as evaluation_data.zip)
 
 Usage:
-    uv run scripts/upload_data.py [--tag data-v1]
+    uv run scripts/upload_data.py [--tag data-v2]
 
 Requires the `gh` CLI (https://cli.github.com) to be installed and authenticated.
 """
@@ -40,7 +40,9 @@ PROCESSED = ROOT / "data" / "processed"
 SP6_DIR = ROOT / "data" / "intermediate" / "sp6"
 EVAL_DIR = ROOT / "data" / "evaluation"
 
-DEFAULT_TAG = "data-v1"
+# Must track RELEASE_TAG in src/toxfam/cli.py — the tag `toxfam download-data`
+# actually pulls from. Pinned by test_upload_default_tag_matches_download_tag.
+DEFAULT_TAG = "data-v2"
 
 
 def main() -> None:

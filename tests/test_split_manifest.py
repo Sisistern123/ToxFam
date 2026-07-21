@@ -308,6 +308,22 @@ def test_released_models_carry_the_provenance_stamp():
     assert "models/split_provenance.json" in mod.KEEP_FILES
 
 
+def test_upload_default_tag_matches_download_tag():
+    """upload_data.py must default to the tag `toxfam download-data` reads. When it
+    lags, a bare re-upload aims at a superseded release instead of the live one."""
+    import importlib.util
+
+    from toxfam._paths import get_project_root
+    from toxfam.cli import RELEASE_TAG
+
+    path = get_project_root() / "scripts" / "upload_data.py"
+    spec = importlib.util.spec_from_file_location("_upload_data", path)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+
+    assert mod.DEFAULT_TAG == RELEASE_TAG
+
+
 def test_repo_manifest_is_loadable_and_covers_the_representative_set():
     df = load_manifest()
     assert len(df) == 65_179
