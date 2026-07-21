@@ -87,5 +87,14 @@ models.zip
 # visually verifying figures); transient, never part of the project.
 .playwright-mcp/
 
-# ProtSpace bundles + intermediates (make protspace; reproducible from data/processed)
-/protspace/
+# ProtSpace working tree (make protspace). The intermediates are regenerable and large
+# -- the toxin-only HDF5 alone is 15 MB -- but the two .parquetbundle files are only
+# 2.8 MB combined and ARE the shareable artifact (drop onto protspace.app/explore), so
+# they are tracked rather than pushed to a Release.
+/protspace/*
+!/protspace/out_all
+!/protspace/out_toxin
+/protspace/out_all/*
+/protspace/out_toxin/*
+!/protspace/out_all/data.parquetbundle
+!/protspace/out_toxin/data.parquetbundle
