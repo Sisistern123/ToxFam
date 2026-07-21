@@ -221,7 +221,7 @@ def svmp_inset(ax, tox: pd.DataFrame) -> tuple[float, float, float, int]:
     core = svmp[dist <= 3 * dist.median()]
     x0, x1 = core["x"].min(), core["x"].max()
     y0, y1 = core["y"].min(), core["y"].max()
-    dx, dy = (x1 - x0) * 0.16, (y1 - y0) * 0.16
+    dx, dy = (x1 - x0) * 0.34, (y1 - y0) * 0.22
     x0, x1, y0, y1 = x0 - dx, x1 + dx, y0 - dy, y1 + dy
 
     # Match the inset's aspect to the source window's, so the zoom magnifies rather than
@@ -229,7 +229,7 @@ def svmp_inset(ax, tox: pd.DataFrame) -> tuple[float, float, float, int]:
     # separation the inset exists to show.
     ins_w = 0.32
     ins_h = max(0.22, min(0.44, ins_w * (y1 - y0) / (x1 - x0)))
-    ins = ax.inset_axes([0.95 - ins_w, 0.07, ins_w, ins_h])
+    ins = ax.inset_axes([0.995 - ins_w, 0.05, ins_w, ins_h])
     near = tox[tox["x"].between(x0, x1) & tox["y"].between(y0, y1)]
     ins.scatter(near["x"], near["y"], s=1.5, c=GREY, linewidths=0, rasterized=True)
     for cls in SVMP_CLASSES:
@@ -267,8 +267,8 @@ def svmp_inset(ax, tox: pd.DataFrame) -> tuple[float, float, float, int]:
     # accordingly -- so they get their own label in the main panel.
     far = svmp[dist > 3 * dist.median()]
     if len(far):
-        ax.annotate("released\ndisintegrins", (far["x"].median(), far["y"].median()),
-                    textcoords="offset points", xytext=(0, 9), ha="center", va="bottom",
+        ax.annotate("released\ndisintegrins", (far["x"].median(), far["y"].min()),
+                    textcoords="offset points", xytext=(0, -5), ha="center", va="top",
                     fontsize=5.5, color=INK, linespacing=0.95)
 
     # Separability, WITH the control that matters. The three classes differ by whole
@@ -374,7 +374,7 @@ def main(
             ax.set_ylim(lo, hi + (hi - lo) * headroom)
         axis_glyph(ax)
 
-    fig.tight_layout()
+    fig.tight_layout(pad=0.4)
     save_fig(fig, "figure_embedding_space")
 
     console.print(f"SVMP class 5-NN acc {svmp_acc:.3f} | length-only {svmp_len_acc:.3f} "
