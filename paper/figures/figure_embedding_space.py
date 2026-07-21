@@ -221,7 +221,7 @@ def svmp_inset(ax, tox: pd.DataFrame) -> tuple[float, float, float, int]:
     core = svmp[dist <= 3 * dist.median()]
     x0, x1 = core["x"].min(), core["x"].max()
     y0, y1 = core["y"].min(), core["y"].max()
-    dx, dy = (x1 - x0) * 0.38, (y1 - y0) * 0.30
+    dx, dy = (x1 - x0) * 0.16, (y1 - y0) * 0.16
     x0, x1, y0, y1 = x0 - dx, x1 + dx, y0 - dy, y1 + dy
 
     # Match the inset's aspect to the source window's, so the zoom magnifies rather than
@@ -249,12 +249,27 @@ def svmp_inset(ax, tox: pd.DataFrame) -> tuple[float, float, float, int]:
     ins.set_xlim(x0, x1); ins.set_ylim(y0, y1)
     ins.set_xticks([]); ins.set_yticks([])
     for sp in ins.spines.values():
-        sp.set_linewidth(0.5); sp.set_color(INK)
+        # apply_style() hides top/right spines globally; an inset needs a CLOSED frame,
+        # so re-enable them here rather than inheriting the panel convention.
+        sp.set_visible(True)
+        sp.set_linewidth(0.5)
+        sp.set_color(INK)
     # Title INSIDE the inset: as a set_title it sat above the inset frame, where the
     # panel edge clipped it.
     ins.text(0.03, 0.96, "metalloproteinase classes", transform=ins.transAxes,
              fontsize=6, fontweight="bold", va="top", ha="left")
     ax.indicate_inset_zoom(ins, edgecolor=INK, linewidth=0.5, alpha=0.9)
+
+    # The SVMPs excluded from the zoom window are not noise: they are the mature
+    # disintegrins, released from P-II precursors by proteolysis and curated as separate
+    # UniProt records (48-83 residues against ~480 for a P-II precursor). They share no
+    # domain with the catalytic protein, and the projection puts them far away
+    # accordingly -- so they get their own label in the main panel.
+    far = svmp[dist > 3 * dist.median()]
+    if len(far):
+        ax.annotate("released\ndisintegrins", (far["x"].median(), far["y"].median()),
+                    textcoords="offset points", xytext=(0, 9), ha="center", va="bottom",
+                    fontsize=5.5, color=INK, linespacing=0.95)
 
     # Separability, WITH the control that matters. The three classes differ by whole
     # domains, so they differ in length almost by construction (median 238 / 458 / 591
