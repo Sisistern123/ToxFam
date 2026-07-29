@@ -36,7 +36,8 @@ check:
 	uv run ruff format --check src tests paper
 	uv run pytest -q
 
-.PHONY: setup check figures numbers verify fig-pipeline fig-capability fig-confidence-curation \
+.PHONY: setup check figures numbers verify preprocessing-audit \
+        fig-pipeline fig-capability fig-confidence-curation \
         fig-supp-accuracy fig-supp-perfamily fig-supp-nonmetazoan fig-supp-unreviewed \
         fig-supp-embedding-space fig-supplementary protspace coverage
 
@@ -55,6 +56,15 @@ verify:
 figures: verify numbers fig-pipeline fig-capability fig-confidence-curation \
          fig-supp-accuracy fig-supp-perfamily fig-supp-nonmetazoan \
          fig-supp-unreviewed fig-supp-embedding-space fig-supplementary
+
+## Empirical audit of the six preprocessing decisions -> the numbers the Methods
+## section cites. Writes paper/figures/output/preprocessing_numbers.json (tracked).
+## NOT a prerequisite of `figures`: it reads data/intermediate/mmseqs/, which is
+## gitignored and is NOT part of `toxfam download-data`, so it needs a full
+## `uv run toxfam preprocess` first. Fails fast with that instruction if absent.
+## notebooks/preprocessing_rationale.ipynb narrates these same numbers.
+preprocessing-audit:
+	uv run python -m paper.preprocessing_audit
 
 ## Build the ProtSpace UMAP bundles (protspace/out_{all,toxin}).
 ## Skips if already built; `make protspace FORCE=--force` recomputes from scratch.

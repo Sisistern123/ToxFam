@@ -61,6 +61,17 @@ METHOD_ORDER = list(METHODS)
 # and its base colour live in one place (used by figure2 labels + figure3 edges).
 METHOD_DARK = {"hbi": "#6f6f6f", "nn_combined_run": "#b06a00"}
 
+# Toxin / non-toxin CLASS colours, for data-side figures (the preprocessing audit).
+# Deliberately a separate namespace from METHODS: the same Okabe-Ito hexes mean
+# different things there (#E69F00 = the combined model, not "toxin"), and a supplement
+# carrying both must not let one legend be read as the other.
+CLASSES = {
+    "toxin": "#E69F00",
+    "nontoxin": "#0072B2",
+    "neutral": "#BBBBBB",
+    "accent": "#009E73",
+}
+
 # Ordered good->bad adjudication ramp (Paul Tol high-contrast). NEVER green=good/
 # red=bad (the exact deuteranopia failure case); this ramp is luminance-ordered so
 # it reads as good->bad even in greyscale.
