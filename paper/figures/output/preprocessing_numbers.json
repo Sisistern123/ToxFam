@@ -102,8 +102,8 @@
     "twins": 23
   },
   "provenance": {
-    "commit": "256fb12",
-    "dirty": true,
+    "commit": "adeacd9",
+    "dirty": false,
     "project_root": "/Users/tsenoner/Documents/projects/ToxFam",
     "split_manifest_sha256": "959e4d5bf53954a094a2b0f367a5034f1f90d3af32090fd80be31740160452e8"
   },
