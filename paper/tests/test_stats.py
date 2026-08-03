@@ -22,6 +22,7 @@ from paper.stats import (
     macro_f1_conventions,
     mcnemar_test,
     nonmetazoan_toxicity_recall,
+    nontoxin_best_hit_rate,
     paired_bootstrap_accuracy_diff,
     per_family_f1_difference,
     rolling_accuracy_vs_length,
@@ -696,3 +697,65 @@ def test_unreviewed_annotation_summary_excludes_other_from_agreement():
     s = unreviewed_annotation_summary(preds, families, vocab=vocab, top_k=3)
     assert s["n_comparable"] == 2  # C still excluded
     assert s["rank_counts"]["top_1"] == 1  # only A, not C
+
+
+def _best_hit_fixture() -> pd.DataFrame:
+    """Six proteins: 4 toxins (1 nontox best hit, 1 no-hit, 2 correct) + 2 non-toxins."""
+    return pd.DataFrame(
+        {
+            "identifier": list("ABCDEF"),
+            "actual_label": [
+                "Conotoxin family",
+                "CRISP family",
+                "Actinoporin family",
+                "Conotoxin family",
+                "nontox",
+                "nontox",
+            ],
+            "predicted_label": [
+                "nontox",  # A: the failure this statistic measures
+                "no hit",  # B: a *different* failure -- no label transferred
+                "Actinoporin family",
+                "Conotoxin family",
+                "nontox",
+                "Conotoxin family",  # a non-toxin scored as toxin: not our concern
+            ],
+        }
+    )
+
+
+def test_nontoxin_best_hit_rate_counts_only_true_toxins():
+    """The denominator is true toxins; non-toxin rows never enter it.
+
+    Row F is a non-toxin predicted as a toxin. Including non-toxins would both inflate
+    the denominator (~1.5x here) and let the majority class dominate a statistic that
+    is meant to describe toxins.
+    """
+    r = nontoxin_best_hit_rate(_best_hit_fixture())
+    assert r["n_toxins"] == 4
+    assert r["n_nontoxin"] == 1
+    assert r["frac"] == pytest.approx(0.25)
+
+
+def test_nontoxin_best_hit_rate_excludes_no_hit_from_the_numerator():
+    """A ``no hit`` toxin must not count as a non-toxin best hit.
+
+    Regression test for the conflation that would misstate the manuscript claim: the
+    search returned nothing for B, so no non-toxin label was transferred and no
+    homology boundary was crossed. Folding it in would report 2/4 (50%) instead of
+    1/4 (25%) -- double the true rate -- for a paragraph arguing that best-hit
+    transfer *mislabels* toxins.
+    """
+    r = nontoxin_best_hit_rate(_best_hit_fixture())
+    assert r["n_no_hit"] == 1
+    assert r["n_nontoxin"] == 1, "no-hit row leaked into the non-toxin count"
+    assert r["frac"] == pytest.approx(0.25)
+
+
+def test_nontoxin_best_hit_rate_accepts_nontoxin_label_variants():
+    """`nontoxic`/`nontoxin` spellings count, matching NONTOXIN_LABELS elsewhere."""
+    df = _best_hit_fixture()
+    df.loc[df["identifier"] == "C", "predicted_label"] = "Nontoxin"
+    r = nontoxin_best_hit_rate(df)
+    assert r["n_nontoxin"] == 2
+    assert r["frac"] == pytest.approx(0.5)

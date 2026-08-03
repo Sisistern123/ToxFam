@@ -26,6 +26,12 @@
     "ci_high": 0.00736527252275286,
     "n": 9779
   },
+  "hbi_nontoxin_best_hit": {
+    "n_toxins": 515,
+    "n_nontoxin": 68,
+    "n_no_hit": 8,
+    "frac": 0.13203883495145632
+  },
   "no_hit": {
     "n": 71,
     "n_toxin": 8,
