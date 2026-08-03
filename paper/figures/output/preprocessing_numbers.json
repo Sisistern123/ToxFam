@@ -1,0 +1,209 @@
+{
+  "funnel": {
+    "length_cutoff": 2243,
+    "length_median_after": 365.0,
+    "length_median_before": 368.0,
+    "length_n_after": 98850,
+    "length_n_before": 99846,
+    "length_n_removed": 996,
+    "length_residue_mass_removed": 0.0715712240547125,
+    "nt_after_length_cut": 98850,
+    "nt_raw": 99846,
+    "tox_raw": 5927,
+    "tox_with_family": 5567
+  },
+  "ladder": {
+    "min_members": 10,
+    "rows": [
+      {
+        "families_dissolved": 28,
+        "families_kept": 16,
+        "seqs_into_other": 118,
+        "threshold": 0.3,
+        "toxin_reps": 833
+      },
+      {
+        "families_dissolved": 22,
+        "families_kept": 22,
+        "seqs_into_other": 107,
+        "threshold": 0.5,
+        "toxin_reps": 1115
+      },
+      {
+        "families_dissolved": 14,
+        "families_kept": 30,
+        "seqs_into_other": 58,
+        "threshold": 0.7,
+        "toxin_reps": 1868
+      },
+      {
+        "families_dissolved": 8,
+        "families_kept": 36,
+        "seqs_into_other": 47,
+        "threshold": 0.9,
+        "toxin_reps": 3132
+      },
+      {
+        "families_dissolved": 1,
+        "families_kept": 43,
+        "seqs_into_other": 7,
+        "threshold": 1.0,
+        "toxin_reps": 4838
+      }
+    ],
+    "thresholds": [
+      0.3,
+      0.5,
+      0.7,
+      0.9,
+      1.0
+    ]
+  },
+  "lanes": {
+    "nontox": {
+      "clusters": 61763,
+      "families": 1,
+      "members": 98850,
+      "removed_frac": 0.37518462316641377
+    },
+    "other": {
+      "clusters": 284,
+      "families": 1,
+      "members": 358,
+      "removed_frac": 0.2067039106145251
+    },
+    "toxin": {
+      "clusters": 3132,
+      "families": 44,
+      "members": 5209,
+      "removed_frac": 0.39873296218084087
+    }
+  },
+  "nearest_neighbour": {
+    "n_toxin_reps": 3416,
+    "nearest_is_nontoxin": 300,
+    "nearest_is_nontoxin_frac": 0.08782201405152225,
+    "params": "hbi defaults: s=9.0, e=inf, max_seqs=1000, min-evalue, no cov filter",
+    "with_nontoxin_homolog": 1446,
+    "with_nontoxin_homolog_frac": 0.42330210772833726
+  },
+  "phospholipase": {
+    "loose_nt": 213,
+    "loose_tox": 327,
+    "nt_with_venom_homolog": 134,
+    "strict_nt": 145,
+    "strict_tox": 298,
+    "twin_cross_train_eval": 5,
+    "twin_different_split": 5,
+    "twin_n_pairs": 11,
+    "twin_same_split": 6,
+    "twin_toxin_eval_nontoxin_train": 2,
+    "twin_toxin_train_nontoxin_eval": 3,
+    "twins": 23
+  },
+  "provenance": {
+    "commit": "adeacd9",
+    "dirty": false,
+    "project_root": "/Users/tsenoner/Documents/projects/ToxFam",
+    "split_manifest_sha256": "959e4d5bf53954a094a2b0f367a5034f1f90d3af32090fd80be31740160452e8"
+  },
+  "redundancy": {
+    "median_reduction": 0.3395390070921986,
+    "n_families": 44,
+    "top_families": [
+      "Conotoxin_family",
+      "Neurotoxin_family",
+      "Three-finger_toxin_family",
+      "Long__4_C-C__scorpion_toxin_superfamily",
+      "Phospholipase_family"
+    ],
+    "top_n": 5,
+    "top_n_share": 0.6519017814155031,
+    "total_removed": 2077,
+    "zero_redundancy": 4
+  },
+  "shared_families": {
+    "n_shared": 85,
+    "nt_without_family": 20118,
+    "toxin_share": 0.6991198131848392,
+    "toxins_in_shared": 3892
+  },
+  "signal_peptide": {
+    "cleavage": {
+      "exact": 0.8596584845250801,
+      "n": 3748,
+      "within_2": 0.9423692636072573
+    },
+    "clustering_spread": {
+      "max_rel_decrease": -0.13636363636363635,
+      "max_rel_increase": 0.030095759233926128,
+      "mean_abs_rel": 0.04252832639964594,
+      "n_down": 3,
+      "n_families": 8,
+      "n_unchanged": 0,
+      "n_up": 5,
+      "net": -29,
+      "net_frac": -0.013248058474189127
+    },
+    "curation_nontoxins": {
+      "FN": 1619,
+      "FP": 300,
+      "TN": 79990,
+      "TP": 16941,
+      "agreement": 0.9805867475973697,
+      "precision": 0.9825996171915782,
+      "recall": 0.9127693965517242
+    },
+    "curation_toxins": {
+      "FN": 45,
+      "FP": 37,
+      "TN": 1737,
+      "TP": 3748,
+      "agreement": 0.9852703430932279,
+      "precision": 0.9902245706737121,
+      "recall": 0.9881360400738202
+    },
+    "families_mixed": 29,
+    "families_total": 44,
+    "frame_shift": {
+      "alncov_changed": 2348,
+      "alncov_changed_frac": 0.9995742869306088,
+      "alncov_median_delta": 0.1364023870417732,
+      "alnlen_changed": 271,
+      "alnlen_changed_frac": 0.11536824180502342,
+      "alnlen_median_delta": 0.0,
+      "bits_changed": 714,
+      "bits_changed_frac": 0.30395913154533843,
+      "bits_median_delta": 0.0,
+      "fident_changed": 294,
+      "fident_changed_frac": 0.1251596424010217,
+      "fident_median_delta": 0.0,
+      "n_families": 23,
+      "n_paired": 2349
+    },
+    "mixed_share": 0.904972163563064,
+    "nt_trim_rate": 0.17441578148710166,
+    "shortcut": {
+      "base_rate": 0.0533150732160472,
+      "lift_factor": 3.376441377523454,
+      "lift_rate": 0.18001521925235422,
+      "nt_rate": 0.17441578148710166,
+      "odds_ratio": 10.053882111332374,
+      "precision": 0.18001521925235422,
+      "recall": 0.6798994072211245,
+      "tox_rate": 0.6798994072211245
+    },
+    "sp_frac_nt": 0.07142857142857142,
+    "sp_frac_tox": 0.2441860465116279,
+    "tox_trim_rate": 0.6798994072211245
+  },
+  "train_test_homology": {
+    "ge70": 253,
+    "ge70_frac": 0.4912621359223301,
+    "ge90": 8,
+    "ge90_cross_family": 12,
+    "ge90_same_family": 18,
+    "n_test_reps_ge90": 30,
+    "n_toxin_test": 515
+  }
+}

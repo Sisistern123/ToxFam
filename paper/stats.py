@@ -43,6 +43,35 @@ def toxin_mask(preds: pd.DataFrame, label_col: str = "actual_label") -> np.ndarr
     return ~preds[label_col].str.lower().isin(NONTOXIN_LABELS).values
 
 
+def nontoxin_best_hit_rate(preds: pd.DataFrame) -> dict:
+    """How often a true toxin's best homology hit carries a *non-toxin* label.
+
+    The realised, test-split counterpart of the dataset-wide floor measured by
+    ``paper.preprocessing_audit`` (toxin representatives whose nearest neighbour over
+    the full representative set is a non-toxin). The two differ by construction: this
+    one scores held-out toxins against a reference restricted to the training split,
+    so it is a property of the benchmark rather than of the data, and the rates are
+    not expected to coincide.
+
+    ``no hit`` rows are counted in ``n_no_hit`` and excluded from ``n_nontoxin``.
+    They are a *different* failure mode -- the search returned nothing, so no label
+    was transferred at all -- and folding them in would overstate the boundary
+    problem this measures with queries that never crossed a boundary.
+    """
+    tox = preds[toxin_mask(preds)]
+    pred = tox["predicted_label"].astype(str)
+    no_hit = pred == NO_HIT_LABEL
+    nontoxin = pred.str.lower().isin(NONTOXIN_LABELS)
+    n_tox = int(len(tox))
+    n_nt = int(nontoxin.sum())
+    return {
+        "n_toxins": n_tox,
+        "n_nontoxin": n_nt,
+        "n_no_hit": int(no_hit.sum()),
+        "frac": float(n_nt / n_tox) if n_tox else float("nan"),
+    }
+
+
 def aligned_correctness(
     preds_a: pd.DataFrame, preds_b: pd.DataFrame
 ) -> tuple[np.ndarray, np.ndarray]:
