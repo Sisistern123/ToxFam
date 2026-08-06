@@ -5,9 +5,23 @@
 # (benchmark/), which are gitignored, so a CLEAN CHECKOUT CANNOT rebuild figures
 # without first producing those inputs. Full regeneration chain:
 #
+#   0. uv run toxfam download-data                 # -> data/{raw,processed,evaluation}
+#      uv run toxfam taxonomy                      # -> data/processed/taxonomy_vectors.h5
+#         NOT shipped in the release: it is rebuilt from live NCBI taxonomy, so pin the
+#         dump (PROTSPACE_TAXDB_DIR=<frozen copy>) if you need byte-identical vectors.
 #   1. uv run toxfam train configs/standard.yaml   # -> model/model_output/standard_run
 #   2. uv run toxfam train configs/combined.yaml   # -> model/model_output/combined_run
+#      To reproduce the PUBLISHED numbers, use the released checkpoints instead of
+#      training your own: `uv run toxfam download-models`. A fresh training run gives
+#      a different checkpoint, so its numbers will not match the manuscript.
+#   2b. uv run toxfam eval binary <run> --deploy    # -> <run>/metrics/binary_metrics.json
+#         REQUIRED before `numbers`, once per run. It fits and deploys the binary
+#         P(toxic) Platt calibrator; numbers_manifest refuses a binary_metrics.json
+#         that predates it (score_space != "platt_calibrated") because those numbers
+#         are on the raw score. Not shipped in models.zip, so it must be run locally.
 #   3. uv run toxfam eval {hbi,eat,model} test_set # -> benchmark/test_set/...
+#         `eval model` takes --model-dir and writes benchmark/test_set/nn_<run>/, so
+#         run it once per model you want in the comparison.
 #   4. uv run toxfam predict {non_metazoan,unreviewed} \
 #        --model-dir model/model_output/combined_run \
 #        -o benchmark/<set>/predict/predictions.tsv  # -> the two supp generalisation figs

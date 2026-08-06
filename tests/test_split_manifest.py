@@ -324,6 +324,43 @@ def test_upload_default_tag_matches_download_tag():
     assert mod.DEFAULT_TAG == RELEASE_TAG
 
 
+def test_download_models_tag_matches_package_models_tag():
+    """`toxfam download-models` must read the tag package_models.py publishes to.
+    When they diverge, users silently fetch a superseded checkpoint and their numbers
+    stop matching the manuscript for no visible reason."""
+    import importlib.util
+
+    from toxfam._paths import get_project_root
+    from toxfam.cli import MODELS_TAG
+
+    path = get_project_root() / "scripts" / "package_models.py"
+    spec = importlib.util.spec_from_file_location("_pkg_models_tag", path)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+
+    assert mod.DEFAULT_TAG == MODELS_TAG
+
+
+def test_hbi_reference_provenance_is_a_release_asset():
+    """The sidecar must ship, or `toxfam verify` fails on a clean clone and takes
+    `make figures` (gated on verify) with it -- the release has hbi_train_all.csv but
+    for a long time not its stamp. Optional so the code can land before the upload."""
+    from toxfam.cli import DATA_ASSETS, OPTIONAL_ASSETS
+
+    name = "hbi_train_all.csv.provenance.json"
+    assert name in {asset for asset, *_ in DATA_ASSETS}
+    assert name in OPTIONAL_ASSETS
+
+
+def test_upload_data_publishes_the_hbi_provenance_sidecar():
+    """upload_data.py must actually upload the sidecar download-data now asks for,
+    or the asset stays permanently optional-and-absent."""
+    from toxfam._paths import get_project_root
+
+    src = (get_project_root() / "scripts" / "upload_data.py").read_text()
+    assert "hbi_train_all.csv.provenance.json" in src
+
+
 def test_repo_manifest_is_loadable_and_covers_the_representative_set():
     df = load_manifest()
     assert len(df) == 65_179
