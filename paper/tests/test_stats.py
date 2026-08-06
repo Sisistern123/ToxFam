@@ -484,6 +484,28 @@ def test_bootstrap_label_metric_ci_brackets_point():
     assert ci["ci_low"] <= ci["point"] <= ci["ci_high"]
 
 
+def test_bootstrap_label_metric_ci_is_row_order_invariant():
+    """The interval must not depend on the caller's row order.
+
+    ``rng.integers`` draws positions, so an unsorted input made ``two_se`` a function
+    of however the caller's DataFrame happened to be ordered -- while ``point`` stayed
+    fixed, which is exactly what made the discrepancy hard to spot. Shuffling under
+    several seeds is what catches it; calling twice on the same array never could.
+    """
+    rng = np.random.default_rng(0)
+    yt = np.array(["A", "B", "C", "nontox"] * 40)
+    yp = yt.copy()
+    yp[:25] = "B"  # introduce errors so the metric has real variance
+
+    base = bootstrap_label_metric_ci(yt, yp, overall_mcc, n_boot=200, seed=1)
+    for _ in range(5):
+        perm = rng.permutation(len(yt))
+        shuffled = bootstrap_label_metric_ci(
+            yt[perm], yp[perm], overall_mcc, n_boot=200, seed=1
+        )
+        assert shuffled == base
+
+
 def test_per_family_mcc_difference_columns():
     a, b = _two_method_preds()
     out = per_family_mcc_difference(a, b, class_list=["A", "B", "nontox"])

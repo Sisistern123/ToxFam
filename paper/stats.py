@@ -491,9 +491,19 @@ def bootstrap_label_metric_ci(
 
     Resamples (y_true, y_pred) pairs with replacement — used for statistics that
     are not a per-sample mean.
+
+    The pairs are sorted into a canonical order first, because ``rng.integers``
+    draws *positions*: without it the same predictions supplied in a different row
+    order yield a different resample and so a different ``two_se``/CI, while
+    ``point`` (order-invariant) stays put. The sample is exchangeable, so ordering
+    it changes nothing statistically — it just stops the reported interval from
+    depending on how the caller happened to sort its DataFrame.
     """
     yt = np.asarray(y_true)
     yp = np.asarray(y_pred)
+    # Cast to str for the sort key only; the metric still sees the original values.
+    order = np.lexsort((np.asarray(yp, dtype=str), np.asarray(yt, dtype=str)))
+    yt, yp = yt[order], yp[order]
     n = len(yt)
     rng = np.random.default_rng(seed)
     point = float(metric_fn(yt, yp))

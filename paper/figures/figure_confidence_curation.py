@@ -85,6 +85,11 @@ def _half_violin(ax, vals, base, color, width=0.42, bw=0.06):
 
 def _points_right(ax, vals, base, color, half=0.36, s=6, a=0.55, seed=0, sub=None):
     r = np.random.default_rng(seed)
+    # Sort first: both the sub-sampling and the jitter below draw by POSITION, so the
+    # same confidences arriving in a different row order would plot a different subset
+    # of dots with different offsets. Sorting makes the panel reproducible; the cloud
+    # is a random x-jitter either way, so it is visually equivalent.
+    vals = np.sort(np.asarray(vals))
     if sub and len(vals) > sub:
         vals = r.choice(vals, sub, replace=False)
     off = base + 0.06 + r.uniform(0, half, len(vals))
