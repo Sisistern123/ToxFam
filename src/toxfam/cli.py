@@ -85,7 +85,11 @@ class EatMetric(str, Enum):
 
 
 GITHUB_REPO = "Sisistern123/ToxFam"
-RELEASE_TAG = "data-v2"
+RELEASE_TAG = "data-v3"
+
+# Tag `toxfam download-models` pulls from. Must track scripts/package_models.py's
+# DEFAULT_TAG -- that script builds and publishes the asset this one fetches.
+MODELS_TAG = "models-v4"
 
 _RAW = "raw"
 _PROCESSED = "processed"
@@ -98,11 +102,30 @@ DATA_ASSETS: list[tuple[str, str, str, str]] = [
     ("nontox.tsv", _RAW, "nontox.tsv", "nontox.tsv"),
     ("training_data.csv", _PROCESSED, "training_data.csv", "training_data.csv"),
     ("embeddings.h5", _PROCESSED, "embeddings.h5", "embeddings.h5"),
+    (
+        "taxonomy_vectors.h5",
+        _PROCESSED,
+        "taxonomy_vectors.h5",
+        "taxonomy_vectors.h5",
+    ),
     ("hbi_train_all.csv", _PROCESSED, "hbi_train_all.csv", "hbi_train_all.csv"),
+    (
+        "hbi_train_all.csv.provenance.json",
+        _PROCESSED,
+        "hbi_train_all.csv.provenance.json",
+        "hbi_train_all.csv.provenance.json",
+    ),
     ("hbi_train_all.fasta", _PROCESSED, "hbi_train_all.fasta", "hbi_train_all.fasta"),
     ("sp6_cache.zip", _INTERMEDIATE, "sp6", "sp6/sp6_cache.json"),
     ("evaluation_data.zip", _EVALUATION, ".", "non_metazoan/non_metazoan.tsv"),
 ]
+
+# Assets tolerated as missing: a 404 warns and points at a local workaround instead
+# of aborting the whole download. Empty now that data-v3 carries every asset in
+# DATA_ASSETS -- kept as the mechanism for the next time an asset has to land in the
+# code before it lands in a release (hbi_train_all.csv.provenance.json was the first,
+# whose absence failed `toxfam verify` and took `make figures` with it).
+OPTIONAL_ASSETS: frozenset[str] = frozenset()
 
 
 def _fetch_asset_digests(repo: str, tag: str) -> dict[str, str]:
@@ -181,8 +204,8 @@ def download_data(
 
     Fetches UniProt TSVs (data/raw/), training splits and ProtT5 embeddings
     (data/processed/), and the SignalP6 per-sequence cache
-    (data/intermediate/sp6/). Taxonomy vectors are not included — regenerate
-    them with `toxfam taxonomy`. An existing local file is skipped only when its
+    (data/intermediate/sp6/), and the multi-hot taxonomy vectors the combined
+    model needs. An existing local file is skipped only when its
     bytes match the release's sha256 digest; if they differ (a stale copy from an
     earlier split, a truncated download) it is refreshed, so a stale file can
     never shadow the correct release. --force re-downloads everything. (Content
@@ -259,6 +282,16 @@ def download_data(
                 finally:
                     tmp_dest.unlink(missing_ok=True)
         except Exception as e:
+            if asset_name in OPTIONAL_ASSETS:
+                err_console.print(
+                    f"  [yellow]skipped {rel_path} — not in release {tag}[/] ({e}).\n"
+                    "    Regenerate it locally once the data is downloaded:\n"
+                    '      uv run python -c "from toxfam.data.split_manifest import '
+                    "write_provenance; from toxfam._paths import processed_dir; "
+                    "write_provenance(processed_dir() / 'hbi_train_all.csv')\"\n"
+                    "    (only valid if 'toxfam verify' shows hbi_reference_disjoint ok)"
+                )
+                continue
             err_console.print(f"  FAILED: {e}", style="red")
             raise typer.Exit(code=1)
 
@@ -301,6 +334,73 @@ def _verify_training_csv_against_manifest(training_csv: Path) -> None:
         style="red",
     )
     raise typer.Exit(code=1)
+
+
+# ---------- toxfam download-models ----------
+
+
+@app.command("download-models")
+def download_models(
+    tag: Annotated[str, typer.Option(help="GitHub release tag")] = MODELS_TAG,
+    force: Annotated[
+        bool, typer.Option("--force", "-f", help="Re-download even if runs exist")
+    ] = False,
+) -> None:
+    """Download the published trained models into `model/model_output/`.
+
+    Fetches the released `models.zip` (built by `scripts/package_models.py`) and
+    extracts the `standard_run` and `combined_run` inference bundles: the calibrated
+    checkpoint, its architecture/class metadata, and `models/split_provenance.json`
+    binding it to the split it trained on.
+
+    Use this rather than `toxfam train` when the goal is to reproduce the *published*
+    numbers -- a fresh training run yields a different checkpoint, so its metrics will
+    not match the manuscript.
+
+    The release carries the deployed binary P(toxic) Platt calibrator, so there is
+    no need to re-deploy it. It does not carry `metrics/binary_metrics.json`, which
+    the manuscript numbers read, so run `toxfam eval binary <run>` once per run (no
+    `--deploy` — that would refit and overwrite the shipped calibrator). See the
+    Makefile header for the full chain.
+    """
+    import tempfile
+    import zipfile
+
+    from toxfam._paths import get_project_root
+
+    dest_dir = get_project_root() / "model" / "model_output"
+    existing = [
+        d.name for d in sorted(dest_dir.glob("*_run")) if (d / "models").is_dir()
+    ]
+    if existing and not force:
+        console.print(
+            f"  skip {dest_dir.relative_to(get_project_root())} "
+            f"(already present: {', '.join(existing)}); use --force to re-download"
+        )
+        return
+
+    dest_dir.mkdir(parents=True, exist_ok=True)
+    url = f"https://github.com/{GITHUB_REPO}/releases/download/{tag}/models.zip"
+    with tempfile.NamedTemporaryFile(suffix=".zip", delete=False) as tmp:
+        tmp_path = Path(tmp.name)
+    try:
+        _download_with_progress(url, tmp_path, "models.zip")
+        with zipfile.ZipFile(tmp_path, "r") as zf:
+            zf.extractall(dest_dir)
+    except Exception as e:
+        err_console.print(f"  FAILED: {e}", style="red")
+        raise typer.Exit(code=1)
+    finally:
+        tmp_path.unlink(missing_ok=True)
+
+    runs = [d.name for d in sorted(dest_dir.glob("*_run")) if (d / "models").is_dir()]
+    console.print(
+        f"Extracted {len(runs)} run(s) to model/model_output/: {', '.join(runs)}"
+    )
+    console.print(
+        "Next: 'uv run toxfam eval binary model/model_output/<run>' per run "
+        "(no --deploy: the calibrator ships with the release)."
+    )
 
 
 # ---------- Step 1: toxfam preprocess ----------

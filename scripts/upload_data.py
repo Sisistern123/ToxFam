@@ -6,13 +6,14 @@ Developer-only script — re-creates the current data release with:
   - data/raw/nontox.tsv           (frozen raw non-toxin data)
   - data/processed/training_data.csv
   - data/processed/embeddings.h5
+  - data/processed/taxonomy_vectors.h5
   - data/processed/hbi_train_all.csv
   - data/processed/hbi_train_all.fasta
   - data/intermediate/sp6/        (zipped as sp6_cache.zip)
   - data/evaluation/              (zipped as evaluation_data.zip)
 
 Usage:
-    uv run scripts/upload_data.py [--tag data-v2]
+    uv run scripts/upload_data.py [--tag data-v3]
 
 Requires the `gh` CLI (https://cli.github.com) to be installed and authenticated.
 """
@@ -42,7 +43,7 @@ EVAL_DIR = ROOT / "data" / "evaluation"
 
 # Must track RELEASE_TAG in src/toxfam/cli.py — the tag `toxfam download-data`
 # actually pulls from. Pinned by test_upload_default_tag_matches_download_tag.
-DEFAULT_TAG = "data-v2"
+DEFAULT_TAG = "data-v3"
 
 
 def main() -> None:
@@ -73,7 +74,9 @@ def main() -> None:
         "nontox.tsv": RAW / "nontox.tsv",
         "training_data.csv": PROCESSED / "training_data.csv",
         "embeddings.h5": PROCESSED / "embeddings.h5",
+        "taxonomy_vectors.h5": PROCESSED / "taxonomy_vectors.h5",
         "hbi_train_all.csv": PROCESSED / "hbi_train_all.csv",
+        "hbi_train_all.csv provenance": PROCESSED / "hbi_train_all.csv.provenance.json",
         "hbi_train_all.fasta": PROCESSED / "hbi_train_all.fasta",
         "sp6 cache": SP6_DIR / "sp6_cache.json",
         "evaluation data": EVAL_DIR / "non_metazoan" / "non_metazoan.tsv",
@@ -108,7 +111,9 @@ def main() -> None:
                 RAW / "nontox.tsv",
                 PROCESSED / "training_data.csv",
                 PROCESSED / "embeddings.h5",
+                PROCESSED / "taxonomy_vectors.h5",
                 PROCESSED / "hbi_train_all.csv",
+                PROCESSED / "hbi_train_all.csv.provenance.json",
                 PROCESSED / "hbi_train_all.fasta",
                 sp6_zip,
                 eval_zip,

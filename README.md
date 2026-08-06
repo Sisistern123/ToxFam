@@ -49,6 +49,17 @@ uv run toxfam download-data --force  # re-download everything
 
 This places files into `data/raw/`, `data/processed/`, and `data/intermediate/sp6/`. See [Data Directory](#data-directory) for the full layout.
 
+This includes `taxonomy_vectors.h5` (needed by the combined model). Regenerating it locally with `uv run toxfam taxonomy` is still supported, but it resolves lineages against **live** NCBI taxonomy, so the released copy is what reproduces the published numbers. If you do rebuild it, pin the dump via `PROTSPACE_TAXDB_DIR=<frozen copy>`.
+
+### Download Trained Models
+
+```bash
+uv run toxfam download-models          # -> model/model_output/{standard,combined}_run
+uv run toxfam download-models --force  # re-download over existing runs
+```
+
+Use this instead of `toxfam train` when the goal is to **reproduce the published numbers**: a fresh training run produces a different checkpoint, so its metrics will not match the manuscript. The release carries the calibrated checkpoint, its architecture/class metadata, `models/split_provenance.json` binding it to the split it trained on, and the deployed binary P(toxic) Platt calibrator with its own provenance stamp.
+
 ## Workflow
 
 All steps use the unified CLI via `uv run toxfam <command>`:
@@ -85,10 +96,21 @@ See [configs/readme.md](configs/readme.md) for configuration details and archite
 ### 4. Evaluation
 
 ```bash
+# Binary toxic/non-toxic head — run ONCE PER MODEL, before anything that quotes
+# binary numbers. Writes <run>/metrics/binary_metrics.json, which the manuscript
+# numbers read and which does NOT ship in the model release.
+uv run toxfam eval binary model/model_output/combined_run
+uv run toxfam eval binary model/model_output/standard_run
+
 uv run toxfam eval hbi test_set
+uv run toxfam eval eat test_set
+# --model-dir selects the model; results go to benchmark/test_set/nn_<run>/, so run
+# it once per model you want in the comparison.
 uv run toxfam eval model test_set --model-dir model/model_output/combined_run
 uv run toxfam eval compare test_set
 ```
+
+Metrics are always reported in calibrated score space, so plain `eval binary` is what you want against downloaded models. Add `--deploy` only to **re-fit and overwrite** `models/binary_calibrator.json` — needed after training your own model, not after `download-models`. See the `Makefile` header for the full `download → eval → figures` chain.
 
 ### 5. Prediction
 
