@@ -347,9 +347,14 @@ def test_hbi_reference_provenance_is_a_release_asset():
     for a long time not its stamp. Optional so the code can land before the upload."""
     from toxfam.cli import DATA_ASSETS, OPTIONAL_ASSETS
 
-    name = "hbi_train_all.csv.provenance.json"
-    assert name in {asset for asset, *_ in DATA_ASSETS}
-    assert name in OPTIONAL_ASSETS
+    assets = {asset for asset, *_ in DATA_ASSETS}
+    # Its absence fails `toxfam verify` at stamp:hbi_train_all.csv, and `make figures`
+    # is gated on verify -- so it must ship, and must not be tolerated as missing.
+    assert "hbi_train_all.csv.provenance.json" in assets
+    # The combined model cannot run without these, and rebuilding them locally
+    # resolves lineages against whatever NCBI ships that day.
+    assert "taxonomy_vectors.h5" in assets
+    assert not OPTIONAL_ASSETS & assets
 
 
 def test_upload_data_publishes_the_hbi_provenance_sidecar():

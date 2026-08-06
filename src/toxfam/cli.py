@@ -85,11 +85,11 @@ class EatMetric(str, Enum):
 
 
 GITHUB_REPO = "Sisistern123/ToxFam"
-RELEASE_TAG = "data-v2"
+RELEASE_TAG = "data-v3"
 
 # Tag `toxfam download-models` pulls from. Must track scripts/package_models.py's
 # DEFAULT_TAG -- that script builds and publishes the asset this one fetches.
-MODELS_TAG = "models-v3"
+MODELS_TAG = "models-v4"
 
 _RAW = "raw"
 _PROCESSED = "processed"
@@ -102,6 +102,12 @@ DATA_ASSETS: list[tuple[str, str, str, str]] = [
     ("nontox.tsv", _RAW, "nontox.tsv", "nontox.tsv"),
     ("training_data.csv", _PROCESSED, "training_data.csv", "training_data.csv"),
     ("embeddings.h5", _PROCESSED, "embeddings.h5", "embeddings.h5"),
+    (
+        "taxonomy_vectors.h5",
+        _PROCESSED,
+        "taxonomy_vectors.h5",
+        "taxonomy_vectors.h5",
+    ),
     ("hbi_train_all.csv", _PROCESSED, "hbi_train_all.csv", "hbi_train_all.csv"),
     (
         "hbi_train_all.csv.provenance.json",
@@ -114,13 +120,12 @@ DATA_ASSETS: list[tuple[str, str, str, str]] = [
     ("evaluation_data.zip", _EVALUATION, ".", "non_metazoan/non_metazoan.tsv"),
 ]
 
-# Assets that may legitimately be missing from an older release tag. Without its
-# sidecar, `toxfam verify` fails on stamp:hbi_train_all.csv and `make figures` is
-# gated behind that -- so it has to ship. But adding it to DATA_ASSETS would 404
-# against every release published before it existed, breaking download-data for
-# everyone until the upload lands. Downloading it is therefore best-effort: a miss
-# warns and points at the fix rather than aborting the whole download.
-OPTIONAL_ASSETS: frozenset[str] = frozenset({"hbi_train_all.csv.provenance.json"})
+# Assets tolerated as missing: a 404 warns and points at a local workaround instead
+# of aborting the whole download. Empty now that data-v3 carries every asset in
+# DATA_ASSETS -- kept as the mechanism for the next time an asset has to land in the
+# code before it lands in a release (hbi_train_all.csv.provenance.json was the first,
+# whose absence failed `toxfam verify` and took `make figures` with it).
+OPTIONAL_ASSETS: frozenset[str] = frozenset()
 
 
 def _fetch_asset_digests(repo: str, tag: str) -> dict[str, str]:
@@ -199,8 +204,8 @@ def download_data(
 
     Fetches UniProt TSVs (data/raw/), training splits and ProtT5 embeddings
     (data/processed/), and the SignalP6 per-sequence cache
-    (data/intermediate/sp6/). Taxonomy vectors are not included — regenerate
-    them with `toxfam taxonomy`. An existing local file is skipped only when its
+    (data/intermediate/sp6/), and the multi-hot taxonomy vectors the combined
+    model needs. An existing local file is skipped only when its
     bytes match the release's sha256 digest; if they differ (a stale copy from an
     earlier split, a truncated download) it is refreshed, so a stale file can
     never shadow the correct release. --force re-downloads everything. (Content
@@ -352,9 +357,11 @@ def download_models(
     numbers -- a fresh training run yields a different checkpoint, so its metrics will
     not match the manuscript.
 
-    Note the release does not currently carry `models/binary_calibrator.json`, so run
-    `toxfam eval binary <run> --deploy` once per run before emitting manuscript
-    numbers (see the Makefile header for the full chain).
+    The release carries the deployed binary P(toxic) Platt calibrator, so there is
+    no need to re-deploy it. It does not carry `metrics/binary_metrics.json`, which
+    the manuscript numbers read, so run `toxfam eval binary <run>` once per run (no
+    `--deploy` — that would refit and overwrite the shipped calibrator). See the
+    Makefile header for the full chain.
     """
     import tempfile
     import zipfile
@@ -391,7 +398,8 @@ def download_models(
         f"Extracted {len(runs)} run(s) to model/model_output/: {', '.join(runs)}"
     )
     console.print(
-        "Next: 'uv run toxfam eval binary model/model_output/<run> --deploy' per run."
+        "Next: 'uv run toxfam eval binary model/model_output/<run>' per run "
+        "(no --deploy: the calibrator ships with the release)."
     )
 
 
