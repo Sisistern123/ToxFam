@@ -120,13 +120,6 @@ DATA_ASSETS: list[tuple[str, str, str, str]] = [
     ("evaluation_data.zip", _EVALUATION, ".", "non_metazoan/non_metazoan.tsv"),
 ]
 
-# Assets tolerated as missing: a 404 warns and points at a local workaround instead
-# of aborting the whole download. Empty now that data-v3 carries every asset in
-# DATA_ASSETS -- kept as the mechanism for the next time an asset has to land in the
-# code before it lands in a release (hbi_train_all.csv.provenance.json was the first,
-# whose absence failed `toxfam verify` and took `make figures` with it).
-OPTIONAL_ASSETS: frozenset[str] = frozenset()
-
 
 def _fetch_asset_digests(repo: str, tag: str) -> dict[str, str]:
     """Map release asset name -> sha256 hex digest, via the GitHub REST API.
@@ -193,6 +186,25 @@ def _download_with_progress(url: str, dest: Path, label: str) -> None:
                     progress.advance(task, len(chunk))
 
 
+def _download_and_extract_zip(url: str, extract_dir: Path, label: str) -> None:
+    """Download a zip release asset to a temp file and extract it into ``extract_dir``.
+
+    The temp archive is always removed, even if the download or extract fails.
+    """
+    import tempfile
+    import zipfile
+
+    extract_dir.mkdir(parents=True, exist_ok=True)
+    with tempfile.NamedTemporaryFile(suffix=".zip", delete=False) as tmp:
+        tmp_path = Path(tmp.name)
+    try:
+        _download_with_progress(url, tmp_path, label)
+        with zipfile.ZipFile(tmp_path, "r") as zf:
+            zf.extractall(extract_dir)
+    finally:
+        tmp_path.unlink(missing_ok=True)
+
+
 @app.command("download-data")
 def download_data(
     tag: Annotated[str, typer.Option(help="GitHub release tag")] = RELEASE_TAG,
@@ -212,8 +224,6 @@ def download_data(
     correctness for the current split is a separate concern — see `toxfam verify`.)
     """
     import os
-    import tempfile
-    import zipfile
 
     from toxfam._paths import (
         evaluation_data_dir,
@@ -259,17 +269,7 @@ def download_data(
 
         try:
             if asset_name.endswith(".zip"):
-                extract_dir = target_dir / rel_path
-                extract_dir.mkdir(parents=True, exist_ok=True)
-                with tempfile.NamedTemporaryFile(suffix=".zip", delete=False) as tmp:
-                    tmp_path = Path(tmp.name)
-                try:
-                    _download_with_progress(url, tmp_path, asset_name)
-                    with zipfile.ZipFile(tmp_path, "r") as zf:
-                        zf.extractall(extract_dir)
-                finally:
-                    # Always clean up the temp archive, even if download/extract fails.
-                    tmp_path.unlink(missing_ok=True)
+                _download_and_extract_zip(url, target_dir / rel_path, asset_name)
             else:
                 # Stream to a sibling .part file and atomically rename on success,
                 # so an interrupted download can't leave a truncated file that the
@@ -282,16 +282,6 @@ def download_data(
                 finally:
                     tmp_dest.unlink(missing_ok=True)
         except Exception as e:
-            if asset_name in OPTIONAL_ASSETS:
-                err_console.print(
-                    f"  [yellow]skipped {rel_path} — not in release {tag}[/] ({e}).\n"
-                    "    Regenerate it locally once the data is downloaded:\n"
-                    '      uv run python -c "from toxfam.data.split_manifest import '
-                    "write_provenance; from toxfam._paths import processed_dir; "
-                    "write_provenance(processed_dir() / 'hbi_train_all.csv')\"\n"
-                    "    (only valid if 'toxfam verify' shows hbi_reference_disjoint ok)"
-                )
-                continue
             err_console.print(f"  FAILED: {e}", style="red")
             raise typer.Exit(code=1)
 
@@ -339,6 +329,11 @@ def _verify_training_csv_against_manifest(training_csv: Path) -> None:
 # ---------- toxfam download-models ----------
 
 
+def _downloaded_runs(dest_dir: Path) -> list[str]:
+    """Names of run directories under ``dest_dir`` that carry an inference bundle."""
+    return [d.name for d in sorted(dest_dir.glob("*_run")) if (d / "models").is_dir()]
+
+
 @app.command("download-models")
 def download_models(
     tag: Annotated[str, typer.Option(help="GitHub release tag")] = MODELS_TAG,
@@ -363,37 +358,25 @@ def download_models(
     `--deploy` — that would refit and overwrite the shipped calibrator). See the
     Makefile header for the full chain.
     """
-    import tempfile
-    import zipfile
+    from toxfam._paths import model_output_dir
 
-    from toxfam._paths import get_project_root
-
-    dest_dir = get_project_root() / "model" / "model_output"
-    existing = [
-        d.name for d in sorted(dest_dir.glob("*_run")) if (d / "models").is_dir()
-    ]
+    dest_dir = model_output_dir()
+    existing = _downloaded_runs(dest_dir)
     if existing and not force:
         console.print(
-            f"  skip {dest_dir.relative_to(get_project_root())} "
+            "  skip model/model_output "
             f"(already present: {', '.join(existing)}); use --force to re-download"
         )
         return
 
-    dest_dir.mkdir(parents=True, exist_ok=True)
     url = f"https://github.com/{GITHUB_REPO}/releases/download/{tag}/models.zip"
-    with tempfile.NamedTemporaryFile(suffix=".zip", delete=False) as tmp:
-        tmp_path = Path(tmp.name)
     try:
-        _download_with_progress(url, tmp_path, "models.zip")
-        with zipfile.ZipFile(tmp_path, "r") as zf:
-            zf.extractall(dest_dir)
+        _download_and_extract_zip(url, dest_dir, "models.zip")
     except Exception as e:
         err_console.print(f"  FAILED: {e}", style="red")
         raise typer.Exit(code=1)
-    finally:
-        tmp_path.unlink(missing_ok=True)
 
-    runs = [d.name for d in sorted(dest_dir.glob("*_run")) if (d / "models").is_dir()]
+    runs = _downloaded_runs(dest_dir)
     console.print(
         f"Extracted {len(runs)} run(s) to model/model_output/: {', '.join(runs)}"
     )

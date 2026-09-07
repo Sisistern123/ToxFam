@@ -35,21 +35,6 @@ from rich.console import Console
 
 console = Console()
 
-# The schema load_curated_verdicts expects, in the order the previous round used.
-COLUMNS = [
-    "curation_id",
-    "identifier",
-    "swissprot_side",
-    "swissprot_family",
-    "model_predicted_family",
-    "organism_id",
-    "sequence",
-    "verdict",
-    "assessment",
-    "assessment_note",
-    "fp_category",
-]
-
 # Columns the curator must not have altered: the sheet was cut blind from the checkpoint,
 # so a change here means the returned file is not the sheet that was handed out.
 BLIND_COLUMNS = [
@@ -60,6 +45,17 @@ BLIND_COLUMNS = [
     "organism_id",
     "sequence",
 ]
+
+# The columns the curator fills in.
+ANSWER_COLUMNS = ["verdict", "assessment", "assessment_note", "fp_category"]
+
+# The schema load_curated_verdicts expects, in the order the previous round used.
+COLUMNS = ["curation_id", *BLIND_COLUMNS, *ANSWER_COLUMNS]
+
+
+def _blank(s: pd.Series) -> pd.Series:
+    """True where a cell is missing or whitespace-only, i.e. unanswered."""
+    return s.fillna("").str.strip().eq("")
 
 
 def _fail(msg: str) -> None:
@@ -90,7 +86,7 @@ def main() -> int:
     returned = pd.read_csv(rd / args.returned, sep="\t", dtype=str)
     key = pd.read_csv(rd / "confident_errors_key.tsv", sep="\t", dtype=str)
 
-    blank = sheet["verdict"].isna() | sheet["verdict"].fillna("").str.strip().eq("")
+    blank = _blank(sheet["verdict"])
     console.print(
         f"sheet {len(sheet)} rows: {(~blank).sum()} prefilled, {blank.sum()} blank; "
         f"returned file has {len(returned)} rows"
@@ -108,8 +104,9 @@ def main() -> int:
     # The blind columns must be untouched, or the return is not the sheet handed out.
     s_idx = sheet.set_index("curation_id")
     r_idx = returned.set_index("curation_id")
+    ids = sorted(ret_ids)
     for col in BLIND_COLUMNS:
-        mismatched = (s_idx.loc[sorted(ret_ids), col] != r_idx.loc[sorted(ret_ids), col]).sum()
+        mismatched = (s_idx.loc[ids, col] != r_idx.loc[ids, col]).sum()
         if mismatched:
             _fail(f"{mismatched} returned row(s) have an altered blind column {col!r}")
     console.print(f"  blind columns intact across all {len(ret_ids)} returned rows")
@@ -119,7 +116,7 @@ def main() -> int:
         out["fp_category"] = pd.NA
 
     # Fill the answers the curator just gave.
-    for col in ("verdict", "assessment", "assessment_note", "fp_category"):
+    for col in ANSWER_COLUMNS:
         if col in returned.columns:
             out[col] = out["curation_id"].map(r_idx[col]).fillna(out[col])
 
@@ -128,17 +125,21 @@ def main() -> int:
         prior = pd.read_csv(args.prior_verdicts, dtype=str).set_index("identifier")
         transferred = out.loc[~out["curation_id"].isin(ret_ids), "identifier"]
         mapped = transferred.map(prior["fp_category"])
-        out.loc[mapped.index, "fp_category"] = out.loc[mapped.index, "fp_category"].fillna(mapped)
+        out.loc[mapped.index, "fp_category"] = out.loc[
+            mapped.index, "fp_category"
+        ].fillna(mapped)
         missing = set(transferred) - set(prior.index)
         if missing:
-            _fail(f"{len(missing)} transferred row(s) absent from prior verdicts, e.g. {sorted(missing)[:5]}")
+            _fail(
+                f"{len(missing)} transferred row(s) absent from prior verdicts, e.g. {sorted(missing)[:5]}"
+            )
 
     # Every row answered, and every false positive categorised.
-    unanswered = out["verdict"].fillna("").str.strip().eq("").sum()
+    unanswered = _blank(out["verdict"]).sum()
     if unanswered:
         _fail(f"{unanswered} row(s) still have no verdict")
     nontox = out["verdict"].str.strip().str.lower().eq("nontox")
-    uncategorised = (nontox & out["fp_category"].fillna("").str.strip().eq("")).sum()
+    uncategorised = (nontox & _blank(out["fp_category"])).sum()
     if uncategorised:
         _fail(f"{uncategorised} nontox row(s) have no fp_category")
 

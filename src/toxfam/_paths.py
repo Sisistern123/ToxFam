@@ -59,3 +59,8 @@ def splits_dir() -> Path:
 
 def benchmark_dir() -> Path:
     return get_project_root() / "benchmark"
+
+
+def model_output_dir() -> Path:
+    """Training/inference run tree (``<run>/models/``, ``<run>/metrics/``)."""
+    return get_project_root() / "model" / "model_output"

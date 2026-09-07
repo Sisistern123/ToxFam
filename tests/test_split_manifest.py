@@ -293,68 +293,57 @@ def test_split_guard_applies_only_to_split_derived_datasets(tmp_path):
     assert _is_split_dataset("whatever.tsv") is False
 
 
-def test_released_models_carry_the_provenance_stamp():
-    """package_models.py must ship models/split_provenance.json, or every released
-    checkpoint is refused by `eval` as unpinned."""
+def _load_script(name: str):
+    """Import scripts/<name> as a module — the scripts dir is not on the import path."""
     import importlib.util
 
     from toxfam._paths import get_project_root
 
-    path = get_project_root() / "scripts" / "package_models.py"
-    spec = importlib.util.spec_from_file_location("_pkg_models", path)
+    path = get_project_root() / "scripts" / name
+    spec = importlib.util.spec_from_file_location(path.stem, path)
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
+    return mod
 
-    assert "models/split_provenance.json" in mod.KEEP_FILES
+
+def test_released_models_carry_the_provenance_stamp():
+    """package_models.py must ship models/split_provenance.json, or every released
+    checkpoint is refused by `eval` as unpinned."""
+    assert (
+        "models/split_provenance.json" in _load_script("package_models.py").KEEP_FILES
+    )
 
 
 def test_upload_default_tag_matches_download_tag():
     """upload_data.py must default to the tag `toxfam download-data` reads. When it
     lags, a bare re-upload aims at a superseded release instead of the live one."""
-    import importlib.util
-
-    from toxfam._paths import get_project_root
     from toxfam.cli import RELEASE_TAG
 
-    path = get_project_root() / "scripts" / "upload_data.py"
-    spec = importlib.util.spec_from_file_location("_upload_data", path)
-    mod = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(mod)
-
-    assert mod.DEFAULT_TAG == RELEASE_TAG
+    assert _load_script("upload_data.py").DEFAULT_TAG == RELEASE_TAG
 
 
 def test_download_models_tag_matches_package_models_tag():
     """`toxfam download-models` must read the tag package_models.py publishes to.
     When they diverge, users silently fetch a superseded checkpoint and their numbers
     stop matching the manuscript for no visible reason."""
-    import importlib.util
-
-    from toxfam._paths import get_project_root
     from toxfam.cli import MODELS_TAG
 
-    path = get_project_root() / "scripts" / "package_models.py"
-    spec = importlib.util.spec_from_file_location("_pkg_models_tag", path)
-    mod = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(mod)
-
-    assert mod.DEFAULT_TAG == MODELS_TAG
+    assert _load_script("package_models.py").DEFAULT_TAG == MODELS_TAG
 
 
 def test_hbi_reference_provenance_is_a_release_asset():
     """The sidecar must ship, or `toxfam verify` fails on a clean clone and takes
     `make figures` (gated on verify) with it -- the release has hbi_train_all.csv but
-    for a long time not its stamp. Optional so the code can land before the upload."""
-    from toxfam.cli import DATA_ASSETS, OPTIONAL_ASSETS
+    for a long time not its stamp."""
+    from toxfam.cli import DATA_ASSETS
 
     assets = {asset for asset, *_ in DATA_ASSETS}
     # Its absence fails `toxfam verify` at stamp:hbi_train_all.csv, and `make figures`
-    # is gated on verify -- so it must ship, and must not be tolerated as missing.
+    # is gated on verify -- so it must ship.
     assert "hbi_train_all.csv.provenance.json" in assets
     # The combined model cannot run without these, and rebuilding them locally
     # resolves lineages against whatever NCBI ships that day.
     assert "taxonomy_vectors.h5" in assets
-    assert not OPTIONAL_ASSETS & assets
 
 
 def test_upload_data_publishes_the_hbi_provenance_sidecar():

@@ -502,7 +502,7 @@ def bootstrap_label_metric_ci(
     yt = np.asarray(y_true)
     yp = np.asarray(y_pred)
     # Cast to str for the sort key only; the metric still sees the original values.
-    order = np.lexsort((np.asarray(yp, dtype=str), np.asarray(yt, dtype=str)))
+    order = np.lexsort((yp.astype(str), yt.astype(str)))
     yt, yp = yt[order], yp[order]
     n = len(yt)
     rng = np.random.default_rng(seed)
