@@ -13,7 +13,9 @@
 #   2. uv run toxfam train configs/combined.yaml   # -> model/model_output/combined_run
 #      To reproduce the PUBLISHED numbers, use the released checkpoints instead of
 #      training your own: `uv run toxfam download-models`. A fresh training run gives
-#      a different checkpoint, so its numbers will not match the manuscript.
+#      a different checkpoint, so its numbers will not match the manuscript -- which is
+#      why download-models refuses (rather than skips) when model_output/ already holds
+#      runs it did not put there. Use --force to replace them.
 #   2b. uv run toxfam eval binary <run>             # -> <run>/metrics/binary_metrics.json
 #         REQUIRED before `numbers`, once per run: metrics/ is not in models.zip.
 #         Metrics are always in calibrated score space. Add --deploy ONLY to re-fit and

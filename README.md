@@ -58,7 +58,7 @@ uv run toxfam download-models          # -> model/model_output/{standard,combine
 uv run toxfam download-models --force  # re-download over existing runs
 ```
 
-Use this instead of `toxfam train` when the goal is to **reproduce the published numbers**: a fresh training run produces a different checkpoint, so its metrics will not match the manuscript. The release carries the calibrated checkpoint, its architecture/class metadata, `models/split_provenance.json` binding it to the split it trained on, and the deployed binary P(toxic) Platt calibrator with its own provenance stamp.
+Use this instead of `toxfam train` when the goal is to **reproduce the published numbers**: a fresh training run produces a different checkpoint, so its metrics will not match the manuscript. For that reason it refuses, rather than silently skips, when `model/model_output/` already holds runs that did not come from this release — otherwise a locally trained checkpoint would quietly stay in place and produce numbers that do not match. Pass `--force` to replace them. The release carries the calibrated checkpoint, its architecture/class metadata, `models/split_provenance.json` binding it to the split it trained on, and the deployed binary P(toxic) Platt calibrator with its own provenance stamp.
 
 ## Workflow
 

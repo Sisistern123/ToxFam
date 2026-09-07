@@ -334,6 +334,12 @@ def _downloaded_runs(dest_dir: Path) -> list[str]:
     return [d.name for d in sorted(dest_dir.glob("*_run")) if (d / "models").is_dir()]
 
 
+# Records which release tag the runs in model/model_output/ were extracted from.
+# A locally *trained* run has no stamp, which is how `download-models` tells the two
+# apart -- see its skip logic for why that distinction is load-bearing.
+_MODELS_STAMP = ".downloaded_models_tag"
+
+
 @app.command("download-models")
 def download_models(
     tag: Annotated[str, typer.Option(help="GitHub release tag")] = MODELS_TAG,
@@ -361,13 +367,30 @@ def download_models(
     from toxfam._paths import model_output_dir
 
     dest_dir = model_output_dir()
+    stamp = dest_dir / _MODELS_STAMP
+    stamped_tag = stamp.read_text().strip() if stamp.exists() else None
     existing = _downloaded_runs(dest_dir)
+
     if existing and not force:
-        console.print(
-            "  skip model/model_output "
-            f"(already present: {', '.join(existing)}); use --force to re-download"
+        # Skip only when these runs are *this* release. Skipping on "some run exists"
+        # would silently leave a locally trained checkpoint in place, and the whole
+        # point of this command is that such a checkpoint does not reproduce the
+        # published numbers -- the user would get the failure the command prevents.
+        if stamped_tag == tag:
+            console.print(f"  skip model/model_output (already at {tag})")
+            return
+        why = (
+            f"were downloaded from {stamped_tag}"
+            if stamped_tag
+            else "were trained locally (no download stamp)"
         )
-        return
+        err_console.print(
+            f"  model/model_output already holds {', '.join(existing)}, which {why}.\n"
+            f"  Refusing to overwrite. Re-run with --force to replace them with {tag}, "
+            "or move them aside first.",
+            style="red",
+        )
+        raise typer.Exit(code=1)
 
     url = f"https://github.com/{GITHUB_REPO}/releases/download/{tag}/models.zip"
     try:
@@ -375,6 +398,7 @@ def download_models(
     except Exception as e:
         err_console.print(f"  FAILED: {e}", style="red")
         raise typer.Exit(code=1)
+    stamp.write_text(f"{tag}\n")
 
     runs = _downloaded_runs(dest_dir)
     console.print(
