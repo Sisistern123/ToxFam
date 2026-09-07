@@ -51,6 +51,9 @@ def _load():
     # git-tracked manifest when the blind sheet was cut — so the is_test flags here
     # and the proteins the curator saw are pinned to the same split by construction.
     adj = load_curated_verdicts(curated_verdicts_tsv(), curation_key_tsv())
+    # Canonical order: the right panel's jitter draws by POSITION, so without this the
+    # cloud depends on the row order the assembly script happened to write the sheet in.
+    adj = adj.sort_values("identifier", ignore_index=True)
     adj["is_test"] = adj["split"].eq("test").to_numpy()
     a = adj["assessment"]
     verdict = {
@@ -85,6 +88,11 @@ def _half_violin(ax, vals, base, color, width=0.42, bw=0.06):
 
 def _points_right(ax, vals, base, color, half=0.36, s=6, a=0.55, seed=0, sub=None):
     r = np.random.default_rng(seed)
+    # Sort first: both the sub-sampling and the jitter below draw by POSITION, so the
+    # same confidences arriving in a different row order would plot a different subset
+    # of dots with different offsets. Sorting makes the panel reproducible; the cloud
+    # is a random x-jitter either way, so it is visually equivalent.
+    vals = np.sort(np.asarray(vals))
     if sub and len(vals) > sub:
         vals = r.choice(vals, sub, replace=False)
     off = base + 0.06 + r.uniform(0, half, len(vals))
@@ -105,7 +113,6 @@ def main() -> None:
     apply_style()
     cc, ci, V, N = _load()
     tot = sum(N.values())
-    rng = np.random.default_rng(0)
 
     fig = plt.figure(figsize=(DOUBLE_COL, 3.5))
     axL = fig.add_axes([0.085, 0.16, 0.40, 0.72])
@@ -167,7 +174,10 @@ def main() -> None:
         x = V[k]["conf"]
         ist = V[k]["is_test"]
         col = COL[k]
-        jit = base + rng.uniform(-0.30, 0.30, len(x))
+        # One generator per group: a single shared rng would make this group's cloud
+        # depend on how many points the previous groups happened to hold, so a shift
+        # in the verdict counts would reshuffle every group below it.
+        jit = base + np.random.default_rng(i).uniform(-0.30, 0.30, len(x))
         axR.scatter(
             jit[ist],
             x[ist],

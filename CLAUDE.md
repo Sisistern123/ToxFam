@@ -23,7 +23,9 @@ All commands are run via the `toxfam` CLI using `uv run`:
 ```bash
 uv run toxfam download-data
 ```
-Downloads raw data to `data/raw/`, training splits, ProtT5 embeddings, and HBI reference data to `data/processed/`, evaluation datasets to `data/evaluation/`, and the SignalP6 cache to `data/intermediate/sp6/`. Taxonomy vectors are not included — regenerate with `toxfam taxonomy`. Use `--force` to re-download existing files.
+Downloads raw data to `data/raw/`, training splits, ProtT5 embeddings, taxonomy vectors, and HBI reference data to `data/processed/`, evaluation datasets to `data/evaluation/`, and the SignalP6 cache to `data/intermediate/sp6/`. Use `--force` to re-download existing files.
+
+`uv run toxfam download-models` fetches the published checkpoints into `model/model_output/`. Use it rather than `toxfam train` to reproduce the manuscript numbers — a fresh training run yields a different checkpoint.
 
 To upload/update the release, use the developer script: `uv run scripts/upload_data.py`
 

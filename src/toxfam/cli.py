@@ -85,7 +85,11 @@ class EatMetric(str, Enum):
 
 
 GITHUB_REPO = "Sisistern123/ToxFam"
-RELEASE_TAG = "data-v2"
+RELEASE_TAG = "data-v3"
+
+# Tag `toxfam download-models` pulls from. Must track scripts/package_models.py's
+# DEFAULT_TAG -- that script builds and publishes the asset this one fetches.
+MODELS_TAG = "models-v4"
 
 _RAW = "raw"
 _PROCESSED = "processed"
@@ -98,7 +102,19 @@ DATA_ASSETS: list[tuple[str, str, str, str]] = [
     ("nontox.tsv", _RAW, "nontox.tsv", "nontox.tsv"),
     ("training_data.csv", _PROCESSED, "training_data.csv", "training_data.csv"),
     ("embeddings.h5", _PROCESSED, "embeddings.h5", "embeddings.h5"),
+    (
+        "taxonomy_vectors.h5",
+        _PROCESSED,
+        "taxonomy_vectors.h5",
+        "taxonomy_vectors.h5",
+    ),
     ("hbi_train_all.csv", _PROCESSED, "hbi_train_all.csv", "hbi_train_all.csv"),
+    (
+        "hbi_train_all.csv.provenance.json",
+        _PROCESSED,
+        "hbi_train_all.csv.provenance.json",
+        "hbi_train_all.csv.provenance.json",
+    ),
     ("hbi_train_all.fasta", _PROCESSED, "hbi_train_all.fasta", "hbi_train_all.fasta"),
     ("sp6_cache.zip", _INTERMEDIATE, "sp6", "sp6/sp6_cache.json"),
     ("evaluation_data.zip", _EVALUATION, ".", "non_metazoan/non_metazoan.tsv"),
@@ -170,6 +186,25 @@ def _download_with_progress(url: str, dest: Path, label: str) -> None:
                     progress.advance(task, len(chunk))
 
 
+def _download_and_extract_zip(url: str, extract_dir: Path, label: str) -> None:
+    """Download a zip release asset to a temp file and extract it into ``extract_dir``.
+
+    The temp archive is always removed, even if the download or extract fails.
+    """
+    import tempfile
+    import zipfile
+
+    extract_dir.mkdir(parents=True, exist_ok=True)
+    with tempfile.NamedTemporaryFile(suffix=".zip", delete=False) as tmp:
+        tmp_path = Path(tmp.name)
+    try:
+        _download_with_progress(url, tmp_path, label)
+        with zipfile.ZipFile(tmp_path, "r") as zf:
+            zf.extractall(extract_dir)
+    finally:
+        tmp_path.unlink(missing_ok=True)
+
+
 @app.command("download-data")
 def download_data(
     tag: Annotated[str, typer.Option(help="GitHub release tag")] = RELEASE_TAG,
@@ -181,16 +216,14 @@ def download_data(
 
     Fetches UniProt TSVs (data/raw/), training splits and ProtT5 embeddings
     (data/processed/), and the SignalP6 per-sequence cache
-    (data/intermediate/sp6/). Taxonomy vectors are not included — regenerate
-    them with `toxfam taxonomy`. An existing local file is skipped only when its
+    (data/intermediate/sp6/), and the multi-hot taxonomy vectors the combined
+    model needs. An existing local file is skipped only when its
     bytes match the release's sha256 digest; if they differ (a stale copy from an
     earlier split, a truncated download) it is refreshed, so a stale file can
     never shadow the correct release. --force re-downloads everything. (Content
     correctness for the current split is a separate concern — see `toxfam verify`.)
     """
     import os
-    import tempfile
-    import zipfile
 
     from toxfam._paths import (
         evaluation_data_dir,
@@ -236,17 +269,7 @@ def download_data(
 
         try:
             if asset_name.endswith(".zip"):
-                extract_dir = target_dir / rel_path
-                extract_dir.mkdir(parents=True, exist_ok=True)
-                with tempfile.NamedTemporaryFile(suffix=".zip", delete=False) as tmp:
-                    tmp_path = Path(tmp.name)
-                try:
-                    _download_with_progress(url, tmp_path, asset_name)
-                    with zipfile.ZipFile(tmp_path, "r") as zf:
-                        zf.extractall(extract_dir)
-                finally:
-                    # Always clean up the temp archive, even if download/extract fails.
-                    tmp_path.unlink(missing_ok=True)
+                _download_and_extract_zip(url, target_dir / rel_path, asset_name)
             else:
                 # Stream to a sibling .part file and atomically rename on success,
                 # so an interrupted download can't leave a truncated file that the
@@ -301,6 +324,90 @@ def _verify_training_csv_against_manifest(training_csv: Path) -> None:
         style="red",
     )
     raise typer.Exit(code=1)
+
+
+# ---------- toxfam download-models ----------
+
+
+def _downloaded_runs(dest_dir: Path) -> list[str]:
+    """Names of run directories under ``dest_dir`` that carry an inference bundle."""
+    return [d.name for d in sorted(dest_dir.glob("*_run")) if (d / "models").is_dir()]
+
+
+# Records which release tag the runs in model/model_output/ were extracted from.
+# A locally *trained* run has no stamp, which is how `download-models` tells the two
+# apart -- see its skip logic for why that distinction is load-bearing.
+_MODELS_STAMP = ".downloaded_models_tag"
+
+
+@app.command("download-models")
+def download_models(
+    tag: Annotated[str, typer.Option(help="GitHub release tag")] = MODELS_TAG,
+    force: Annotated[
+        bool, typer.Option("--force", "-f", help="Re-download even if runs exist")
+    ] = False,
+) -> None:
+    """Download the published trained models into `model/model_output/`.
+
+    Fetches the released `models.zip` (built by `scripts/package_models.py`) and
+    extracts the `standard_run` and `combined_run` inference bundles: the calibrated
+    checkpoint, its architecture/class metadata, and `models/split_provenance.json`
+    binding it to the split it trained on.
+
+    Use this rather than `toxfam train` when the goal is to reproduce the *published*
+    numbers -- a fresh training run yields a different checkpoint, so its metrics will
+    not match the manuscript.
+
+    The release carries the deployed binary P(toxic) Platt calibrator, so there is
+    no need to re-deploy it. It does not carry `metrics/binary_metrics.json`, which
+    the manuscript numbers read, so run `toxfam eval binary <run>` once per run (no
+    `--deploy` — that would refit and overwrite the shipped calibrator). See the
+    Makefile header for the full chain.
+    """
+    from toxfam._paths import model_output_dir
+
+    dest_dir = model_output_dir()
+    stamp = dest_dir / _MODELS_STAMP
+    stamped_tag = stamp.read_text().strip() if stamp.exists() else None
+    existing = _downloaded_runs(dest_dir)
+
+    if existing and not force:
+        # Skip only when these runs are *this* release. Skipping on "some run exists"
+        # would silently leave a locally trained checkpoint in place, and the whole
+        # point of this command is that such a checkpoint does not reproduce the
+        # published numbers -- the user would get the failure the command prevents.
+        if stamped_tag == tag:
+            console.print(f"  skip model/model_output (already at {tag})")
+            return
+        why = (
+            f"were downloaded from {stamped_tag}"
+            if stamped_tag
+            else "were trained locally (no download stamp)"
+        )
+        err_console.print(
+            f"  model/model_output already holds {', '.join(existing)}, which {why}.\n"
+            f"  Refusing to overwrite. Re-run with --force to replace them with {tag}, "
+            "or move them aside first.",
+            style="red",
+        )
+        raise typer.Exit(code=1)
+
+    url = f"https://github.com/{GITHUB_REPO}/releases/download/{tag}/models.zip"
+    try:
+        _download_and_extract_zip(url, dest_dir, "models.zip")
+    except Exception as e:
+        err_console.print(f"  FAILED: {e}", style="red")
+        raise typer.Exit(code=1)
+    stamp.write_text(f"{tag}\n")
+
+    runs = _downloaded_runs(dest_dir)
+    console.print(
+        f"Extracted {len(runs)} run(s) to model/model_output/: {', '.join(runs)}"
+    )
+    console.print(
+        "Next: 'uv run toxfam eval binary model/model_output/<run>' per run "
+        "(no --deploy: the calibrator ships with the release)."
+    )
 
 
 # ---------- Step 1: toxfam preprocess ----------

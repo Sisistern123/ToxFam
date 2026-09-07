@@ -45,3 +45,35 @@ def test_manuscript_tex_target_relative_override_anchors_to_project_root(
     (tmp_path / "ms").mkdir()
     monkeypatch.setenv("TOXFAM_MANUSCRIPT_DIR", "ms")
     assert _paths.manuscript_tex_target() == tmp_path / "ms" / "results_numbers.tex"
+
+
+def test_load_preds_returns_canonical_identifier_order(tmp_path, monkeypatch):
+    """predictions.csv order must not reach the bootstraps.
+
+    `evaluation.runner` writes the file in whatever order the search produced, and
+    every case-bootstrap downstream draws *positions* -- so an unsorted frame makes
+    the reported CI a function of that incidental order while the point estimate
+    stays put. Canonicalising at load is what stops that, so it is tested here
+    rather than at each resampling site.
+    """
+    import pandas as pd
+
+    from paper.figures import _common
+
+    bench = tmp_path / "bench"
+    (bench / "test_set" / "nn_x").mkdir(parents=True)
+    shuffled = ["P3", "P1", "P2"]
+    pd.DataFrame(
+        {
+            "identifier": shuffled,
+            "actual_label": list("ABC"),
+            "predicted_label": list("ABC"),
+        }
+    ).to_csv(bench / "test_set" / "nn_x" / "predictions.csv", index=False)
+    monkeypatch.setattr(_common, "benchmark_dir", lambda: bench)
+
+    out = _common.load_preds("test_set", "nn_x")
+    assert out["identifier"].tolist() == ["P1", "P2", "P3"]
+    # The row payload must travel with its identifier, not merely be re-indexed.
+    assert out.loc[out["identifier"] == "P3", "actual_label"].item() == "A"
+    assert out.index.tolist() == [0, 1, 2]

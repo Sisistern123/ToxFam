@@ -42,7 +42,7 @@ from _gh_release import (  # noqa: E402
 ROOT = Path(__file__).resolve().parent.parent
 MODEL_OUTPUT = ROOT / "model" / "model_output"
 
-DEFAULT_TAG = "models-v3"
+DEFAULT_TAG = "models-v4"
 
 # Runs to bundle and the per-run files inference needs.
 RUNS = ("standard_run", "combined_run")

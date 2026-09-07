@@ -93,6 +93,18 @@ EXT_SCORES_MIN_COVERAGE = 0.90
 
 
 def load_preds(dataset: str, method: str) -> pd.DataFrame:
+    """Load a labelled `toxfam eval` benchmark, in canonical identifier order.
+
+    The sort is load-bearing, not cosmetic. `evaluation.runner` writes
+    predictions.csv in whatever order the search or dataloader produced, and every
+    case-bootstrap downstream (`bootstrap_accuracy_ci`,
+    `paired_bootstrap_accuracy_diff`, `local_linear_band`, the inline resample in
+    numbers_manifest) draws *positions* — so an unsorted frame makes the reported CI
+    a function of that incidental order while the point estimate stays put, which is
+    exactly what makes such a drift hard to notice. Canonicalising here fixes the
+    whole class at the boundary, the same way `multilabel_stratified_splits` sorts
+    before selecting positionally.
+    """
     path = benchmark_dir() / dataset / method / "predictions.csv"
     if not path.exists():
         raise FileNotFoundError(
@@ -100,7 +112,7 @@ def load_preds(dataset: str, method: str) -> pd.DataFrame:
             f"Regenerate it first, e.g. 'uv run toxfam eval <method> {dataset}', "
             f"to produce benchmark/{dataset}/{method}/predictions.csv."
         )
-    return pd.read_csv(path)
+    return pd.read_csv(path).sort_values("identifier", ignore_index=True)
 
 
 def load_predict(dataset: str) -> pd.DataFrame:
@@ -115,6 +127,8 @@ def load_predict(dataset: str) -> pd.DataFrame:
     -o path verbatim; only the two-model form (--standard-model-dir) suffixes it
     with _combined/_standard. Both sets have an organism ID for every protein, so
     the single-model form covers all of them and needs no standard fallback.
+
+    Returned in canonical identifier order, for the reason given on load_preds().
     """
     path = benchmark_dir() / dataset / "predict" / "predictions.tsv"
     if not path.exists():
@@ -124,7 +138,7 @@ def load_predict(dataset: str) -> pd.DataFrame:
             f"--model-dir model/model_output/combined_run "
             f"-o benchmark/{dataset}/predict/predictions.tsv'."
         )
-    return pd.read_csv(path, sep="\t")
+    return pd.read_csv(path, sep="\t").sort_values("identifier", ignore_index=True)
 
 
 def unreviewed_families() -> pd.Series:

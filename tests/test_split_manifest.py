@@ -293,35 +293,66 @@ def test_split_guard_applies_only_to_split_derived_datasets(tmp_path):
     assert _is_split_dataset("whatever.tsv") is False
 
 
-def test_released_models_carry_the_provenance_stamp():
-    """package_models.py must ship models/split_provenance.json, or every released
-    checkpoint is refused by `eval` as unpinned."""
+def _load_script(name: str):
+    """Import scripts/<name> as a module — the scripts dir is not on the import path."""
     import importlib.util
 
     from toxfam._paths import get_project_root
 
-    path = get_project_root() / "scripts" / "package_models.py"
-    spec = importlib.util.spec_from_file_location("_pkg_models", path)
+    path = get_project_root() / "scripts" / name
+    spec = importlib.util.spec_from_file_location(path.stem, path)
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
+    return mod
 
-    assert "models/split_provenance.json" in mod.KEEP_FILES
+
+def test_released_models_carry_the_provenance_stamp():
+    """package_models.py must ship models/split_provenance.json, or every released
+    checkpoint is refused by `eval` as unpinned."""
+    assert (
+        "models/split_provenance.json" in _load_script("package_models.py").KEEP_FILES
+    )
 
 
 def test_upload_default_tag_matches_download_tag():
     """upload_data.py must default to the tag `toxfam download-data` reads. When it
     lags, a bare re-upload aims at a superseded release instead of the live one."""
-    import importlib.util
-
-    from toxfam._paths import get_project_root
     from toxfam.cli import RELEASE_TAG
 
-    path = get_project_root() / "scripts" / "upload_data.py"
-    spec = importlib.util.spec_from_file_location("_upload_data", path)
-    mod = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(mod)
+    assert _load_script("upload_data.py").DEFAULT_TAG == RELEASE_TAG
 
-    assert mod.DEFAULT_TAG == RELEASE_TAG
+
+def test_download_models_tag_matches_package_models_tag():
+    """`toxfam download-models` must read the tag package_models.py publishes to.
+    When they diverge, users silently fetch a superseded checkpoint and their numbers
+    stop matching the manuscript for no visible reason."""
+    from toxfam.cli import MODELS_TAG
+
+    assert _load_script("package_models.py").DEFAULT_TAG == MODELS_TAG
+
+
+def test_hbi_reference_provenance_is_a_release_asset():
+    """The sidecar must ship, or `toxfam verify` fails on a clean clone and takes
+    `make figures` (gated on verify) with it -- the release has hbi_train_all.csv but
+    for a long time not its stamp."""
+    from toxfam.cli import DATA_ASSETS
+
+    assets = {asset for asset, *_ in DATA_ASSETS}
+    # Its absence fails `toxfam verify` at stamp:hbi_train_all.csv, and `make figures`
+    # is gated on verify -- so it must ship.
+    assert "hbi_train_all.csv.provenance.json" in assets
+    # The combined model cannot run without these, and rebuilding them locally
+    # resolves lineages against whatever NCBI ships that day.
+    assert "taxonomy_vectors.h5" in assets
+
+
+def test_upload_data_publishes_the_hbi_provenance_sidecar():
+    """upload_data.py must actually upload the sidecar download-data now asks for,
+    or the asset stays permanently optional-and-absent."""
+    from toxfam._paths import get_project_root
+
+    src = (get_project_root() / "scripts" / "upload_data.py").read_text()
+    assert "hbi_train_all.csv.provenance.json" in src
 
 
 def test_repo_manifest_is_loadable_and_covers_the_representative_set():
@@ -332,3 +363,70 @@ def test_repo_manifest_is_loadable_and_covers_the_representative_set():
         "val": 9_779,
         "test": 9_779,
     }
+
+
+def _fake_run(root, name):
+    (root / name / "models").mkdir(parents=True)
+    return root
+
+
+def test_download_models_refuses_to_shadow_a_locally_trained_run(tmp_path, monkeypatch):
+    """A locally trained checkpoint must never be silently kept.
+
+    `download-models` exists precisely because a fresh training run does not
+    reproduce the published numbers. Skipping on "some *_run exists" would hand a
+    user who ran `toxfam train` first exactly that failure, with a message saying
+    everything is fine, so an unstamped tree is refused rather than skipped.
+    """
+    import typer
+
+    from toxfam import cli
+
+    _fake_run(tmp_path, "combined_run")
+    monkeypatch.setattr("toxfam._paths.model_output_dir", lambda: tmp_path)
+    called = []
+    monkeypatch.setattr(cli, "_download_and_extract_zip", lambda *a: called.append(a))
+
+    with pytest.raises(typer.Exit) as exc:
+        cli.download_models(tag="models-v4", force=False)
+    assert exc.value.exit_code == 1
+    assert called == []  # and it must not have clobbered the run either
+
+
+def test_download_models_skips_only_when_the_stamp_matches_the_tag(
+    tmp_path, monkeypatch
+):
+    """Re-running for the same tag is a no-op; asking for a different one is not."""
+    from toxfam import cli
+
+    _fake_run(tmp_path, "combined_run")
+    (tmp_path / cli._MODELS_STAMP).write_text("models-v4\n")
+    monkeypatch.setattr("toxfam._paths.model_output_dir", lambda: tmp_path)
+    called = []
+    monkeypatch.setattr(cli, "_download_and_extract_zip", lambda *a: called.append(a))
+
+    cli.download_models(tag="models-v4", force=False)
+    assert called == []
+
+    # A different tag is a different release: refuse rather than keep the old one.
+    import typer
+
+    with pytest.raises(typer.Exit):
+        cli.download_models(tag="models-v5", force=False)
+    assert called == []
+
+
+def test_download_models_stamps_the_tag_it_fetched(tmp_path, monkeypatch):
+    """The stamp is what lets the next run tell downloaded from trained."""
+    from toxfam import cli
+
+    tmp_path.mkdir(exist_ok=True)
+    monkeypatch.setattr("toxfam._paths.model_output_dir", lambda: tmp_path)
+    monkeypatch.setattr(
+        cli,
+        "_download_and_extract_zip",
+        lambda url, d, label: _fake_run(d, "combined_run"),
+    )
+
+    cli.download_models(tag="models-v4", force=False)
+    assert (tmp_path / cli._MODELS_STAMP).read_text().strip() == "models-v4"
