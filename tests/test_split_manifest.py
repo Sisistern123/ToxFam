@@ -11,6 +11,7 @@ Two failures these encode, both of which happened:
 from __future__ import annotations
 
 import json
+import re
 
 import pandas as pd
 import pytest
@@ -430,3 +431,30 @@ def test_download_models_stamps_the_tag_it_fetched(tmp_path, monkeypatch):
 
     cli.download_models(tag="models-v4", force=False)
     assert (tmp_path / cli._MODELS_STAMP).read_text().strip() == "models-v4"
+
+
+def test_colab_notebook_does_not_hardcode_a_release_tag():
+    """The Colab notebook must derive its download URL from the package.
+
+    It shipped a literal `models-v3` URL well after models-v4 was published, so anyone
+    opening the badge in the README fetched a superseded checkpoint -- invisibly, since
+    nothing cross-checked the notebook against MODELS_TAG the way the two upload scripts
+    are checked. Deriving the tag makes the drift impossible; this guards the derivation.
+    """
+    import json
+
+    from toxfam._paths import get_project_root
+
+    nb = json.loads(
+        (get_project_root() / "examples" / "ToxFam_predict.ipynb").read_text()
+    )
+    code = "\n".join(
+        line
+        for cell in nb["cells"]
+        for line in "".join(cell["source"]).splitlines()
+        if not line.lstrip().startswith("#")
+    )
+    assert "MODELS_TAG" in code, "notebook should import the tag, not spell one out"
+    assert not re.search(r"releases/download/(models|data)-v\d", code), (
+        "notebook hardcodes a release tag; derive it from toxfam.cli instead"
+    )
