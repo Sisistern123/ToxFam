@@ -3,6 +3,8 @@ name = "toxfam"
 version = "0.2.0"
 description = "Animal toxin protein family classification using MLP on ProtT5 embeddings"
 readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
 requires-python = ">=3.11"
 dependencies = [
     # Directly imported by src/toxfam (previously satisfied only transitively).

@@ -186,3 +186,7 @@ uv run scripts/upload_data.py
 ```
 
 This deletes the old `data-v1` release and re-creates it with `0800.tsv`, `nontox.tsv`, `training_data.csv`, `embeddings.h5`, and `sp6_cache.zip`. Requires the [`gh` CLI](https://cli.github.com) to be installed and authenticated.
+
+## License
+
+MIT — see [LICENSE](LICENSE). The four manuscript authors hold the copyright.
