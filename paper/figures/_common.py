@@ -5,7 +5,8 @@ colour-blind-safe palette research (see
 docs/superpowers/specs/2026-06-30-figure-overhaul-design.md):
 
 * Build at final column width (double = 178 mm = 7.008 in) -- never draw large and
-  let the journal shrink it (that is what made earlier text illegible).
+  let the journal shrink it (that is what made earlier text illegible). See apply_style()
+  for why the preprint class still downscales these by ~3.5%.
 * Arial, white opaque background, 0.5 pt spines, fonts embedded as TrueType.
 * Okabe-Ito method palette (grey/blue/orange) + Paul Tol high-contrast
   adjudication ramp (blue/amber/red, luminance-ordered, greyscale-safe).
@@ -178,7 +179,11 @@ def save_fig(fig: plt.Figure, name: str) -> None:
     so a broken render never lands in the manuscript automatically.
     """
     FIG_DIR.mkdir(parents=True, exist_ok=True)
-    fig.savefig(FIG_DIR / f"{name}.pdf")  # vector, fonts embedded (rcParams)
+    # dpi matters even for a vector PDF: any rasterized=True layer (the jitter clouds in
+    # figure_capability and figure_confidence_curation) is embedded at this resolution.
+    # Without it those layers inherited figure.dpi=150 in the deliverable while the
+    # throwaway PNG preview got 600.
+    fig.savefig(FIG_DIR / f"{name}.pdf", dpi=600)  # vector, fonts embedded (rcParams)
     fig.savefig(FIG_DIR / f"{name}.png", dpi=600)  # raster preview
     plt.close(fig)
     console.print(f"saved {name}.pdf / .png")
@@ -187,14 +192,35 @@ def save_fig(fig: plt.Figure, name: str) -> None:
 def apply_style() -> None:
     """Publication rcParams for Bioinformatics (OUP), built at final column size.
 
-    Font floor is 7 pt at final width (OUP minimum); body 8 pt. Built at true
-    column width so nothing is shrunk afterwards, keeping every label legible.
+    Font floor is 7 pt at final width (OUP minimum); body 8 pt.
+
+    Figures are built at the JOURNAL's spec (86 mm single / 178 mm double column), which
+    is what the standalone files handed to OUP production must satisfy. Note that this is
+    ~3.5% wider than the preprint class's own measure (\\textwidth = 488.5 pt = 171.7 mm
+    against the 178 mm build), so \\includegraphics[width=\\textwidth] downscales every
+    inclusion by 0.965 in main.pdf. Consequence: a 7 pt built label prints at 6.75 pt in
+    the preprint, just under the OUP floor. Do NOT "fix" this by retargeting the widths to
+    the class -- that would make the production files off-spec. If the floor has to hold in
+    the preprint too, raise the built sizes here instead (7 -> 7.5) and re-check every
+    figure for label collisions.
     """
     mpl.rcParams.update(
         {
             # fonts (>= 7 pt floor at final size; OUP/Nature minimum)
             "font.family": "sans-serif",
             "font.sans-serif": ["Arial", "Helvetica", "DejaVu Sans"],
+            # Arial has no monospace member, so name the mono stack explicitly --
+            # otherwise family="monospace" silently falls back to DejaVu Sans Mono.
+            "font.monospace": ["Courier New", "DejaVu Sans Mono"],
+            # mathtext defaults to the "dejavusans" fontset regardless of font.family,
+            # so every $...$ label (the ($n$=63) idiom, the $\approx$18 aa marker) was
+            # being set in DejaVu inside an otherwise-Arial figure. pdffonts showed
+            # DejaVuSans + DejaVuSans-Oblique embedded in 5 of 8 figures, including
+            # main-text Figs. 2 and 3. "custom" routes mathtext through the faces below.
+            "mathtext.fontset": "custom",
+            "mathtext.rm": "Arial",
+            "mathtext.it": "Arial:italic",
+            "mathtext.bf": "Arial:bold",
             "font.size": 8,
             "axes.titlesize": 9,
             "axes.titleweight": "bold",
@@ -234,10 +260,12 @@ def apply_style() -> None:
 
 
 def panel_label(ax, letter, *, dx=-0.06, dy=1.02):
-    """Lowercase bold panel label in axes-fraction coords (Bioinformatics/OUP style).
+    """Bold panel label in axes-fraction coords (Bioinformatics/OUP style).
 
-    Placed just outside the top-left of the axes; ``letter`` should be the bare
-    letter (``"a"``), rendered as a bold lowercase tag.
+    Placed just outside the top-left of the axes. ``letter`` is the bare letter and is
+    rendered verbatim, so pass the case the caption uses -- every caller and every
+    manuscript caption uses uppercase (``"A"``), which is what the captions' ``(A)``
+    tags refer to.
     """
     ax.text(
         dx,

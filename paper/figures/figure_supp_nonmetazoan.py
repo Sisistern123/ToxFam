@@ -19,6 +19,8 @@ adaptation, a taxonomy vocabulary beyond Metazoa), not an application claim.
 
 from __future__ import annotations
 
+import json
+
 import matplotlib.pyplot as plt
 
 from paper.figures._common import (
@@ -29,8 +31,22 @@ from paper.figures._common import (
     save_fig,
 )
 from paper.stats import nonmetazoan_toxicity_recall
+from toxfam._paths import get_project_root
 
-THRESHOLD = 0.5
+
+# The deployed binary operating point, read from the checkpoint rather than hardcoded:
+# models/binary_calibrator.json ships t* = 0.0289 in calibrated (Platt) score space, and
+# `toxfam predict` writes a calibrated p_toxic, so 0.5 is NOT the decision threshold.
+# Reporting recall at 0.5 understated it by an order of magnitude (13/812 against 218/812).
+def _deployed_threshold() -> float:
+    path = (
+        get_project_root()
+        / "model/model_output/combined_run/models/binary_calibrator.json"
+    )
+    return float(json.loads(path.read_text())["threshold"])
+
+
+THRESHOLD = _deployed_threshold()
 
 
 def main() -> None:
@@ -49,7 +65,7 @@ def main() -> None:
     )
     ax.axvline(THRESHOLD, color="#333333", ls=":", lw=1.0)
     ax.annotate(
-        f"threshold {THRESHOLD:.2f}",
+        f"deployed threshold {THRESHOLD:.3f}",
         xy=(THRESHOLD, ax.get_ylim()[1]),
         xytext=(2, -2),
         textcoords="offset points",
@@ -63,7 +79,7 @@ def main() -> None:
     ax.set_xlim(0, 1)
     ax.set_title(
         f"Known non-metazoan toxins (n={s['n']:,})\n"
-        f"recall {s['recall']:.0%} · median P(toxic) {s['median_p_toxic']:.2f}"
+        f"recall {s['recall']:.0%} · median P(toxic) {s['median_p_toxic']:.3f}"
     )
     save_fig(fig, "figure_supp_nonmetazoan")
 

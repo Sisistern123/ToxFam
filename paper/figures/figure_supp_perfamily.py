@@ -49,7 +49,9 @@ def main() -> None:
     hbi = load_preds("test_set", "hbi")
     nn = load_preds("test_set", "nn_combined_run")
 
-    fig, ax = plt.subplots(figsize=(DOUBLE_COL, 6.4), layout="constrained")
+    # Shortened from 6.4 in: at 6.4 the float took a near-empty page of its own.
+    # Do not narrow it -- the 37 family labels are why it is full width.
+    fig, ax = plt.subplots(figsize=(DOUBLE_COL, 5.2), layout="constrained")
 
     # --- per-family MCC dumbbell (HBI vs ToxFam), sorted by ToxFam MCC ---
     fam = (

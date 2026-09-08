@@ -27,6 +27,7 @@ from paper.figures._common import (
     DOUBLE_COL,
     apply_style,
     load_preds,
+    panel_label,
     save_fig,
 )
 from paper.stats import load_curated_verdicts
@@ -117,6 +118,10 @@ def main() -> None:
     fig = plt.figure(figsize=(DOUBLE_COL, 3.5))
     axL = fig.add_axes([0.085, 0.16, 0.40, 0.72])
     axR = fig.add_axes([0.66, 0.16, 0.26, 0.72])
+    # The caption and two Results passages address these as (A) and (B); without the
+    # tags the artwork gave the reader nothing to match those references to.
+    panel_label(axL, "A")
+    panel_label(axR, "B")
 
     # -- left: correct(left) + incorrect(right); violin-left, points-right --
     inc_xmin = inc_xmax = 1.0
