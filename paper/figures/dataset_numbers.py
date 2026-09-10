@@ -133,11 +133,12 @@ def compute() -> dict[str, int]:
 def _thousands(value: int) -> str:
     r"""Oxford SCIMED thousands separator: a thin space, and only from 10 000 up.
 
-    The checklist reads "Thousand separator is a thin space for 10 000 and above", so a
-    four-digit number takes NO separator at all -- 9779, not 9,779 or 9 779. These macros
-    are used inside math mode, where ``\,`` is the thin space.
+    The checklist reads "Thousand separator is a thin space for 10 000 and above". It
+    states what the separator IS; it does not say four-digit numbers go without one, and
+    the author prefers the separator throughout for consistency -- 9\,779, not 9779. The
+    macros are used inside math mode, where ``\,`` is the thin space.
     """
-    return f"{value:,}".replace(",", r"\,") if value >= 10_000 else str(value)
+    return f"{value:,}".replace(",", r"\,") if value >= 1000 else str(value)
 
 
 def _tex(name: str, value: int) -> str:

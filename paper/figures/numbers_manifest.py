@@ -139,10 +139,10 @@ def _emit_latex_macros(out: dict, path) -> None:
         "AllAccStandard": f"{out['all_class_acc']['nn_standard']:.3f}",
         "AllAccCombined": f"{out['all_class_acc']['nn_combined']:.3f}",
         # cohort sizes and the non-toxin prior (percent)
-        # Oxford SCIMED: thin space, and only from 10 000 up -- so 9779 carries none.
+        # Oxford SCIMED: the thousands separator is a thin space (\,), used throughout.
         "NumTest": (
             f"{out['n_test']:,}".replace(",", r"\,")
-            if out["n_test"] >= 10_000
+            if out["n_test"] >= 1000
             else str(out["n_test"])
         ),  # math-mode thousands sep
         "NumTox": str(out["toxin_only_n"]),
