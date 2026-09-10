@@ -123,6 +123,40 @@ def _panel_mcc(ax):
     ax.set_ylabel("Multiclass MCC")
 
 
+def _end_labels(ax, x, items, dx=11.0, gap=6.0):
+    """Direct end-labels for the curves, guaranteed not to collide.
+
+    The two curves converge at the long-length end -- their final accuracies differ by
+    <0.005, roughly 1 pt on this axis -- so anchoring each label to its own curve's y
+    in DATA units (what a plain ``ax.text`` does) stacked the two boxes on top of each
+    other. Offsetting in POINTS from each anchor instead fixes the separation at
+    ``2 * gap`` however close the curves run, and the leader line keeps each label tied
+    to its own curve rather than leaving the reader to guess which is which.
+
+    Labels are ordered by their anchor y, so the label order always matches the curve
+    order even if a re-run flips which method ends on top.
+    """
+    for (label, y, color), dy in zip(sorted(items, key=lambda it: it[1]), (-gap, gap)):
+        ax.annotate(
+            label,
+            xy=(x, y),
+            xytext=(dx, dy),
+            textcoords="offset points",
+            color=color,
+            fontsize=8,
+            fontweight="bold",
+            ha="left",
+            va="center",
+            arrowprops={
+                "arrowstyle": "-",
+                "color": color,
+                "lw": 0.6,
+                "shrinkA": 0.5,
+                "shrinkB": 1.5,
+            },
+        )
+
+
 def _panel_length(ax, axtop, hbi, nn, lengths, rng):
     """(B) Toxin-only accuracy vs length (local-linear +-2 SE) with a length histogram."""
     lnH, corrH = _toxin_lengths(hbi, lengths)
@@ -182,28 +216,8 @@ def _panel_length(ax, axtop, hbi, nn, lengths, rng):
             va="bottom",
         )
 
-    # direct end-labels in the empty right region (data ends ~400 aa, axis runs to 1900)
-    xr = gk[-1] * 1.25
-    ax.text(
-        xr,
-        yN[-1] + 0.005,
-        "ToxFam",
-        color=ORANGE_D,
-        fontsize=8,
-        fontweight="bold",
-        ha="left",
-        va="center",
-    )
-    ax.text(
-        xr,
-        yH[-1] - 0.005,
-        "HBI",
-        color=GREY_D,
-        fontsize=8,
-        fontweight="bold",
-        ha="left",
-        va="center",
-    )
+    # Direct end-labels in the empty right region (data ends ~480 aa, axis runs to 1900).
+    _end_labels(ax, gk[-1], [("ToxFam", yN[-1], ORANGE_D), ("HBI", yH[-1], GREY_D)])
     ax.annotate(
         "homology degrades\non the shortest toxins",
         xy=(11, 0.45),
