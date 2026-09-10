@@ -139,7 +139,12 @@ def _emit_latex_macros(out: dict, path) -> None:
         "AllAccStandard": f"{out['all_class_acc']['nn_standard']:.3f}",
         "AllAccCombined": f"{out['all_class_acc']['nn_combined']:.3f}",
         # cohort sizes and the non-toxin prior (percent)
-        "NumTest": f"{out['n_test']:,}".replace(",", "{,}"),  # math-mode thousands sep
+        # Oxford SCIMED: thin space, and only from 10 000 up -- so 9779 carries none.
+        "NumTest": (
+            f"{out['n_test']:,}".replace(",", r"\,")
+            if out["n_test"] >= 10_000
+            else str(out["n_test"])
+        ),  # math-mode thousands sep
         "NumTox": str(out["toxin_only_n"]),
         "NontoxPrior": f"{out['non_toxin_prior'] * 100:.2f}",
         # test toxins whose HBI best hit carries a non-toxin label (Discussion): the

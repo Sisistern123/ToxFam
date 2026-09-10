@@ -285,7 +285,7 @@ def main() -> None:
     for axtop, letter, title in (
         (axAtop, "A", "Family-level performance"),
         (axBtop, "B", "Robustness to sequence length"),
-        (axCtop, "C", "No-homolog coverage"),
+        (axCtop, "C", "No-homologue coverage"),
     ):
         axtop.set_title(title, loc="left", pad=4, fontsize=8.5)
         panel_label(axtop, letter)

@@ -130,9 +130,19 @@ def compute() -> dict[str, int]:
     return v
 
 
+def _thousands(value: int) -> str:
+    r"""Oxford SCIMED thousands separator: a thin space, and only from 10 000 up.
+
+    The checklist reads "Thousand separator is a thin space for 10 000 and above", so a
+    four-digit number takes NO separator at all -- 9779, not 9,779 or 9 779. These macros
+    are used inside math mode, where ``\,`` is the thin space.
+    """
+    return f"{value:,}".replace(",", r"\,") if value >= 10_000 else str(value)
+
+
 def _tex(name: str, value: int) -> str:
-    r"""One \newcommand, with the manuscript's ``{,}`` thin-space thousands separator."""
-    return f"\\newcommand{{\\{name}}}{{{f'{value:,}'.replace(',', '{,}')}}}"
+    r"""One \newcommand, formatted to the journal's number style."""
+    return f"\\newcommand{{\\{name}}}{{{_thousands(value)}}}"
 
 
 def emit(values: dict[str, int], path) -> None:
