@@ -133,6 +133,68 @@ def main() -> None:
         f"(n={int(tox.exact.sum())})  vs unexposed "
         f"{(tox[~tox.exact].score >= 0.5).mean():.3f} (n={int((~tox.exact).sum())})"
     )
+    write_subsets(root, df)
+
+
+def write_subsets(root, df: pd.DataFrame) -> None:
+    """Emit the exposed-id list, and the labels for a both-tools-excluded subset.
+
+    Mirrors toxdl2/build_clean_subset.py, which writes _shared/toxdl2_seen_in_train.txt
+    and _shared_clean/. The manuscript's contamination-excluded subset used to remove
+    ToxDL 2.0's overlap alone, which left ToxinPred 3.0 scored on proteins it had
+    memorised; _shared_clean_both/ removes both, so the two decontaminated rows of
+    Table 3 sit on one subset and are comparable to each other.
+
+    EXPOSURE CRITERION IS `exact`, NOT `seg`. Byte-identical means the sequence is
+    literally in the published training file. A shared 15-residue segment can also come
+    from ordinary family homology, and excluding on it would quietly drop genuine
+    conotoxins that ToxinPred 3.0 never saw -- a harder subset, but not a cleaner one.
+    """
+    # The COMMITTED snapshot, not benchmark/test_set/_shared. benchmark/ is gitignored and
+    # regenerated, and a regenerated copy no longer lines up with the committed
+    # toxdl2_seen_in_train.txt (on this tree only 118 of its 828 ids still matched). The
+    # snapshot under results/ is what compare.py's --labels-dir is pointed at and what the
+    # manuscript numbers were computed from, so it is the one to extend.
+    shared = root / "scripts" / "external_tools" / "results" / "ground_truth"
+    if not (shared / "test_labels.csv").exists():
+        print(f"\n[skip] no {shared}/test_labels.csv")
+        return
+
+    exposed = set(df.loc[df.exact, "identifier"])
+    (shared / "toxinpred3_seen_in_train.txt").write_text("\n".join(sorted(exposed)))
+
+    toxdl2_file = shared / "toxdl2_seen_in_train.txt"
+    if not toxdl2_file.exists():
+        print(f"\n[skip] no {toxdl2_file} -- run toxdl2/build_clean_subset.py first")
+        return
+    toxdl2 = {ln.strip() for ln in toxdl2_file.read_text().split() if ln.strip()}
+
+    labels = pd.read_csv(shared / "test_labels.csv")
+    # A stale id list is the failure mode this whole function is exposed to, and it is
+    # silent: the subset just comes out too big. Refuse instead.
+    hit = int(labels.identifier.isin(toxdl2).sum())
+    if hit != len(toxdl2):
+        raise SystemExit(
+            f"{toxdl2_file.name} lists {len(toxdl2)} ids but only {hit} are in "
+            f"{shared.name}/test_labels.csv -- the two are from different splits"
+        )
+
+    seen = exposed | toxdl2
+    keep = labels[~labels.identifier.isin(seen)]
+    out = shared.parent / "ground_truth_clean_both"
+    out.mkdir(parents=True, exist_ok=True)
+    keep.to_csv(out / "test_labels.csv", index=False)
+    # Full val, unchanged: it is only used to pick each method's Youden threshold, and
+    # thresholding on a decontaminated val would change the operating point as well as
+    # the scored subset, confounding the two.
+    pd.read_csv(shared / "val_labels.csv").to_csv(out / "val_labels.csv", index=False)
+    print(
+        f"\nwrote {shared.name}/toxinpred3_seen_in_train.txt ({len(exposed)} ids) and "
+        f"{out.name}/ ({len(keep)} proteins, {int(keep.is_toxic.sum())} toxins; "
+        f"removed {len(labels) - len(keep)} = {len(toxdl2)} ToxDL 2.0 "
+        f"+ {len(exposed)} ToxinPred 3.0, overlapping in "
+        f"{len(exposed & toxdl2)})"
+    )
 
 
 if __name__ == "__main__":
