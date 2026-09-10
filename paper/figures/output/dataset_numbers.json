@@ -9,6 +9,7 @@
   "LenNontox": 98850,
   "LenThresh": 2243,
   "LenTotal": 104417,
+  "NontoxWithFamily": 79376,
   "NormLabels": 45,
   "NumClasses": 38,
   "NumFamilies": 36,

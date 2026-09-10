@@ -67,15 +67,23 @@ METHOD_ORDER = list(METHODS)
 # and its base colour live in one place (used by figure2 labels + figure3 edges).
 METHOD_DARK = {"hbi": "#6f6f6f", "nn_combined_run": "#b06a00"}
 
-# Toxin / non-toxin CLASS colours, for data-side figures (the preprocessing audit).
-# Deliberately a separate namespace from METHODS: the same Okabe-Ito hexes mean
-# different things there (#E69F00 = the combined model, not "toxin"), and a supplement
-# carrying both must not let one legend be read as the other.
+# Toxin / non-toxin CLASS colours, for data-side figures (the pipeline figure, the
+# preprocessing audit). A separate namespace from METHODS -- and, since 2026-09-10, a
+# DISJOINT one. It used to reuse #E69F00 and #0072B2 with a comment saying the reader must
+# not confuse the two meanings; in practice they do, because every performance figure
+# trains them to read amber as ToxFam and grey as HBI, and then Fig. 1 asks them to read
+# amber as "toxin" and grey as "non-toxin". So: no hex appears in both dicts.
+#
+# Green (Okabe-Ito bluish green) is the toxin lane, slate the non-toxin majority. Both are
+# clear of METHODS (#BBBBBB / #0072B2 / #E69F00) and of the removal red (#B0455A) that
+# labels sit in on top of them, and they separate in greyscale by lightness.
 CLASSES = {
-    "toxin": "#E69F00",
-    "nontoxin": "#0072B2",
+    "toxin": "#009E73",
+    "toxin_dark": "#00654a",
+    "nontoxin": "#9DB4C0",
+    "nontoxin_dark": "#5b7280",
     "neutral": "#BBBBBB",
-    "accent": "#009E73",
+    "accent": "#CC79A7",
 }
 
 # Ordered good->bad adjudication ramp (Paul Tol high-contrast). NEVER green=good/

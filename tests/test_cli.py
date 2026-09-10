@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 import pytest
@@ -229,7 +230,11 @@ def test_version_flag():
 
     result = runner.invoke(app, ["--version"])
     assert result.exit_code == 0
-    assert __version__ in result.output
+    # rich highlights the numeric parts of the version, so the raw output is
+    # "toxfam \x1b[1;36m0.2\x1b[0m.\x1b[1;36m0\x1b[0m" and a plain substring test
+    # fails wherever rich decides colour is supported. Strip the escapes first.
+    plain = re.sub(r"\x1b\[[0-9;]*m", "", result.output)
+    assert __version__ in plain
 
 
 def test_verify_command_registered():

@@ -2,7 +2,7 @@
 
 A compact, proportional, two-stream funnel that reads left-to-right: one
 UniProtKB/Swiss-Prot query forks (on the KW-0800 toxin keyword) into a toxin
-lane (amber, up) and a non-toxin lane (grey, down), each distilled through the
+lane (green, up) and a non-toxin lane (slate, down), each distilled through the
 same three count-changing checkpoints to the final stratified splits.
 
 Design decisions (house style + figure-methodology research, 2026-07):
@@ -49,15 +49,19 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import FancyArrowPatch, FancyBboxPatch
 
 from paper._paths import figures_output_dir
-from paper.figures._common import DOUBLE_COL, apply_style, save_fig
+from paper.figures._common import CLASSES, DOUBLE_COL, apply_style, save_fig
 
 # --- Okabe-Ito semantic colours (same hex as the method palette in _common) ---
-TOX = "#E69F00"  # amber = toxins (the focus)
-NON = "#BBBBBB"  # grey  = non-toxins (recessive majority)
-TOX_DK = "#a5670a"  # darker amber for text on white
-NON_DK = "#6f6f6f"
+# Lane colours come from _common.CLASSES, which is deliberately disjoint from METHODS:
+# amber and grey are ToxFam and HBI everywhere else in the paper, so they cannot also mean
+# "toxin" and "non-toxin" here. See the note beside CLASSES.
+TOX = CLASSES["toxin"]  # green = toxins (the focus)
+NON = CLASSES["nontoxin"]  # slate = non-toxins (recessive majority)
+TOX_DK = CLASSES["toxin_dark"]  # darker green for text on white
+NON_DK = CLASSES["nontoxin_dark"]
 DROP = "#B0455A"  # muted red = removed (never paired with green)
-OUT = "#4d6472"  # neutral slate = final ML-ready splits (not a method colour)
+OUT = "#6B5B73"  # muted plum = final ML-ready splits. Was slate, which is now the
+# non-toxin lane; the splits hold BOTH classes and must not read as one of them.
 INK = "#1f1f1f"
 MUTE = "#5f5f5f"
 FAINT = "#9a9a9a"  # faint track/gloss notes
@@ -302,7 +306,7 @@ def _build() -> plt.Figure:
                 arrowprops=dict(arrowstyle="-|>", color=TOX, lw=0.9),
             )
 
-    # --- transitions: per-lane removals (red) + shared centre transforms (grey italic) ---
+    # --- transitions: per-lane removals (red) + shared centre transforms (muted italic) ---
     # each removal is vertically centred within its lane's tapering flow band at the gap
     def drop(xm, yc, cnt, reason):
         ax.text(
