@@ -19,40 +19,40 @@ adaptation, a taxonomy vocabulary beyond Metazoa), not an application claim.
 
 from __future__ import annotations
 
-import json
-
 import matplotlib.pyplot as plt
 
 from paper.figures._common import (
     METHODS,
     SINGLE_COL,
     apply_style,
+    deployed_binary_threshold,
     load_predict,
     save_fig,
 )
 from paper.stats import nonmetazoan_toxicity_recall
-from toxfam._paths import get_project_root
-
-
-# The deployed binary operating point, read from the checkpoint rather than hardcoded:
-# models/binary_calibrator.json ships t* = 0.0289 in calibrated (Platt) score space, and
-# `toxfam predict` writes a calibrated p_toxic, so 0.5 is NOT the decision threshold.
-# Reporting recall at 0.5 understated it by an order of magnitude (13/812 against 218/812).
-def _deployed_threshold() -> float:
-    path = (
-        get_project_root()
-        / "model/model_output/combined_run/models/binary_calibrator.json"
-    )
-    return float(json.loads(path.read_text())["threshold"])
-
-
-THRESHOLD = _deployed_threshold()
 
 
 def main() -> None:
     apply_style()
+    # The deployed operating point, read from the checkpoint rather than hardcoded:
+    # t* is in calibrated (Platt) score space and `toxfam predict` writes a calibrated
+    # p_toxic, so 0.5 is NOT the decision threshold -- reporting recall at 0.5
+    # understated it by an order of magnitude (13/812 against 218/812).
+    threshold = deployed_binary_threshold()
     preds = load_predict("non_metazoan")
-    s = nonmetazoan_toxicity_recall(preds, threshold=THRESHOLD)
+    # The figure re-thresholds p_toxic, so it can only be right while the calibrator it
+    # reads is the one `toxfam predict` used to write predicted_toxic. Re-deploying the
+    # calibrator without re-running predict would silently move the line; check rather
+    # than trust.
+    n_flagged = int((preds["p_toxic"] >= threshold).sum())
+    if n_flagged != int(preds["predicted_toxic"].sum()):
+        raise SystemExit(
+            f"threshold {threshold:.6f} flags {n_flagged} proteins, but the predict "
+            f"output records {int(preds['predicted_toxic'].sum())}. The deployed "
+            "calibrator has moved since predictions.tsv was written -- re-run "
+            "'uv run toxfam predict non_metazoan ...' before rendering this figure."
+        )
+    s = nonmetazoan_toxicity_recall(preds, threshold=threshold)
 
     fig, ax = plt.subplots(
         figsize=(SINGLE_COL, SINGLE_COL * 0.72), layout="constrained"
@@ -63,10 +63,10 @@ def main() -> None:
         color=METHODS["nn_combined_run"][1],
         edgecolor="white",
     )
-    ax.axvline(THRESHOLD, color="#333333", ls=":", lw=1.0)
+    ax.axvline(threshold, color="#333333", ls=":", lw=1.0)
     ax.annotate(
-        f"deployed threshold {THRESHOLD:.3f}",
-        xy=(THRESHOLD, ax.get_ylim()[1]),
+        f"deployed threshold {threshold:.3f}",
+        xy=(threshold, ax.get_ylim()[1]),
         xytext=(2, -2),
         textcoords="offset points",
         ha="left",
@@ -84,7 +84,7 @@ def main() -> None:
     save_fig(fig, "figure_supp_nonmetazoan")
 
     print(
-        f"non-metazoan: n={s['n']}  recall@{THRESHOLD}={s['recall']:.1%}  "
+        f"non-metazoan: n={s['n']}  recall@{threshold:.3f}={s['recall']:.1%}  "
         f"median P(toxic)={s['median_p_toxic']:.3f}  flagged={s['n_flagged']}"
     )
 

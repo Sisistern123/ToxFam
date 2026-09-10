@@ -25,6 +25,7 @@ from paper.figures._common import (
     ADJUDICATION,
     METHODS,
     SINGLE_COL,
+    TITLE_FS_COMPACT,
     apply_style,
     load_predict,
     model_vocab,
@@ -70,7 +71,7 @@ def main() -> None:
     )
     axa.set_ylim(0, max(counts) * 1.25)
     axa.set_ylabel("Proteins")
-    axa.set_title(f"Annotation coverage (n={s['n']:,})", fontsize=8)
+    axa.set_title(f"Annotation coverage (n={s['n']:,})", fontsize=TITLE_FS_COMPACT)
     panel_label(axa, "A")
 
     # --- B: rank of the UniProt family among the model's top-3 -------------------
@@ -86,7 +87,7 @@ def main() -> None:
     axb.set_title(
         f"Rank of the UniProt family (n={s['n_comparable']:,})\n"
         f"top-1 {s['top_1']:.0%} · in top-{TOP_K} {s['top_k']:.0%}",
-        fontsize=8,
+        fontsize=TITLE_FS_COMPACT,
     )
     panel_label(axb, "B")
 

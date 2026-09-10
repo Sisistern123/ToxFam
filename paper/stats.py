@@ -700,13 +700,19 @@ def curation_summary(curated_path: str | Path, key_path: str | Path) -> dict:
 # ---------------------------------------------------------------------------
 
 
-def nonmetazoan_toxicity_recall(preds: pd.DataFrame, *, threshold: float = 0.5) -> dict:
+def nonmetazoan_toxicity_recall(preds: pd.DataFrame, *, threshold: float) -> dict:
     """Recall of the combined model on the non-metazoan set.
 
     Every entry is a reviewed KW-0800 toxin, so every row is a true positive and recall
     is the *only* measurable quantity — specificity would need a non-metazoan non-toxin
     set, which does not exist. Reported alongside the median P(toxic) because a recall
     figure alone hides whether the misses are near-misses or confident rejections.
+
+    ``threshold`` is deliberately required. It used to default to 0.5, which is the WRONG
+    operating point: ``toxfam predict`` emits a Platt-calibrated p_toxic thresholded at
+    t* ~ 0.029, so the default understated recall by an order of magnitude (13/812 against
+    218/812). Omitting it is now a TypeError rather than a plausible-looking wrong number
+    — pass ``paper.figures._common.deployed_binary_threshold()``.
     """
     p = preds["p_toxic"].astype(float)
     return {

@@ -39,6 +39,11 @@ FIG_DIR = figures_output_dir()
 SINGLE_COL = 86 / 25.4  # 3.386 in
 DOUBLE_COL = 178 / 25.4  # 7.008 in
 
+# Two-line panel titles do not fit at SINGLE_COL in the 9 pt axes.titlesize the style
+# sets, so single-column figures step down to this. Named here so the next single-column
+# figure does not rediscover the number, and so it moves with the rest of the type scale.
+TITLE_FS_COMPACT = 8
+
 # Consistent, colour-blind-safe method colours/labels across all figures.
 # Okabe-Ito blue/orange is the most CVD-robust contrast pair and is greyscale
 # distinguishable; grey pushes the homology baseline visually behind the models.
@@ -161,6 +166,28 @@ def model_vocab() -> set[str]:
     return set(json.loads(path.read_text()).values())
 
 
+def deployed_binary_threshold(run: str = "combined_run") -> float:
+    """The deployed binary operating point t*, from the run's Platt calibrator.
+
+    ``toxfam predict`` writes a CALIBRATED p_toxic and thresholds it with this same
+    value (``toxfam.prediction._read_optimized_threshold``), so 0.5 is NOT the decision
+    threshold -- scoring the non-metazoan set at 0.5 understated recall by an order of
+    magnitude (13/812 against 218/812). Read at call time, like :func:`model_vocab`, so
+    importing a figure module on a checkout without ``model_output/`` still works.
+    """
+    import json
+
+    path = model_run_dir(run) / "models" / "binary_calibrator.json"
+    if not path.exists():
+        raise FileNotFoundError(
+            f"deployed binary calibrator not found: {path}\n"
+            "Fetch the published checkpoints with 'uv run toxfam download-models', or "
+            f"deploy one with 'uv run toxfam eval binary model/model_output/{run} "
+            "--deploy'."
+        )
+    return float(json.loads(path.read_text())["threshold"])
+
+
 def test_set_class_list() -> list[str]:
     """The 38-class label space = sorted unique actual labels on the test set."""
     df = load_preds("test_set", "nn_combined_run")
@@ -179,12 +206,11 @@ def save_fig(fig: plt.Figure, name: str) -> None:
     so a broken render never lands in the manuscript automatically.
     """
     FIG_DIR.mkdir(parents=True, exist_ok=True)
-    # dpi matters even for a vector PDF: any rasterized=True layer (the jitter clouds in
-    # figure_capability and figure_confidence_curation) is embedded at this resolution.
-    # Without it those layers inherited figure.dpi=150 in the deliverable while the
-    # throwaway PNG preview got 600.
-    fig.savefig(FIG_DIR / f"{name}.pdf", dpi=600)  # vector, fonts embedded (rcParams)
-    fig.savefig(FIG_DIR / f"{name}.png", dpi=600)  # raster preview
+    # Both saves inherit savefig.dpi from apply_style(); see the note there for why a
+    # vector PDF needs a dpi at all. Kept as one policy so the deliverable and the
+    # preview cannot be given different resolutions.
+    fig.savefig(FIG_DIR / f"{name}.pdf")  # vector, fonts embedded (rcParams)
+    fig.savefig(FIG_DIR / f"{name}.png")  # raster preview
     plt.close(fig)
     console.print(f"saved {name}.pdf / .png")
 
@@ -254,6 +280,12 @@ def apply_style() -> None:
             "axes.facecolor": "white",
             "savefig.facecolor": "white",
             "figure.dpi": 150,
+            # dpi matters even for a vector PDF: any rasterized=True layer (the jitter
+            # clouds in figure_capability and figure_confidence_curation) is embedded at
+            # this resolution. Set here as export policy rather than per-savefig, so the
+            # deliverable PDF and the preview PNG cannot be handed different values --
+            # the PDF used to inherit figure.dpi=150 while the PNG got 600.
+            "savefig.dpi": 600,
             "legend.frameon": False,
         }
     )
