@@ -76,10 +76,17 @@ _DERIVED = {
     # Toxin families proper: the label space minus the non-toxin class and minus the
     # catch-all "other". Cited as "36 families" throughout; it had no macro at all.
     "NumFamilies": (lambda v: v["NumClasses"] - 2, "NumClasses - 2"),
+    # The paper's motivating statistic, quoted in the Abstract, the Introduction and the
+    # Results. Derived, not read from the JSON's own ``nearest_is_nontoxin_frac``, so the
+    # percentage and the count it is computed from can never disagree in print.
+    "BestHitNonToxPct": (
+        lambda v: 100 * v["BestHitNonTox"] / v["RepTox"],
+        "100 * BestHitNonTox / RepTox",
+    ),
 }
 
 
-def compute() -> dict[str, int]:
+def compute() -> dict[str, int | float]:
     """The pipeline counts, sourced and derived. Raises if the identities disagree."""
     pre = json.loads((figures_output_dir() / "preprocessing_numbers.json").read_text())
     funnel, lanes = pre["funnel"], pre["lanes"]
@@ -92,7 +99,7 @@ def compute() -> dict[str, int]:
     raw_tox = pd.read_csv(raw_dir() / "0800.tsv", sep="\t")
     classes = json.loads((model_run_dir() / "class_indices.json").read_text())
 
-    v: dict[str, int] = {
+    v: dict[str, int | float] = {
         "RawTox": int(funnel["tox_raw"]),
         "RawNontox": int(funnel["nt_raw"]),
         # Distinct UniProt "Protein families" strings before normalisation -- the
@@ -103,6 +110,7 @@ def compute() -> dict[str, int]:
         "LenThresh": int(funnel["length_cutoff"]),
         "LenNontox": int(funnel["length_n_after"]),
         "RepTox": int(pre["nearest_neighbour"]["n_toxin_reps"]),
+        "BestHitNonTox": int(pre["nearest_neighbour"]["nearest_is_nontoxin"]),
         "RepNontox": int(lanes["nontox"]["clusters"]),
         "RepTotal": int(manifest["n_proteins"]),
         "SplitTrain": int(counts["train"]),
@@ -112,7 +120,8 @@ def compute() -> dict[str, int]:
         **_CARRIED,
     }
     for name, (fn, _) in _DERIVED.items():
-        v[name] = int(fn(v))
+        computed = fn(v)
+        v[name] = computed if isinstance(computed, float) else int(computed)
 
     # The two independent routes to the representative total must agree: the split
     # manifest's own row count, and the per-lane cluster counts. They come from
@@ -141,12 +150,17 @@ def _thousands(value: int) -> str:
     return f"{value:,}".replace(",", r"\,") if value >= 1000 else str(value)
 
 
-def _tex(name: str, value: int) -> str:
-    r"""One \newcommand, formatted to the journal's number style."""
-    return f"\\newcommand{{\\{name}}}{{{_thousands(value)}}}"
+def _tex(name: str, value: int | float) -> str:
+    r"""One \newcommand, formatted to the journal's number style.
+
+    Counts take the thousands separator; a percentage is a float and takes one decimal
+    place instead (the macro is used bare, so the ``%`` sign stays in the prose).
+    """
+    body = f"{value:.1f}" if isinstance(value, float) else _thousands(value)
+    return f"\\newcommand{{\\{name}}}{{{body}}}"
 
 
-def emit(values: dict[str, int], path) -> None:
+def emit(values: dict[str, int | float], path) -> None:
     """Write the macro file. Ordered to follow the pipeline, not the alphabet."""
     order = [
         ("retrieval", ["RawTox", "RawNontox", "RawTotal", "RawFamStrings"]),
@@ -154,6 +168,7 @@ def emit(values: dict[str, int], path) -> None:
         ("length filter", ["DropLen", "LenThresh", "LenNontox", "LenTotal"]),
         ("signal peptides", ["SpTox", "SpNontox"]),
         ("redundancy reduction", ["DropCluster", "RepTox", "RepNontox", "RepTotal"]),
+        ("best-hit ceiling", ["BestHitNonTox", "BestHitNonToxPct"]),
         ("label space", ["NumFamilies", "RepLabels", "NumClasses"]),
         ("splits", ["SplitTrain", "SplitVal", "SplitTest"]),
     ]
