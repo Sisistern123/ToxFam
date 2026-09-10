@@ -85,8 +85,8 @@ def protspace_bundle_dir(subset: str = "all") -> Path:
     return protspace_dir() / f"out_{subset}"
 
 
-def manuscript_tex_target() -> Path | None:
-    """Optional target for auto-syncing ``results_numbers.tex`` into the manuscript.
+def manuscript_tex_target(name: str = "results_numbers.tex") -> Path | None:
+    """Optional target for auto-syncing a generated ``.tex`` macro file into the manuscript.
 
     Preserves the historical behaviour of writing the generated LaTeX macros
     straight into the separate manuscript checkout when it is present, but routes
@@ -103,4 +103,4 @@ def manuscript_tex_target() -> Path | None:
             base = get_project_root() / base
     else:
         base = get_project_root() / "manuscript"
-    return (base / "results_numbers.tex") if base.is_dir() else None
+    return (base / name) if base.is_dir() else None

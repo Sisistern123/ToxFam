@@ -33,20 +33,22 @@ Design decisions (house style + figure-methodology research, 2026-07):
     uncluttered. Okabe-Ito colour-blind-safe palette; lanes are labelled, never
     colour-only.
 
-The counts are the frozen UniProt-snapshot numbers; they mirror
-``manuscript/dataset_numbers.tex`` (the LaTeX single source of truth shared with
-Supplementary Table ``tab:dataset_pipeline``). The manuscript lives in a separate
-(git-ignored) repository, so the values are duplicated here with matching content;
-keep the two in sync when the snapshot changes.
+The counts come from :mod:`paper.figures.dataset_numbers`, which computes them from the
+tracked artifacts and also generates ``manuscript/dataset_numbers.tex`` (the macros behind
+Supplementary Table ``tab:dataset_pipeline``). This figure and the manuscript therefore
+read one source; they used to hold separate hand-maintained copies with a "keep the two in
+sync" comment and nothing to enforce it.
 """
 
 from __future__ import annotations
 
+import json
 import math
 
 import matplotlib.pyplot as plt
 from matplotlib.patches import FancyArrowPatch, FancyBboxPatch
 
+from paper._paths import figures_output_dir
 from paper.figures._common import DOUBLE_COL, apply_style, save_fig
 
 # --- Okabe-Ito semantic colours (same hex as the method palette in _common) ---
@@ -61,22 +63,20 @@ MUTE = "#5f5f5f"
 FAINT = "#9a9a9a"  # faint track/gloss notes
 MONO = {"family": "monospace"}
 
-# Frozen pipeline counts (mirror manuscript/dataset_numbers.tex).
-C = {
-    "RawTox": 5927,
-    "RawNontox": 99846,
-    "FamTox": 5567,
-    "LenNontox": 98850,
-    "RepTox": 3416,
-    "RepNontox": 61763,
-    "RepTotal": 65179,
-    "SplitTrain": 45621,
-    "SplitVal": 9779,
-    "SplitTest": 9779,
-}
+
+def _counts() -> dict[str, int]:
+    """Pipeline counts, from the generated manifest (regenerate: make dataset-numbers)."""
+    path = figures_output_dir() / "dataset_numbers.json"
+    if not path.exists():
+        raise FileNotFoundError(
+            f"{path} not found -- generate it with 'make dataset-numbers' "
+            "(uv run python -m paper.figures.dataset_numbers)."
+        )
+    return json.loads(path.read_text())
 
 
 def _build() -> plt.Figure:
+    C = _counts()
     # Three count-changing checkpoints per lane; (header, toxin, non-toxin).
     levels = [
         ("Retrieved", C["RawTox"], C["RawNontox"]),
