@@ -14,6 +14,7 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+from scipy.stats import binomtest as _binomtest
 from scipy.stats import chi2 as _chi2
 from sklearn.metrics import matthews_corrcoef
 from sklearn.preprocessing import label_binarize
@@ -481,6 +482,41 @@ def bootstrap_accuracy_ci(correct, *, n_boot: int = 2000, seed: int = 42) -> dic
         "ci_high": float(np.percentile(means, 97.5)),
         "two_se": float(2.0 * means.std(ddof=1)),
         "n": n,
+    }
+
+
+def wilson_ci(n_correct: int, n_total: int, *, confidence: float = 0.95) -> dict:
+    """Wilson score interval for a proportion (e.g. accuracy over ``n_total`` trials).
+
+    Use this, not ``bootstrap_accuracy_ci``'s symmetric ``two_se``, whenever the
+    interval is *drawn*. ``+-2 SE`` on a Bernoulli mean is the Wald interval, whose
+    two documented failure modes are limits outside [0, 1] and poor coverage at small
+    ``n`` (NCHS Series 2 No. 175; Brown, Cai & DasGupta 2001). Both bite here: the
+    no-homolog panel is 7/8 and 61/63, where ``+-2 SE`` reaches 1.10 and 1.01 --
+    outside the range a proportion can take. Wilson is asymmetric and lies inside
+    [0, 1] by construction, so nothing has to be clipped.
+
+    The percentile bootstrap this module also offers is not a substitute at these
+    denominators: resampling 8 points puts its upper limit at exactly 1.0, asserting
+    that perfect accuracy is inside the interval, which is the small-sample bootstrap
+    degenerating rather than a bound.
+    """
+    if n_total <= 0:
+        return {
+            "point": float("nan"),
+            "low": float("nan"),
+            "high": float("nan"),
+            "n": 0,
+        }
+    ci = _binomtest(int(n_correct), int(n_total)).proportion_ci(
+        confidence_level=confidence, method="wilson"
+    )
+    return {
+        "point": n_correct / n_total,
+        "low": float(ci.low),
+        "high": float(ci.high),
+        "n": int(n_total),
+        "n_correct": int(n_correct),
     }
 
 
