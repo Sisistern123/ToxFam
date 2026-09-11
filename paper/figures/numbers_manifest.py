@@ -30,6 +30,7 @@ from paper.stats import (
     aligned_correctness,
     bootstrap_label_metric_ci,
     curation_summary,
+    hbi_toxin_error_decomposition,
     macro_mcc_by_support,
     mcnemar_test,
     micro_mcc,
@@ -119,6 +120,13 @@ def _emit_latex_macros(out: dict, path) -> None:
     """
     mcc = out["mcc"]
     _require_matching_toxin_cohort(out)
+    dec = out["hbi_toxin_error_decomposition"]
+    if dec["n_nontoxin_best_hit"] != out["hbi_nontoxin_best_hit"]["n_nontoxin"]:
+        raise SystemExit(
+            "the error decomposition and \\HbiNontoxBestHit disagree on the "
+            "non-toxin-best-hit count; they are computed from the same frame, so "
+            "this can only mean one of them was edited by hand"
+        )
     macros = {
         # overall (Gorodkin) multiclass MCC and the combined-model 95% CI
         "MccHbi": f"{mcc['hbi']['overall']:.3f}",
@@ -151,6 +159,18 @@ def _emit_latex_macros(out: dict, path) -> None:
         # realised counterpart of the dataset-wide floor. Excludes `no hit` queries.
         "HbiNontoxBestHit": str(out["hbi_nontoxin_best_hit"]["n_nontoxin"]),
         "HbiNontoxBestHitPct": f"{out['hbi_nontoxin_best_hit']['frac'] * 100:.1f}",
+        # HBI's toxin-side error decomposition (Results, homology-boundary paragraph).
+        # Hand-derived until 2026-09-11, by which point it was a protein out of step
+        # with \HbiNontoxBestHit directly above it.
+        **{
+            "HbiToxErrors": str(dec["n_errors"]),
+            "HbiToxNoHit": str(dec["n_no_hit"]),
+            "HbiToxErrorsStructural": str(dec["n_structural"]),
+            "HbiToxErrorsResidual": str(dec["n_residual"]),
+            "HbiToxHit": str(dec["n_toxin_best_hit"]),
+            "HbiToxHitCorrect": str(dec["n_toxin_best_hit_correct"]),
+            "HbiToxHitAcc": f"{dec['acc_given_toxin_best_hit']:.3f}",
+        },
         # Support-stratified macro-MCC. Cited in BOTH the Results and the caption of the
         # per-family supplementary figure -- which is exactly how they drifted apart
         # (0.833 against 0.836 for the same quantity). Emitting them as macros makes that
@@ -237,6 +257,7 @@ def main() -> None:
         # paper.preprocessing_audit measures (see the Discussion). Reference differs
         # (training split only, vs all representatives), so the two do not coincide.
         "hbi_nontoxin_best_hit": nontoxin_best_hit_rate(hbi),
+        "hbi_toxin_error_decomposition": hbi_toxin_error_decomposition(hbi),
         "no_hit": {
             "n": int(nohit.sum()),
             "n_toxin": int(toxin_mask(nn_nh).sum()),

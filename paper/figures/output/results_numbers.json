@@ -32,6 +32,17 @@
     "n_no_hit": 8,
     "frac": 0.13203883495145632
   },
+  "hbi_toxin_error_decomposition": {
+    "n_toxins": 515,
+    "n_errors": 82,
+    "n_nontoxin_best_hit": 68,
+    "n_no_hit": 8,
+    "n_structural": 76,
+    "n_residual": 6,
+    "n_toxin_best_hit": 439,
+    "n_toxin_best_hit_correct": 433,
+    "acc_given_toxin_best_hit": 0.9863325740318907
+  },
   "no_hit": {
     "n": 71,
     "n_toxin": 8,

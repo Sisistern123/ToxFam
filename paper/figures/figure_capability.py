@@ -45,7 +45,6 @@ from paper.figures._common import (
 )
 from paper.stats import (
     band_separation_length,
-    bootstrap_accuracy_ci,
     bootstrap_label_metric_ci,
     correctness,
     length_support_mask,
@@ -231,32 +230,28 @@ def _panel_length(ax, axtop, hbi, nn, lengths, rng):
 
 
 def _panel_coverage(ax, hbi, nn):
-    """(C) ToxFam coverage where HBI returns no hit (HBI = 0% by construction)."""
+    """(C) ToxFam coverage where HBI returns no hit (HBI = 0% by construction).
+
+    Labelled with raw counts, not accuracy +- 2 SE. The toxin group is eight proteins,
+    where a bootstrap SE is +-0.23 -- wider than any difference the panel could show,
+    and it invited the reader to treat 0.88 as an estimate rather than as 7 of 8. The
+    whole panel is three errors out of 71, and the counts say so directly.
+    """
     nohit_ids = hbi.loc[hbi["predicted_label"] == NO_HIT_LABEL, "identifier"]
     nn_nh = nn[nn["identifier"].isin(nohit_ids)]
     tox_m = toxin_mask(nn_nh)
     groups = [("toxin\nno-hit", nn_nh[tox_m]), ("non-toxin\nno-hit", nn_nh[~tox_m])]
-    labels, acc, se2 = [], [], []
+    labels, acc, counts = [], [], []
     for gname, g in groups:
-        ci = bootstrap_accuracy_ci(correctness(g))
-        labels.append(f"{gname}\n($n$={len(g)})")
-        acc.append(ci["point"])
-        se2.append(ci["two_se"])
+        c = correctness(g)
+        labels.append(gname)
+        acc.append(float(c.mean()))
+        counts.append((int(c.sum()), int(len(g))))
     x = np.arange(len(groups))
     _, orange = METHODS["nn_combined_run"]
-    ax.bar(
-        x,
-        acc,
-        0.55,
-        yerr=se2,
-        capsize=3,
-        color=orange,
-        edgecolor="white",
-        linewidth=0.0,
-        error_kw={"elinewidth": 0.7, "capthick": 0.7},
-    )
-    for xi, a, s in zip(x, acc, se2):
-        ax.text(xi, a + s + 0.015, fmt_pm(a, s), ha="center", va="bottom", fontsize=7.5)
+    ax.bar(x, acc, 0.55, color=orange, edgecolor="white", linewidth=0.0)
+    for xi, a, (k, n) in zip(x, acc, counts):
+        ax.text(xi, a + 0.015, f"{k}/{n}", ha="center", va="bottom", fontsize=8)
     ax.set_xlim(-0.6, 1.6)
     ax.set_xticks(x)
     ax.set_xticklabels(labels, fontsize=7)

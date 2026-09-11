@@ -88,7 +88,34 @@ def _environment() -> dict:
         "transformers": _v("transformers"),
         "scikit-learn": _v("scikit-learn"),
         "numpy": _v("numpy"),
+        "pymmseqs": _v("pymmseqs"),
+        "mmseqs": _mmseqs_version(),
     }
+
+
+def _mmseqs_version() -> str:
+    """Version of the MMseqs2 binary pymmseqs actually invokes.
+
+    The HBI baseline is an MMseqs2 search, so its results move with this binary and
+    with nothing else recorded here. Without it a one-protein difference in the
+    best-hit counts between two machines is unattributable, which is exactly what
+    happened while the toxin-error decomposition was being reconciled.
+    """
+    import subprocess
+
+    try:
+        import pymmseqs
+
+        binary = Path(pymmseqs.__file__).parent / "bin" / "mmseqs"
+        if not binary.exists():
+            return "unknown"
+        out = subprocess.run(
+            [str(binary), "version"], capture_output=True, text=True, timeout=10
+        )
+        return out.stdout.strip() or "unknown"
+    except Exception:
+        # Best-effort provenance: never fail a completed evaluation over a version string.
+        return "unknown"
 
 
 def _current_manifest_sha() -> str | None:
