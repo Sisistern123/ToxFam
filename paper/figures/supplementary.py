@@ -11,7 +11,13 @@ import numpy as np
 import pandas as pd
 from rich.console import Console
 
-from paper.figures._common import apply_style, load_preds, save_fig, test_set_class_list
+from paper.figures._common import (
+    CALIBRATION,
+    apply_style,
+    load_preds,
+    save_fig,
+    test_set_class_list,
+)
 from paper.stats import macro_f1_conventions
 
 console = Console()
@@ -33,8 +39,8 @@ def reliability_panel() -> None:
     correct = (nn["predicted_label"] == nn["actual_label"]).astype(float).values
     fig, ax = plt.subplots(figsize=(4.5, 4.2))
     for col, name, color in (
-        ("confidence", "calibrated", "#c0504d"),
-        ("confidence_uncalibrated", "uncalibrated", "#7f7f7f"),
+        ("confidence", "calibrated", CALIBRATION["calibrated"]),
+        ("confidence_uncalibrated", "uncalibrated", CALIBRATION["uncalibrated"]),
     ):
         if col not in nn.columns:
             continue

@@ -35,6 +35,7 @@ from paper.figures._common import (
     METHOD_LINESTYLE,
     METHOD_ORDER,
     METHODS,
+    NEUTRAL,
     apply_style,
     fmt_pm,
     load_preds,
@@ -44,7 +45,6 @@ from paper.figures._common import (
 )
 from paper.stats import (
     band_separation_length,
-    bootstrap_accuracy_ci,
     bootstrap_label_metric_ci,
     correctness,
     length_support_mask,
@@ -58,7 +58,7 @@ from toxfam.evaluation.hbi import NO_HIT_LABEL
 XTICKS = [10, 30, 50, 100, 300, 1000]
 XLIM = (9, 1900)
 BW = 0.16  # local-linear bandwidth in log10 length (tuned to the data)
-HIST_GREY = "#d9d9d9"
+HIST_GREY = NEUTRAL["backdrop"]
 GREY_D, ORANGE_D = METHOD_DARK["hbi"], METHOD_DARK["nn_combined_run"]
 
 
@@ -138,10 +138,15 @@ def _panel_length(ax, axtop, hbi, nn, lengths, rng):
     axtop.set_xlim(*XLIM)
     axtop.set_ylim(0, peak * 1.18)
     axtop.set_yticks([0, peak])
-    axtop.tick_params(axis="y", labelsize=6, colors="#999999", length=2)
+    axtop.tick_params(axis="y", labelsize=6, colors=NEUTRAL["faint"], length=2)
     axtop.tick_params(axis="x", labelbottom=False, length=0)
     axtop.set_ylabel(
-        "toxins", fontsize=6.5, color="#999999", rotation=0, ha="right", va="center"
+        "toxins",
+        fontsize=6.5,
+        color=NEUTRAL["faint"],
+        rotation=0,
+        ha="right",
+        va="center",
     )
     for sp in ("top", "right"):
         axtop.spines[sp].set_visible(False)
@@ -171,13 +176,13 @@ def _panel_length(ax, axtop, hbi, nn, lengths, rng):
     # bands, so the guide sits exactly where they visibly separate.
     xcross = band_separation_length(gk, yH + sH, yN - sN)
     if xcross is not None:
-        ax.axvline(xcross, color="#9a9a9a", ls=(0, (1, 1.6)), lw=0.8, zorder=1)
+        ax.axvline(xcross, color=NEUTRAL["faint"], ls=(0, (1, 1.6)), lw=0.8, zorder=1)
         ax.text(
             xcross * 1.07,
             0.30,
             f"$\\approx${xcross:.0f} aa",
             fontsize=7,
-            color="#8a8a8a",
+            color=NEUTRAL["muted"],
             ha="left",
             va="bottom",
         )
@@ -209,11 +214,14 @@ def _panel_length(ax, axtop, hbi, nn, lengths, rng):
         xy=(11, 0.45),
         xytext=(70, 0.58),
         fontsize=6.6,
-        color="#777777",
+        color=NEUTRAL["muted"],
         ha="left",
         va="center",
         arrowprops=dict(
-            arrowstyle="->", color="#aaaaaa", lw=0.7, connectionstyle="arc3,rad=-0.15"
+            arrowstyle="->",
+            color=NEUTRAL["faint"],
+            lw=0.7,
+            connectionstyle="arc3,rad=-0.15",
         ),
     )
     _logx(ax)
@@ -222,32 +230,28 @@ def _panel_length(ax, axtop, hbi, nn, lengths, rng):
 
 
 def _panel_coverage(ax, hbi, nn):
-    """(C) ToxFam coverage where HBI returns no hit (HBI = 0% by construction)."""
+    """(C) ToxFam coverage where HBI returns no hit (HBI = 0% by construction).
+
+    Labelled with raw counts, not accuracy +- 2 SE. The toxin group is eight proteins,
+    where a bootstrap SE is +-0.23 -- wider than any difference the panel could show,
+    and it invited the reader to treat 0.88 as an estimate rather than as 7 of 8. The
+    whole panel is three errors out of 71, and the counts say so directly.
+    """
     nohit_ids = hbi.loc[hbi["predicted_label"] == NO_HIT_LABEL, "identifier"]
     nn_nh = nn[nn["identifier"].isin(nohit_ids)]
     tox_m = toxin_mask(nn_nh)
     groups = [("toxin\nno-hit", nn_nh[tox_m]), ("non-toxin\nno-hit", nn_nh[~tox_m])]
-    labels, acc, se2 = [], [], []
+    labels, acc, counts = [], [], []
     for gname, g in groups:
-        ci = bootstrap_accuracy_ci(correctness(g))
-        labels.append(f"{gname}\n($n$={len(g)})")
-        acc.append(ci["point"])
-        se2.append(ci["two_se"])
+        c = correctness(g)
+        labels.append(gname)
+        acc.append(float(c.mean()))
+        counts.append((int(c.sum()), int(len(g))))
     x = np.arange(len(groups))
     _, orange = METHODS["nn_combined_run"]
-    ax.bar(
-        x,
-        acc,
-        0.55,
-        yerr=se2,
-        capsize=3,
-        color=orange,
-        edgecolor="white",
-        linewidth=0.0,
-        error_kw={"elinewidth": 0.7, "capthick": 0.7},
-    )
-    for xi, a, s in zip(x, acc, se2):
-        ax.text(xi, a + s + 0.015, fmt_pm(a, s), ha="center", va="bottom", fontsize=7.5)
+    ax.bar(x, acc, 0.55, color=orange, edgecolor="white", linewidth=0.0)
+    for xi, a, (k, n) in zip(x, acc, counts):
+        ax.text(xi, a + 0.015, f"{k}/{n}", ha="center", va="bottom", fontsize=8)
     ax.set_xlim(-0.6, 1.6)
     ax.set_xticks(x)
     ax.set_xticklabels(labels, fontsize=7)
@@ -285,7 +289,7 @@ def main() -> None:
     for axtop, letter, title in (
         (axAtop, "A", "Family-level performance"),
         (axBtop, "B", "Robustness to sequence length"),
-        (axCtop, "C", "No-homolog coverage"),
+        (axCtop, "C", "No-homologue coverage"),
     ):
         axtop.set_title(title, loc="left", pad=4, fontsize=8.5)
         panel_label(axtop, letter)

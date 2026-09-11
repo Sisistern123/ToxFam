@@ -22,9 +22,10 @@ from __future__ import annotations
 import matplotlib.pyplot as plt
 
 from paper.figures._common import (
-    ADJUDICATION,
-    DOUBLE_COL,
-    METHODS,
+    NEUTRAL,
+    RANK,
+    SINGLE_COL,
+    TITLE_FS_COMPACT,
     apply_style,
     load_predict,
     model_vocab,
@@ -35,7 +36,7 @@ from paper.figures._common import (
 from paper.stats import unreviewed_annotation_summary
 
 TOP_K = 3
-GREY = "#BBBBBB"
+GREY = NEUTRAL["faint"]
 
 
 def main() -> None:
@@ -44,16 +45,25 @@ def main() -> None:
     families = preds["identifier"].map(unreviewed_families())
     s = unreviewed_annotation_summary(preds, families, vocab=model_vocab(), top_k=TOP_K)
 
+    # Stacked single-column, not side-by-side double-column. As a DOUBLE_COL figure this
+    # was included at \columnwidth in a two-column layout -- a 46.5% downscale that put
+    # its axis labels at 3.25 pt, far under the 7 pt floor. Stacking keeps it at
+    # \columnwidth natively, so the labels print at their built size. Do NOT "fix" the
+    # old shape by promoting the float to figure*/\textwidth instead: that was measured
+    # and costs two extra pages.
     fig, (axa, axb) = plt.subplots(
-        1, 2, figsize=(DOUBLE_COL, DOUBLE_COL * 0.34), layout="constrained"
+        2, 1, figsize=(SINGLE_COL, SINGLE_COL * 1.30), layout="constrained"
     )
 
     # --- A: annotation coverage -------------------------------------------------
     counts = [s["n_annotated"], s["n_unannotated"]]
     bars = axa.bar(
-        ["Has UniProt family", "No family"],
+        ["Has UniProt\nfamily", "No family"],
         counts,
-        color=[METHODS["nn_combined_run"][1], GREY],
+        # NOT the ToxFam amber, which this panel has no ToxFam in: these bars are a
+        # property of UniProt, not a method. Blue-has / grey-has-not matches panel B,
+        # where blue is likewise "the family is there".
+        color=[RANK[0], GREY],
         edgecolor="white",
     )
     axa.bar_label(
@@ -64,22 +74,24 @@ def main() -> None:
     )
     axa.set_ylim(0, max(counts) * 1.25)
     axa.set_ylabel("Proteins")
-    axa.set_title(f"Annotation coverage (n={s['n']:,})")
+    axa.set_title(f"Annotation coverage (n={s['n']:,})", fontsize=TITLE_FS_COMPACT)
     panel_label(axa, "A")
 
     # --- B: rank of the UniProt family among the model's top-3 -------------------
     labels = [f"top-{i}" for i in range(1, TOP_K + 1)] + [f"not in top-{TOP_K}"]
     vals = [s["rank_counts"][f"top_{i}"] for i in range(1, TOP_K + 1)]
     vals.append(s["rank_counts"]["not_in_top_k"])
-    # Luminance-ordered good->bad (never green/red: the deuteranopia failure case).
-    colors = [ADJUDICATION["correct"], "#3C7DBF", "#8FB8DC", ADJUDICATION["incorrect"]]
+    # Ordered "how close was the right answer": blue still means right and red still
+    # means wrong, exactly as in the curation figure, with a lightness ramp between.
+    colors = RANK
     bars = axb.bar(labels, vals, color=colors, edgecolor="white")
     axb.bar_label(bars, labels=[f"{v:,}" for v in vals], padding=2, fontsize=7)
     axb.set_ylim(0, max(vals) * 1.18)
     axb.set_ylabel("Annotated proteins")
     axb.set_title(
         f"Rank of the UniProt family (n={s['n_comparable']:,})\n"
-        f"top-1 {s['top_1']:.0%} · in top-{TOP_K} {s['top_k']:.0%}"
+        f"top-1 {s['top_1']:.0%} · in top-{TOP_K} {s['top_k']:.0%}",
+        fontsize=TITLE_FS_COMPACT,
     )
     panel_label(axb, "B")
 

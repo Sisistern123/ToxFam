@@ -2,7 +2,7 @@
 
 A compact, proportional, two-stream funnel that reads left-to-right: one
 UniProtKB/Swiss-Prot query forks (on the KW-0800 toxin keyword) into a toxin
-lane (amber, up) and a non-toxin lane (grey, down), each distilled through the
+lane (green, up) and a non-toxin lane (slate, down), each distilled through the
 same three count-changing checkpoints to the final stratified splits.
 
 Design decisions (house style + figure-methodology research, 2026-07):
@@ -33,50 +33,59 @@ Design decisions (house style + figure-methodology research, 2026-07):
     uncluttered. Okabe-Ito colour-blind-safe palette; lanes are labelled, never
     colour-only.
 
-The counts are the frozen UniProt-snapshot numbers; they mirror
-``manuscript/dataset_numbers.tex`` (the LaTeX single source of truth shared with
-Supplementary Table ``tab:dataset_pipeline``). The manuscript lives in a separate
-(git-ignored) repository, so the values are duplicated here with matching content;
-keep the two in sync when the snapshot changes.
+The counts come from :mod:`paper.figures.dataset_numbers`, which computes them from the
+tracked artifacts and also generates ``manuscript/dataset_numbers.tex`` (the macros behind
+Supplementary Table ``tab:dataset_pipeline``). This figure and the manuscript therefore
+read one source; they used to hold separate hand-maintained copies with a "keep the two in
+sync" comment and nothing to enforce it.
 """
 
 from __future__ import annotations
 
+import json
 import math
 
 import matplotlib.pyplot as plt
 from matplotlib.patches import FancyArrowPatch, FancyBboxPatch
 
-from paper.figures._common import DOUBLE_COL, apply_style, save_fig
+from paper._paths import figures_output_dir
+from paper.figures._common import (
+    CLASSES,
+    DOUBLE_COL,
+    NEUTRAL,
+    apply_style,
+    save_fig,
+)
 
 # --- Okabe-Ito semantic colours (same hex as the method palette in _common) ---
-TOX = "#E69F00"  # amber = toxins (the focus)
-NON = "#BBBBBB"  # grey  = non-toxins (recessive majority)
-TOX_DK = "#a5670a"  # darker amber for text on white
-NON_DK = "#6f6f6f"
-DROP = "#B0455A"  # muted red = removed (never paired with green)
-OUT = "#4d6472"  # neutral slate = final ML-ready splits (not a method colour)
-INK = "#1f1f1f"
-MUTE = "#5f5f5f"
-FAINT = "#9a9a9a"  # faint track/gloss notes
+# Lane colours come from _common.CLASSES, which is deliberately disjoint from METHODS:
+# amber and grey are ToxFam and HBI everywhere else in the paper, so they cannot also mean
+# "toxin" and "non-toxin" here. See the note beside CLASSES.
+TOX = CLASSES["toxin"]  # green = toxins (the focus)
+NON = CLASSES["nontoxin"]  # slate = non-toxins (recessive majority)
+TOX_DK = CLASSES["toxin_dark"]  # darker green for text on white
+NON_DK = CLASSES["nontoxin_dark"]
+DROP = CLASSES["removed"]  # removal labels (a filter step, not a verdict)
+OUT = CLASSES["splits"]  # the splits hold BOTH classes, so they look like neither
+INK = NEUTRAL["ink"]
+MUTE = NEUTRAL["muted"]
+FAINT = NEUTRAL["faint"]  # faint track/gloss notes
 MONO = {"family": "monospace"}
 
-# Frozen pipeline counts (mirror manuscript/dataset_numbers.tex).
-C = {
-    "RawTox": 5927,
-    "RawNontox": 99846,
-    "FamTox": 5567,
-    "LenNontox": 98850,
-    "RepTox": 3416,
-    "RepNontox": 61763,
-    "RepTotal": 65179,
-    "SplitTrain": 45621,
-    "SplitVal": 9779,
-    "SplitTest": 9779,
-}
+
+def _counts() -> dict[str, int]:
+    """Pipeline counts, from the generated manifest (regenerate: make dataset-numbers)."""
+    path = figures_output_dir() / "dataset_numbers.json"
+    if not path.exists():
+        raise FileNotFoundError(
+            f"{path} not found -- generate it with 'make dataset-numbers' "
+            "(uv run python -m paper.figures.dataset_numbers)."
+        )
+    return json.loads(path.read_text())
 
 
 def _build() -> plt.Figure:
+    C = _counts()
     # Three count-changing checkpoints per lane; (header, toxin, non-toxin).
     levels = [
         ("Retrieved", C["RawTox"], C["RawNontox"]),
@@ -116,8 +125,8 @@ def _build() -> plt.Figure:
             17.5,
             9.0,
             boxstyle="round,pad=0.2,rounding_size=0.7",
-            fc="#f6f4ef",
-            ec="#d9d2c4",
+            fc=NEUTRAL["card"],
+            ec=NEUTRAL["card_edge"],
             lw=0.7,
         )
     )
@@ -135,7 +144,13 @@ def _build() -> plt.Figure:
         ["taxonomy:Metazoa", "AND reviewed:true", "AND fragment:false"]
     ):
         ax.text(
-            2.6, 1.3 - j * 1.9, t, fontsize=5.9, color="#444444", va="center", **MONO
+            2.6,
+            1.3 - j * 1.9,
+            t,
+            fontsize=5.9,
+            color=NEUTRAL["muted"],
+            va="center",
+            **MONO,
         )
 
     # clean straight fork: one query splits on the KW-0800 keyword into two streams
@@ -302,7 +317,7 @@ def _build() -> plt.Figure:
                 arrowprops=dict(arrowstyle="-|>", color=TOX, lw=0.9),
             )
 
-    # --- transitions: per-lane removals (red) + shared centre transforms (grey italic) ---
+    # --- transitions: per-lane removals (red) + shared centre transforms (muted italic) ---
     # each removal is vertically centred within its lane's tapering flow band at the gap
     def drop(xm, yc, cnt, reason):
         ax.text(

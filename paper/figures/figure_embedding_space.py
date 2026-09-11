@@ -26,8 +26,18 @@ from matplotlib.lines import Line2D
 from sklearn.model_selection import cross_val_score
 from sklearn.neighbors import KNeighborsClassifier
 
-from paper._paths import protspace_bundle_dir
-from paper.figures._common import DOUBLE_COL, apply_style, console, save_fig
+from paper._paths import manuscript_tex_target, protspace_bundle_dir
+from paper.figures._common import (
+    CLASSES,
+    DOUBLE_COL,
+    FAMILY,
+    FIG_DIR,
+    NEUTRAL,
+    SUBSTRUCTURE,
+    apply_style,
+    console,
+    save_fig,
+)
 from toxfam._paths import processed_dir, raw_dir
 
 PROJECTION = "ProtT5 — UMAP 2"
@@ -52,30 +62,24 @@ FAMILY_ORDER = [
     "Snaclec",  # isolates
 ]
 
-# Kelly's first nine "maximum contrast" colours. Chosen over an Okabe-Ito-based
-# alternative that scored better on paper (normal deltaE 13.5 / deutan 7.6 vs Kelly's
-# 12.4 / protan 3.1) -- Kelly reads better at this mark size against the grey backdrop.
-# Neither clears the floors: nine categories exceed what categorical colour can separate,
-# so the ordering below matters. The five crowded-core families take the most separable
-# hues; Kelly's protan-confusable pair (#0067A5 vs #875692) is split across core and
-# isolate so the two never sit adjacent on the page.
-FAMILY_COLORS = [
-    "#F38400",
-    "#0067A5",
-    "#BE0032",
-    "#008856",
-    "#875692",
-    "#F3C300",
-    "#E68FAC",
-    "#C2B280",
-    "#A1CAF1",
-]
-FALLBACK_COLOR = "#999999"
+# Nine nominal family identities. The palette is Paul Tol's "muted" set and lives in
+# _palette.FAMILY; it replaced Kelly's maximum-contrast nine on measurement, not taste.
+# Kelly separates better for a normal-vision reader (min Delta-E 35.0 against Tol's 22.8)
+# and collapses for a protanope (8.6 against 15.6), which is the reader this figure has
+# to work for. Nine categories still exceeds what colour alone can carry, so the ORDER
+# below matters: the five crowded-core families take the most separable hues.
+FAMILY_COLORS = FAMILY
+FALLBACK_COLOR = NEUTRAL["fallback"]
 N_FAMILIES = len(FAMILY_ORDER)
 
-GREY = "#D9D9D9"  # backdrop / residual category
-TOXIN_DARK = "#333333"  # not blue: blue is a FAMILY colour in panel B, in both palettes
-INK = "#333333"  # axis glyph + panel furniture
+GREY = NEUTRAL["backdrop"]  # residual "everything else" category in panel B
+# Panel A is a binary overlay, so it uses the manuscript's CLASS colours: toxin is the
+# same green here as in the pipeline figure, non-toxin the same slate. It used to be
+# black-on-grey, which made "toxin" mean one colour in Fig. 1 and another here for no
+# reason other than that blue was taken -- and blue is not the toxin colour anywhere.
+TOXIN = CLASSES["toxin"]
+NONTOXIN = CLASSES["nontoxin"]
+INK = NEUTRAL["ink"]  # axis glyph + panel furniture
 
 # Legends sit INSIDE the axes to buy plot width at fixed journal column width, so the
 # curated family names have to be shortened to fit. Counts stay: they carry the class
@@ -228,10 +232,14 @@ def axis_glyph(ax) -> None:
     )
 
 
-# Sub-family colours for the inset. Three classes only, so these are drawn from the
-# validated six-slot set and stay clear of the family hues used in the main panel.
+# Sub-family colours for the inset. P-I/P-II/P-III is an ORDERED variable -- it counts
+# domains -- so it gets a sequential lightness ramp rather than three categorical hues.
+# That is also the honest encoding: the note beside this figure says the separation
+# tracks domain count, and therefore length, rather than anything the model learned.
+# The three used to be the toxin green, the ToxFam amber and an Okabe-Ito blue, i.e.
+# three colours that already meant something else in this manuscript.
 SVMP_CLASSES = ["P-I", "P-II", "P-III"]
-SVMP_COLORS = {"P-I": "#009E73", "P-II": "#E69F00", "P-III": "#56B4E9"}
+SVMP_COLORS = dict(zip(SVMP_CLASSES, SUBSTRUCTURE))
 
 
 def svmp_class(families: str) -> str | None:
@@ -405,7 +413,10 @@ def svmp_inset(ax, tox: pd.DataFrame) -> tuple[float, float, float, int]:
                 ha=ha,
                 va=va,
                 fontsize=6,
-                color=SVMP_COLORS[cls],
+                # NOT SVMP_COLORS[cls]: the ramp's light end is a legible marker fill
+                # and an illegible 6 pt label. One dark ink for all three labels; the
+                # markers still carry the ordering.
+                color=SUBSTRUCTURE[-1],
                 fontweight="bold",
             )
 
@@ -495,6 +506,31 @@ def cluster_stats(toxin_dir: Path) -> dict[str, float]:
     return dict(zip(umap["metric"], umap["value"]))
 
 
+def _emit_macros(macros: dict[str, str]) -> None:
+    r"""Write the embedding-space readouts as \newcommand macros.
+
+    They used to be printed to the console and typed into the manuscript by hand, in
+    two places at once -- the Results and the supplementary embedding-space note -- for
+    numbers that move whenever the projection is refitted. Same contract as
+    ``numbers_manifest.py``: generated here, synced into the manuscript checkout when
+    one is present, never edited in place.
+    """
+    header = [
+        "% Auto-generated by paper/figures/figure_embedding_space.py -- DO NOT EDIT BY HAND.",
+        "% Readouts of the frozen ProtT5 projection, cited in the Results and in the",
+        "% supplementary embedding-space note. Regenerate with `make fig-supp-embedding-space`.",
+        "",
+    ]
+    body = [f"\\newcommand{{\\{k}}}{{{v}}}" for k, v in macros.items()]
+    text = "\n".join(header + body) + "\n"
+    FIG_DIR.mkdir(parents=True, exist_ok=True)
+    (FIG_DIR / "embedding_numbers.tex").write_text(text)
+    target = manuscript_tex_target("embedding_numbers.tex")
+    if target is not None:
+        target.write_text(text)
+        console.print(f"synced macros -> {target}")
+
+
 def main(
     out_dir: Path | None = None,
     toxin_dir: Path | None = None,
@@ -514,19 +550,19 @@ def main(
     tox_global = df[df["toxic"] == "toxin"]
     # The backdrop is context, not a series: smaller and lighter than the focal points
     # so 61,763 grey markers cannot out-shout 3,416 blue ones.
-    ax_a.scatter(non["x"], non["y"], s=0.8, c=GREY, linewidths=0, rasterized=True)
+    ax_a.scatter(non["x"], non["y"], s=0.8, c=NONTOXIN, linewidths=0, rasterized=True)
     ax_a.scatter(
         tox_global["x"],
         tox_global["y"],
         s=2.0,
-        c=TOXIN_DARK,
+        c=TOXIN,
         linewidths=0,
         rasterized=True,
     )
     ax_a.legend(
         handles=[
-            legend_handle(GREY, "non-toxin", len(non)),
-            legend_handle(TOXIN_DARK, "toxin", len(tox_global)),
+            legend_handle(NONTOXIN, "non-toxin", len(non)),
+            legend_handle(TOXIN, "toxin", len(tox_global)),
         ],
         loc="upper right",
         **LEGEND_KW,
@@ -603,6 +639,20 @@ def main(
     console.print(
         "toxin UMAP vs family: "
         f"ARI={stats['adjusted_rand']:.3f}, NMI={stats['normalized_mutual_info']:.3f}"
+    )
+    _emit_macros(
+        {
+            "ConoSuperAcc": f"{con_acc:.3f}",
+            "ConoSuperBase": f"{con_base:.3f}",
+            "ConoSuperN": str(con_n),
+            "PurityThreeFinger": f"{purity['Three-finger toxin'] * 100:.0f}",
+            "PurityScoloptoxin": f"{purity['Scoloptoxin'] * 100:.0f}",
+            "SvmpClassAcc": f"{svmp_acc:.3f}",
+            "SvmpLengthAcc": f"{svmp_len_acc:.3f}",
+            "SvmpClassBase": f"{svmp_base:.3f}",
+            "ToxinUmapARI": f"{stats['adjusted_rand']:.3f}",
+            "ToxinUmapNMI": f"{stats['normalized_mutual_info']:.3f}",
+        }
     )
 
 

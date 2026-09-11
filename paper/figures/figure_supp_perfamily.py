@@ -22,6 +22,7 @@ from paper.figures._common import (
     DOUBLE_COL,
     METHOD_DARK,
     METHODS,
+    NEUTRAL,
     apply_style,
     load_preds,
     save_fig,
@@ -49,7 +50,9 @@ def main() -> None:
     hbi = load_preds("test_set", "hbi")
     nn = load_preds("test_set", "nn_combined_run")
 
-    fig, ax = plt.subplots(figsize=(DOUBLE_COL, 6.4), layout="constrained")
+    # Shortened from 6.4 in: at 6.4 the float took a near-empty page of its own.
+    # Do not narrow it -- the 37 family labels are why it is full width.
+    fig, ax = plt.subplots(figsize=(DOUBLE_COL, 5.2), layout="constrained")
 
     # --- per-family MCC dumbbell (HBI vs ToxFam), sorted by ToxFam MCC ---
     fam = (
@@ -62,7 +65,9 @@ def main() -> None:
     hbi_lbl, hbi_col = METHODS["hbi"]
     nn_lbl, nn_col = METHODS["nn_combined_run"]
     # connector first, then HBI, then ToxFam on top; uniform marker size (support is in labels).
-    ax.hlines(y, fam["mcc_b"], fam["mcc_a"], color="#cccccc", lw=0.9, zorder=1)
+    ax.hlines(
+        y, fam["mcc_b"], fam["mcc_a"], color=NEUTRAL["backdrop"], lw=0.9, zorder=1
+    )
     ax.scatter(
         fam["mcc_b"],
         y,

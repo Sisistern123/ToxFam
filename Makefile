@@ -52,7 +52,7 @@ check:
 	uv run ruff format --check src tests paper
 	uv run pytest -q
 
-.PHONY: setup check figures numbers verify preprocessing-audit \
+.PHONY: setup check figures numbers dataset-numbers verify preprocessing-audit \
         fig-pipeline fig-capability fig-confidence-curation \
         fig-supp-accuracy fig-supp-perfamily fig-supp-nonmetazoan fig-supp-unreviewed \
         fig-supp-embedding-space fig-supplementary protspace coverage
@@ -69,7 +69,7 @@ verify:
 ## Build every manuscript figure + the results-numbers manifest.
 ## `numbers` self-verifies (see numbers_manifest._gate_on_pipeline_verification);
 ## the explicit `verify` prerequisite gives an early, clear failure.
-figures: verify numbers fig-pipeline fig-capability fig-confidence-curation \
+figures: verify dataset-numbers numbers fig-pipeline fig-capability fig-confidence-curation \
          fig-supp-accuracy fig-supp-perfamily fig-supp-nonmetazoan \
          fig-supp-unreviewed fig-supp-embedding-space fig-supplementary
 
@@ -87,6 +87,12 @@ preprocessing-audit:
 ## Also emits the shareable .parquetbundle files for protspace.app/explore.
 protspace:
 	uv run python -m paper.protspace_bundles $(FORCE)
+
+## Emit paper/figures/output/dataset_numbers.{json,tex} (the data-pipeline counts)
+## and sync the .tex into the manuscript. figure_pipeline reads the JSON, so this
+## must run before fig-pipeline on a clean tree.
+dataset-numbers:
+	$(PY).dataset_numbers
 
 ## Emit paper/figures/output/results_numbers.{json,tex} (every cited number).
 numbers:

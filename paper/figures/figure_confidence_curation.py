@@ -8,10 +8,15 @@ replaces the earlier n=63 adjudication, which was judged against a split since
 shown to be contaminated.
 
 Left panel  — held-out test set: calibrated-confidence rainclouds (half-violin +
-              jittered points) for correct vs incorrect predictions; a zoom box marks
-              the >= 0.8 error scatter that the right panel expands.
-Right panel — the confident errors decomposed by curator verdict (vindicated /
+              jittered points) for correct vs incorrect predictions; a box marks the
+              >= 0.8 errors, labelled with how many of the right panel they are.
+Right panel — ALL confident errors decomposed by curator verdict (vindicated /
               partial / false-positive), filled = held-out test, hollow = train/val.
+
+The two panels are deliberately NOT the same population: the right one pools test,
+validation and training, because 83 test errors is too thin a base for a verdict
+breakdown. It used to be joined to the left panel's box by a dashed zoom connector,
+which claimed the opposite. The connector is gone and the box carries its own count.
 """
 
 from __future__ import annotations
@@ -19,14 +24,16 @@ from __future__ import annotations
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.lines import Line2D
-from matplotlib.patches import ConnectionPatch, FancyBboxPatch
+from matplotlib.patches import FancyBboxPatch
 
 from paper._paths import curated_verdicts_tsv, curation_key_tsv
 from paper.figures._common import (
     ADJUDICATION,
     DOUBLE_COL,
+    NEUTRAL,
     apply_style,
     load_preds,
+    panel_label,
     save_fig,
 )
 from paper.stats import load_curated_verdicts
@@ -36,7 +43,7 @@ BLUE, AMBER, RED = (
     ADJUDICATION["partial"],
     ADJUDICATION["incorrect"],
 )
-GREY = "#BBBBBB"
+GREY = NEUTRAL["faint"]  # furniture; NOT METHOD["hbi"], which is also grey
 COL = {"correct": BLUE, "partial": AMBER, "incorrect": RED}
 MARK = {"correct": "o", "partial": "^", "incorrect": "s"}
 ORDER = ["correct", "partial", "incorrect"]
@@ -117,6 +124,10 @@ def main() -> None:
     fig = plt.figure(figsize=(DOUBLE_COL, 3.5))
     axL = fig.add_axes([0.085, 0.16, 0.40, 0.72])
     axR = fig.add_axes([0.66, 0.16, 0.26, 0.72])
+    # The caption and two Results passages address these as (A) and (B); without the
+    # tags the artwork gave the reader nothing to match those references to.
+    panel_label(axL, "A")
+    panel_label(axR, "B")
 
     # -- left: correct(left) + incorrect(right); violin-left, points-right --
     inc_xmin = inc_xmax = 1.0
@@ -167,6 +178,18 @@ def main() -> None:
             zorder=6,
         )
     )
+    # The box is the TEST confident errors only; panel B pools test, validation and
+    # training for curation power. Saying so here is the whole reason the dashed
+    # "this box expands over there" connector was removed: it was not true.
+    axL.text(
+        bx1 + 0.03,
+        (by0 + by1) / 2,
+        f"{int((ci >= 0.8).sum())} test errors\nof the {tot} in B",
+        fontsize=6.5,
+        color=NEUTRAL["muted"],
+        ha="left",
+        va="center",
+    )
 
     # -- right: confident errors zoomed; y-axis on right; filled/hollow split --
     for i, k in enumerate(ORDER):
@@ -205,7 +228,10 @@ def main() -> None:
         )
     axR.set_xticks([2, 1, 0])
     axR.set_xticklabels(
-        [f"{VLABEL[k]}\n{N[k]}/{tot} ({N[k] / tot:.0%})" for k in ORDER], fontsize=7
+        # The denominator is in the panel title, so repeating it three times here only
+        # made the three tick labels wide enough to collide.
+        [f"{VLABEL[k]}\n{N[k]} ({N[k] / tot:.0%})" for k in ORDER],
+        fontsize=7,
     )
     for t, k in zip(axR.get_xticklabels(), ORDER):
         t.set_color(COL[k])
@@ -214,7 +240,12 @@ def main() -> None:
     axR.yaxis.set_label_position("right")
     axR.yaxis.tick_right()
     axR.set_ylabel("Calibrated confidence  ($\\geq$0.8 zoom)")
-    axR.set_title("Confident errors", loc="left", fontsize=8.5, fontweight="bold")
+    axR.set_title(
+        f"Confident errors (all {tot} reviewed)",
+        loc="left",
+        fontsize=8.5,
+        fontweight="bold",
+    )
     axR.tick_params(bottom=False)
     axR.spines["top"].set_visible(False)
     axR.spines["left"].set_visible(False)
@@ -241,19 +272,6 @@ def main() -> None:
         handletextpad=0.3,
         borderpad=0.3,
     )
-
-    for yb in (by0, by1):
-        con = ConnectionPatch(
-            xyA=(bx1, yb),
-            coordsA=axL.transData,
-            xyB=(-0.55, yb),
-            coordsB=axR.transData,
-            color="0.55",
-            lw=0.7,
-            ls=(0, (3, 2)),
-        )
-        con.set_in_layout(False)
-        fig.add_artist(con)
 
     save_fig(fig, "figure_confidence_curation")
 

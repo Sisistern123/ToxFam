@@ -136,7 +136,9 @@ externally, by design:
 
 ## Results (detail)
 
-`results/comparison/` (full 9,779) and `results/comparison_clean/` (clean subset):
+`results/comparison/` (full 9,779), `results/comparison_clean/` (ToxDL 2.0's overlap
+removed) and `results/comparison_clean_both/` (ToxDL 2.0's **and** ToxinPred 3.0's
+overlaps removed — 8,898 proteins, 169 toxins; 8,216 common, 154 toxins, 1.87% prior):
 - `metrics_full.csv` — per method on its own scored subset (with coverage).
 - `metrics_common.csv` — all methods on the common subset (full: 9,019; clean:
   8,249). Carries `mcc` (at each method's operating threshold) and `mcc_at_0.5`
@@ -161,15 +163,27 @@ uv run python scripts/external_tools/compare.py \
   --scores-base scripts/external_tools/results/scores \
   --labels-dir  scripts/external_tools/results/ground_truth \
   --out /tmp/toxfam_extcmp
-# contamination-excluded clean subset (toxins ToxDL 2.0 never trained on)
+# contamination-excluded subset (toxins ToxDL 2.0 never trained on)
 uv run python scripts/external_tools/compare.py \
   --scores-base scripts/external_tools/results/scores \
   --labels-dir  scripts/external_tools/results/ground_truth_clean \
   --out /tmp/toxfam_extcmp_clean
+# both tools' overlaps removed -- the subset the manuscript's memo rows sit on.
+# Rebuild its labels first if ground_truth_clean_both/ is missing:
+#   uv run python scripts/external_tools/toxinpred3_overlap.py
+uv run python scripts/external_tools/compare.py \
+  --scores-base scripts/external_tools/results/scores \
+  --labels-dir  scripts/external_tools/results/ground_truth_clean_both \
+  --out /tmp/toxfam_extcmp_clean_both
 ```
-This reproduces `results/comparison/` and `results/comparison_clean/` exactly from
-the committed per-protein scores + committed ground-truth labels (no network, no
-model).
+This reproduces `results/comparison{,_clean,_clean_both}/` exactly from the committed
+per-protein scores + committed ground-truth labels (no network, no model).
+
+**ToxinPred 3.0 is contaminated too.** It was long treated here as a clean comparator;
+it is not. Its positives were curated partly from reviewed Swiss-Prot entries matching
+the keyword "toxin" (i.e. KW-0800) and de-duplicated for exact matches only, so 79 of
+our 515 test toxins are byte-identical to one of its 5,518 training positives. See
+`results/notes/toxinpred3_run_notes.md` and `toxinpred3_overlap.py`.
 
 **B. Full reproduction from scratch** (needs `uv run toxfam download-data` first, to
 fetch `training_data.csv` + embeddings + taxonomy, which are not in git):
@@ -231,9 +245,11 @@ scripts/external_tools/
 └── results/
     ├── RESULTS_9779.md       # full writeup (both tables + contamination)
     ├── comparison/           # full 9,779: metrics_full, metrics_common, paired_vs_toxfam, roc_pr.png, summary.txt
-    ├── comparison_clean/     # contamination-excluded clean subset (same files)
+    ├── comparison_clean/     # ToxDL 2.0's overlap removed (same files)
+    ├── comparison_clean_both/ # ToxDL 2.0's AND ToxinPred 3.0's overlaps removed
     ├── ground_truth/         # test/val_labels.csv (id,seq_len,is_toxic,family; NO seqs) + toxdl2_seen_in_train.txt
-    ├── ground_truth_clean/   # clean-subset test_labels (8,929) + full val_labels for thresholding
+    ├── ground_truth_clean/   # ToxDL-2.0-clean test_labels (8,951) + full val_labels for thresholding
+    ├── ground_truth_clean_both/ # both tools' overlaps removed (8,898); built by toxinpred3_overlap.py
     ├── notes/                # per-tool provenance: toxinpred3, toxdl2 (+ feasibility)
     └── scores/               # per-protein predictions (accession + score; no sequences)
 ```

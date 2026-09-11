@@ -72,6 +72,55 @@ def nontoxin_best_hit_rate(preds: pd.DataFrame) -> dict:
     }
 
 
+def hbi_toxin_error_decomposition(preds: pd.DataFrame) -> dict:
+    """Split HBI's toxin-side errors into the two that best-hit transfer cannot avoid.
+
+    A non-toxin best hit can never equal a toxin family, and a query with no hit
+    carries no label to transfer; both are errors by construction rather than by
+    misjudgement. What is left is the number of toxins homology reached and still
+    placed in the wrong family, and its complement -- accuracy conditional on the
+    best hit being a toxin -- is how well homology does once it clears the boundary.
+
+    Emitted as macros because the Results state the whole decomposition. It was
+    hand-derived for several drafts and drifted a full protein out of step with
+    ``\\HbiNontoxBestHit`` beside it (83/77/438/432 against the 82/76/439/433 here)
+    after the split was re-pinned.
+    """
+    tox = preds[toxin_mask(preds)]
+    pred = tox["predicted_label"].astype(str)
+    no_hit = pred == NO_HIT_LABEL
+    nontoxin = pred.str.lower().isin(NONTOXIN_LABELS)
+    structural = (no_hit | nontoxin).to_numpy()
+    wrong = ~correctness(tox)
+
+    # Both structural modes are errors by construction. If one ever scores as correct,
+    # a non-toxin label has become a legal toxin family (or NO_HIT_LABEL has), and the
+    # "77 of 83" framing in the Results would silently stop being a decomposition.
+    if (structural & ~wrong).any():
+        raise ValueError(
+            "a structural HBI case scored as correct -- the label vocabularies have "
+            "collided, so the toxin-error decomposition is no longer a partition"
+        )
+
+    n_conditional = int((~structural).sum())
+    n_conditional_correct = int((~structural & ~wrong).sum())
+    return {
+        "n_toxins": int(len(tox)),
+        "n_errors": int(wrong.sum()),
+        "n_nontoxin_best_hit": int(nontoxin.sum()),
+        "n_no_hit": int(no_hit.sum()),
+        "n_structural": int(structural.sum()),
+        "n_residual": int((wrong & ~structural).sum()),
+        "n_toxin_best_hit": n_conditional,
+        "n_toxin_best_hit_correct": n_conditional_correct,
+        "acc_given_toxin_best_hit": (
+            float(n_conditional_correct / n_conditional)
+            if n_conditional
+            else float("nan")
+        ),
+    }
+
+
 def aligned_correctness(
     preds_a: pd.DataFrame, preds_b: pd.DataFrame
 ) -> tuple[np.ndarray, np.ndarray]:
@@ -700,13 +749,19 @@ def curation_summary(curated_path: str | Path, key_path: str | Path) -> dict:
 # ---------------------------------------------------------------------------
 
 
-def nonmetazoan_toxicity_recall(preds: pd.DataFrame, *, threshold: float = 0.5) -> dict:
+def nonmetazoan_toxicity_recall(preds: pd.DataFrame, *, threshold: float) -> dict:
     """Recall of the combined model on the non-metazoan set.
 
     Every entry is a reviewed KW-0800 toxin, so every row is a true positive and recall
     is the *only* measurable quantity — specificity would need a non-metazoan non-toxin
     set, which does not exist. Reported alongside the median P(toxic) because a recall
     figure alone hides whether the misses are near-misses or confident rejections.
+
+    ``threshold`` is deliberately required. It used to default to 0.5, which is the WRONG
+    operating point: ``toxfam predict`` emits a Platt-calibrated p_toxic thresholded at
+    t* ~ 0.029, so the default understated recall by an order of magnitude (13/812 against
+    218/812). Omitting it is now a TypeError rather than a plausible-looking wrong number
+    — pass ``paper.figures._common.deployed_binary_threshold()``.
     """
     p = preds["p_toxic"].astype(float)
     return {

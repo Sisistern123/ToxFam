@@ -14,6 +14,7 @@ from paper.stats import (
     binary_reliability,
     correctness,
     curation_summary,
+    hbi_toxin_error_decomposition,
     length_support_mask,
     load_curated_verdicts,
     local_linear_accuracy,
@@ -744,6 +745,43 @@ def _best_hit_fixture() -> pd.DataFrame:
             ],
         }
     )
+
+
+def test_hbi_toxin_error_decomposition_is_a_partition():
+    """structural + residual == errors, on the same fixture as the best-hit rate.
+
+    The Results state the decomposition as "N of M", so the two parts have to add up
+    to the whole. They were hand-derived until 2026-09-11 and had drifted a protein
+    out of step with the macro printed in the same sentence.
+    """
+    d = hbi_toxin_error_decomposition(_best_hit_fixture())
+    assert d["n_toxins"] == 4
+    assert d["n_errors"] == 2  # A (nontox best hit) and B (no hit); C and D are right
+    assert d["n_nontoxin_best_hit"] == 1
+    assert d["n_no_hit"] == 1
+    assert d["n_structural"] == d["n_nontoxin_best_hit"] + d["n_no_hit"]
+    assert d["n_structural"] + d["n_residual"] == d["n_errors"]
+    assert d["n_toxin_best_hit"] == d["n_toxins"] - d["n_structural"]
+
+
+def test_hbi_toxin_error_decomposition_conditional_accuracy():
+    """Accuracy conditional on the best hit being a toxin ignores structural cases."""
+    d = hbi_toxin_error_decomposition(_best_hit_fixture())
+    assert d["n_toxin_best_hit"] == 2  # C and D
+    assert d["n_toxin_best_hit_correct"] == 2
+    assert d["acc_given_toxin_best_hit"] == pytest.approx(1.0)
+
+
+def test_hbi_toxin_error_decomposition_rejects_a_correct_structural_case():
+    """A structural case that scores CORRECT means the label vocabularies collided.
+
+    ``no hit`` as a ground-truth label would make the decomposition stop partitioning
+    the errors, and the Results' "N of M" would quietly become two overlapping counts.
+    """
+    df = _best_hit_fixture()
+    df.loc[df["identifier"] == "B", "actual_label"] = "no hit"
+    with pytest.raises(ValueError, match="no longer a partition"):
+        hbi_toxin_error_decomposition(df)
 
 
 def test_nontoxin_best_hit_rate_counts_only_true_toxins():

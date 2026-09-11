@@ -5,7 +5,8 @@ colour-blind-safe palette research (see
 docs/superpowers/specs/2026-06-30-figure-overhaul-design.md):
 
 * Build at final column width (double = 178 mm = 7.008 in) -- never draw large and
-  let the journal shrink it (that is what made earlier text illegible).
+  let the journal shrink it (that is what made earlier text illegible). See apply_style()
+  for why the preprint class still downscales these by ~3.5%.
 * Arial, white opaque background, 0.5 pt spines, fonts embedded as TrueType.
 * Okabe-Ito method palette (grey/blue/orange) + Paul Tol high-contrast
   adjudication ramp (blue/amber/red, luminance-ordered, greyscale-safe).
@@ -22,6 +23,7 @@ import pandas as pd
 from rich.console import Console
 
 from paper._paths import figures_output_dir, model_run_dir
+from paper.figures import _palette as _P
 from toxfam._paths import (
     benchmark_dir,
     evaluation_data_dir,
@@ -38,13 +40,18 @@ FIG_DIR = figures_output_dir()
 SINGLE_COL = 86 / 25.4  # 3.386 in
 DOUBLE_COL = 178 / 25.4  # 7.008 in
 
-# Consistent, colour-blind-safe method colours/labels across all figures.
-# Okabe-Ito blue/orange is the most CVD-robust contrast pair and is greyscale
-# distinguishable; grey pushes the homology baseline visually behind the models.
+# Two-line panel titles do not fit at SINGLE_COL in the 9 pt axes.titlesize the style
+# sets, so single-column figures step down to this. Named here so the next single-column
+# figure does not rediscover the number, and so it moves with the rest of the type scale.
+TITLE_FS_COMPACT = 8
+
+# The palette lives in _palette.py: one hex, one meaning, measured against simulated
+# colour blindness and enforced by paper/tests/test_palette.py. Nothing here defines a
+# colour; these names exist so the figure scripts keep reading the way they did.
 METHODS = {
-    "hbi": ("HBI", "#BBBBBB"),
-    "nn_standard_run": ("ToxFam (emb)", "#0072B2"),
-    "nn_combined_run": ("ToxFam (emb+tax)", "#E69F00"),
+    "hbi": ("HBI", _P.METHOD["hbi"]),
+    "nn_standard_run": ("ToxFam (emb)", _P.METHOD["toxfam_emb"]),
+    "nn_combined_run": ("ToxFam (emb+tax)", _P.METHOD["toxfam_embtax"]),
 }
 # Redundant (non-colour) encoding so series survive total colour loss.
 METHOD_MARKER = {"hbi": "o", "nn_standard_run": "^", "nn_combined_run": "s"}
@@ -56,26 +63,30 @@ METHOD_LINESTYLE = {
 # Canonical method order (the METHODS insertion order). Single source of truth so the
 # figure scripts never re-hardcode the key list and drift from the palette.
 METHOD_ORDER = list(METHODS)
-# Hand-tuned darker variants of the method colours, for text labels and marker edges
-# where the pale canonical fill needs more contrast. Kept beside METHODS so the shade
-# and its base colour live in one place (used by figure2 labels + figure3 edges).
-METHOD_DARK = {"hbi": "#6f6f6f", "nn_combined_run": "#b06a00"}
-
-# Toxin / non-toxin CLASS colours, for data-side figures (the preprocessing audit).
-# Deliberately a separate namespace from METHODS: the same Okabe-Ito hexes mean
-# different things there (#E69F00 = the combined model, not "toxin"), and a supplement
-# carrying both must not let one legend be read as the other.
-CLASSES = {
-    "toxin": "#E69F00",
-    "nontoxin": "#0072B2",
-    "neutral": "#BBBBBB",
-    "accent": "#009E73",
+METHOD_DARK = {
+    "hbi": _P.METHOD_DARK["hbi"],
+    "nn_standard_run": _P.METHOD_DARK["toxfam_emb"],
+    "nn_combined_run": _P.METHOD_DARK["toxfam_embtax"],
 }
 
-# Ordered good->bad adjudication ramp (Paul Tol high-contrast). NEVER green=good/
-# red=bad (the exact deuteranopia failure case); this ramp is luminance-ordered so
-# it reads as good->bad even in greyscale.
-ADJUDICATION = {"correct": "#004488", "partial": "#DDAA33", "incorrect": "#BB5566"}
+# Data-side classes, their darker shades, and the neutral furniture greys.
+CLASSES = {
+    "toxin": _P.CLASS["toxin"],
+    "toxin_dark": _P.CLASS_DARK["toxin"],
+    "nontoxin": _P.CLASS["nontoxin"],
+    "nontoxin_dark": _P.CLASS_DARK["nontoxin"],
+    "splits": _P.CLASS["splits"],
+    "removed": _P.CLASS["removed"],
+}
+NEUTRAL = _P.NEUTRAL
+VERDICT = _P.VERDICT
+RANK = _P.RANK
+FAMILY = _P.FAMILY
+SUBSTRUCTURE = _P.SUBSTRUCTURE
+CALIBRATION = _P.CALIBRATION
+
+# Kept as a name because call sites say ADJUDICATION; the colours are VERDICT's.
+ADJUDICATION = _P.VERDICT
 
 # Toxin-only sequence-length bins, shared by figure2 and numbers_manifest so the
 # plotted per-bin accuracies and the cited numbers stay keyed to identical edges.
@@ -160,6 +171,28 @@ def model_vocab() -> set[str]:
     return set(json.loads(path.read_text()).values())
 
 
+def deployed_binary_threshold(run: str = "combined_run") -> float:
+    """The deployed binary operating point t*, from the run's Platt calibrator.
+
+    ``toxfam predict`` writes a CALIBRATED p_toxic and thresholds it with this same
+    value (``toxfam.prediction._read_optimized_threshold``), so 0.5 is NOT the decision
+    threshold -- scoring the non-metazoan set at 0.5 understated recall by an order of
+    magnitude (13/812 against 218/812). Read at call time, like :func:`model_vocab`, so
+    importing a figure module on a checkout without ``model_output/`` still works.
+    """
+    import json
+
+    path = model_run_dir(run) / "models" / "binary_calibrator.json"
+    if not path.exists():
+        raise FileNotFoundError(
+            f"deployed binary calibrator not found: {path}\n"
+            "Fetch the published checkpoints with 'uv run toxfam download-models', or "
+            f"deploy one with 'uv run toxfam eval binary model/model_output/{run} "
+            "--deploy'."
+        )
+    return float(json.loads(path.read_text())["threshold"])
+
+
 def test_set_class_list() -> list[str]:
     """The 38-class label space = sorted unique actual labels on the test set."""
     df = load_preds("test_set", "nn_combined_run")
@@ -178,8 +211,11 @@ def save_fig(fig: plt.Figure, name: str) -> None:
     so a broken render never lands in the manuscript automatically.
     """
     FIG_DIR.mkdir(parents=True, exist_ok=True)
+    # Both saves inherit savefig.dpi from apply_style(); see the note there for why a
+    # vector PDF needs a dpi at all. Kept as one policy so the deliverable and the
+    # preview cannot be given different resolutions.
     fig.savefig(FIG_DIR / f"{name}.pdf")  # vector, fonts embedded (rcParams)
-    fig.savefig(FIG_DIR / f"{name}.png", dpi=600)  # raster preview
+    fig.savefig(FIG_DIR / f"{name}.png")  # raster preview
     plt.close(fig)
     console.print(f"saved {name}.pdf / .png")
 
@@ -187,14 +223,35 @@ def save_fig(fig: plt.Figure, name: str) -> None:
 def apply_style() -> None:
     """Publication rcParams for Bioinformatics (OUP), built at final column size.
 
-    Font floor is 7 pt at final width (OUP minimum); body 8 pt. Built at true
-    column width so nothing is shrunk afterwards, keeping every label legible.
+    Font floor is 7 pt at final width (OUP minimum); body 8 pt.
+
+    Figures are built at the JOURNAL's spec (86 mm single / 178 mm double column), which
+    is what the standalone files handed to OUP production must satisfy. Note that this is
+    ~3.5% wider than the preprint class's own measure (\\textwidth = 488.5 pt = 171.7 mm
+    against the 178 mm build), so \\includegraphics[width=\\textwidth] downscales every
+    inclusion by 0.965 in main.pdf. Consequence: a 7 pt built label prints at 6.75 pt in
+    the preprint, just under the OUP floor. Do NOT "fix" this by retargeting the widths to
+    the class -- that would make the production files off-spec. If the floor has to hold in
+    the preprint too, raise the built sizes here instead (7 -> 7.5) and re-check every
+    figure for label collisions.
     """
     mpl.rcParams.update(
         {
             # fonts (>= 7 pt floor at final size; OUP/Nature minimum)
             "font.family": "sans-serif",
             "font.sans-serif": ["Arial", "Helvetica", "DejaVu Sans"],
+            # Arial has no monospace member, so name the mono stack explicitly --
+            # otherwise family="monospace" silently falls back to DejaVu Sans Mono.
+            "font.monospace": ["Courier New", "DejaVu Sans Mono"],
+            # mathtext defaults to the "dejavusans" fontset regardless of font.family,
+            # so every $...$ label (the ($n$=63) idiom, the $\approx$18 aa marker) was
+            # being set in DejaVu inside an otherwise-Arial figure. pdffonts showed
+            # DejaVuSans + DejaVuSans-Oblique embedded in 5 of 8 figures, including
+            # main-text Figs. 2 and 3. "custom" routes mathtext through the faces below.
+            "mathtext.fontset": "custom",
+            "mathtext.rm": "Arial",
+            "mathtext.it": "Arial:italic",
+            "mathtext.bf": "Arial:bold",
             "font.size": 8,
             "axes.titlesize": 9,
             "axes.titleweight": "bold",
@@ -228,16 +285,24 @@ def apply_style() -> None:
             "axes.facecolor": "white",
             "savefig.facecolor": "white",
             "figure.dpi": 150,
+            # dpi matters even for a vector PDF: any rasterized=True layer (the jitter
+            # clouds in figure_capability and figure_confidence_curation) is embedded at
+            # this resolution. Set here as export policy rather than per-savefig, so the
+            # deliverable PDF and the preview PNG cannot be handed different values --
+            # the PDF used to inherit figure.dpi=150 while the PNG got 600.
+            "savefig.dpi": 600,
             "legend.frameon": False,
         }
     )
 
 
 def panel_label(ax, letter, *, dx=-0.06, dy=1.02):
-    """Lowercase bold panel label in axes-fraction coords (Bioinformatics/OUP style).
+    """Bold panel label in axes-fraction coords (Bioinformatics/OUP style).
 
-    Placed just outside the top-left of the axes; ``letter`` should be the bare
-    letter (``"a"``), rendered as a bold lowercase tag.
+    Placed just outside the top-left of the axes. ``letter`` is the bare letter and is
+    rendered verbatim, so pass the case the caption uses -- every caller and every
+    manuscript caption uses uppercase (``"A"``), which is what the captions' ``(A)``
+    tags refer to.
     """
     ax.text(
         dx,
