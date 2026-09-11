@@ -23,6 +23,7 @@ import pandas as pd
 from rich.console import Console
 
 from paper._paths import figures_output_dir, model_run_dir
+from paper.figures import _palette as _P
 from toxfam._paths import (
     benchmark_dir,
     evaluation_data_dir,
@@ -44,13 +45,13 @@ DOUBLE_COL = 178 / 25.4  # 7.008 in
 # figure does not rediscover the number, and so it moves with the rest of the type scale.
 TITLE_FS_COMPACT = 8
 
-# Consistent, colour-blind-safe method colours/labels across all figures.
-# Okabe-Ito blue/orange is the most CVD-robust contrast pair and is greyscale
-# distinguishable; grey pushes the homology baseline visually behind the models.
+# The palette lives in _palette.py: one hex, one meaning, measured against simulated
+# colour blindness and enforced by paper/tests/test_palette.py. Nothing here defines a
+# colour; these names exist so the figure scripts keep reading the way they did.
 METHODS = {
-    "hbi": ("HBI", "#BBBBBB"),
-    "nn_standard_run": ("ToxFam (emb)", "#0072B2"),
-    "nn_combined_run": ("ToxFam (emb+tax)", "#E69F00"),
+    "hbi": ("HBI", _P.METHOD["hbi"]),
+    "nn_standard_run": ("ToxFam (emb)", _P.METHOD["toxfam_emb"]),
+    "nn_combined_run": ("ToxFam (emb+tax)", _P.METHOD["toxfam_embtax"]),
 }
 # Redundant (non-colour) encoding so series survive total colour loss.
 METHOD_MARKER = {"hbi": "o", "nn_standard_run": "^", "nn_combined_run": "s"}
@@ -62,34 +63,30 @@ METHOD_LINESTYLE = {
 # Canonical method order (the METHODS insertion order). Single source of truth so the
 # figure scripts never re-hardcode the key list and drift from the palette.
 METHOD_ORDER = list(METHODS)
-# Hand-tuned darker variants of the method colours, for text labels and marker edges
-# where the pale canonical fill needs more contrast. Kept beside METHODS so the shade
-# and its base colour live in one place (used by figure2 labels + figure3 edges).
-METHOD_DARK = {"hbi": "#6f6f6f", "nn_combined_run": "#b06a00"}
-
-# Toxin / non-toxin CLASS colours, for data-side figures (the pipeline figure, the
-# preprocessing audit). A separate namespace from METHODS -- and, since 2026-09-10, a
-# DISJOINT one. It used to reuse #E69F00 and #0072B2 with a comment saying the reader must
-# not confuse the two meanings; in practice they do, because every performance figure
-# trains them to read amber as ToxFam and grey as HBI, and then Fig. 1 asks them to read
-# amber as "toxin" and grey as "non-toxin". So: no hex appears in both dicts.
-#
-# Green (Okabe-Ito bluish green) is the toxin lane, slate the non-toxin majority. Both are
-# clear of METHODS (#BBBBBB / #0072B2 / #E69F00) and of the removal red (#B0455A) that
-# labels sit in on top of them, and they separate in greyscale by lightness.
-CLASSES = {
-    "toxin": "#009E73",
-    "toxin_dark": "#00654a",
-    "nontoxin": "#9DB4C0",
-    "nontoxin_dark": "#5b7280",
-    "neutral": "#BBBBBB",
-    "accent": "#CC79A7",
+METHOD_DARK = {
+    "hbi": _P.METHOD_DARK["hbi"],
+    "nn_standard_run": _P.METHOD_DARK["toxfam_emb"],
+    "nn_combined_run": _P.METHOD_DARK["toxfam_embtax"],
 }
 
-# Ordered good->bad adjudication ramp (Paul Tol high-contrast). NEVER green=good/
-# red=bad (the exact deuteranopia failure case); this ramp is luminance-ordered so
-# it reads as good->bad even in greyscale.
-ADJUDICATION = {"correct": "#004488", "partial": "#DDAA33", "incorrect": "#BB5566"}
+# Data-side classes, their darker shades, and the neutral furniture greys.
+CLASSES = {
+    "toxin": _P.CLASS["toxin"],
+    "toxin_dark": _P.CLASS_DARK["toxin"],
+    "nontoxin": _P.CLASS["nontoxin"],
+    "nontoxin_dark": _P.CLASS_DARK["nontoxin"],
+    "splits": _P.CLASS["splits"],
+    "removed": _P.CLASS["removed"],
+}
+NEUTRAL = _P.NEUTRAL
+VERDICT = _P.VERDICT
+RANK = _P.RANK
+FAMILY = _P.FAMILY
+SUBSTRUCTURE = _P.SUBSTRUCTURE
+CALIBRATION = _P.CALIBRATION
+
+# Kept as a name because call sites say ADJUDICATION; the colours are VERDICT's.
+ADJUDICATION = _P.VERDICT
 
 # Toxin-only sequence-length bins, shared by figure2 and numbers_manifest so the
 # plotted per-bin accuracies and the cited numbers stay keyed to identical edges.

@@ -22,8 +22,8 @@ from __future__ import annotations
 import matplotlib.pyplot as plt
 
 from paper.figures._common import (
-    ADJUDICATION,
-    METHODS,
+    NEUTRAL,
+    RANK,
     SINGLE_COL,
     TITLE_FS_COMPACT,
     apply_style,
@@ -36,7 +36,7 @@ from paper.figures._common import (
 from paper.stats import unreviewed_annotation_summary
 
 TOP_K = 3
-GREY = "#BBBBBB"
+GREY = NEUTRAL["faint"]
 
 
 def main() -> None:
@@ -60,7 +60,10 @@ def main() -> None:
     bars = axa.bar(
         ["Has UniProt\nfamily", "No family"],
         counts,
-        color=[METHODS["nn_combined_run"][1], GREY],
+        # NOT the ToxFam amber, which this panel has no ToxFam in: these bars are a
+        # property of UniProt, not a method. Blue-has / grey-has-not matches panel B,
+        # where blue is likewise "the family is there".
+        color=[RANK[0], GREY],
         edgecolor="white",
     )
     axa.bar_label(
@@ -78,8 +81,9 @@ def main() -> None:
     labels = [f"top-{i}" for i in range(1, TOP_K + 1)] + [f"not in top-{TOP_K}"]
     vals = [s["rank_counts"][f"top_{i}"] for i in range(1, TOP_K + 1)]
     vals.append(s["rank_counts"]["not_in_top_k"])
-    # Luminance-ordered good->bad (never green/red: the deuteranopia failure case).
-    colors = [ADJUDICATION["correct"], "#3C7DBF", "#8FB8DC", ADJUDICATION["incorrect"]]
+    # Ordered "how close was the right answer": blue still means right and red still
+    # means wrong, exactly as in the curation figure, with a lightness ramp between.
+    colors = RANK
     bars = axb.bar(labels, vals, color=colors, edgecolor="white")
     axb.bar_label(bars, labels=[f"{v:,}" for v in vals], padding=2, fontsize=7)
     axb.set_ylim(0, max(vals) * 1.18)

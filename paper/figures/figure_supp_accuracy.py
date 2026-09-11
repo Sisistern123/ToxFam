@@ -14,6 +14,7 @@ import numpy as np
 from paper.figures._common import (
     METHOD_ORDER,
     METHODS,
+    NEUTRAL,
     SINGLE_COL,
     apply_style,
     fmt_pm,
@@ -52,7 +53,7 @@ def _acc_panel(ax, preds, mask_fn, ylim, title, letter, *, prior=None):
             linespacing=0.95,
         )
     if prior is not None:  # drawn on top of the bars so the ceiling is unmistakable
-        ax.axhline(prior, color="#444444", lw=1.0, ls=(0, (4, 2)), zorder=5)
+        ax.axhline(prior, color=NEUTRAL["ink"], lw=1.0, ls=(0, (4, 2)), zorder=5)
         ax.text(
             len(METHOD_ORDER) - 0.55,
             prior + 0.002,
@@ -60,7 +61,7 @@ def _acc_panel(ax, preds, mask_fn, ylim, title, letter, *, prior=None):
             ha="right",
             va="bottom",
             fontsize=6.5,
-            color="#444444",
+            color=NEUTRAL["ink"],
             zorder=6,
         )
     ax.set_xticks(x)

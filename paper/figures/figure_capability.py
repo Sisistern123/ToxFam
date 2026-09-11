@@ -35,6 +35,7 @@ from paper.figures._common import (
     METHOD_LINESTYLE,
     METHOD_ORDER,
     METHODS,
+    NEUTRAL,
     apply_style,
     fmt_pm,
     load_preds,
@@ -58,7 +59,7 @@ from toxfam.evaluation.hbi import NO_HIT_LABEL
 XTICKS = [10, 30, 50, 100, 300, 1000]
 XLIM = (9, 1900)
 BW = 0.16  # local-linear bandwidth in log10 length (tuned to the data)
-HIST_GREY = "#d9d9d9"
+HIST_GREY = NEUTRAL["backdrop"]
 GREY_D, ORANGE_D = METHOD_DARK["hbi"], METHOD_DARK["nn_combined_run"]
 
 
@@ -138,10 +139,15 @@ def _panel_length(ax, axtop, hbi, nn, lengths, rng):
     axtop.set_xlim(*XLIM)
     axtop.set_ylim(0, peak * 1.18)
     axtop.set_yticks([0, peak])
-    axtop.tick_params(axis="y", labelsize=6, colors="#999999", length=2)
+    axtop.tick_params(axis="y", labelsize=6, colors=NEUTRAL["faint"], length=2)
     axtop.tick_params(axis="x", labelbottom=False, length=0)
     axtop.set_ylabel(
-        "toxins", fontsize=6.5, color="#999999", rotation=0, ha="right", va="center"
+        "toxins",
+        fontsize=6.5,
+        color=NEUTRAL["faint"],
+        rotation=0,
+        ha="right",
+        va="center",
     )
     for sp in ("top", "right"):
         axtop.spines[sp].set_visible(False)
@@ -171,13 +177,13 @@ def _panel_length(ax, axtop, hbi, nn, lengths, rng):
     # bands, so the guide sits exactly where they visibly separate.
     xcross = band_separation_length(gk, yH + sH, yN - sN)
     if xcross is not None:
-        ax.axvline(xcross, color="#9a9a9a", ls=(0, (1, 1.6)), lw=0.8, zorder=1)
+        ax.axvline(xcross, color=NEUTRAL["faint"], ls=(0, (1, 1.6)), lw=0.8, zorder=1)
         ax.text(
             xcross * 1.07,
             0.30,
             f"$\\approx${xcross:.0f} aa",
             fontsize=7,
-            color="#8a8a8a",
+            color=NEUTRAL["muted"],
             ha="left",
             va="bottom",
         )
@@ -209,11 +215,14 @@ def _panel_length(ax, axtop, hbi, nn, lengths, rng):
         xy=(11, 0.45),
         xytext=(70, 0.58),
         fontsize=6.6,
-        color="#777777",
+        color=NEUTRAL["muted"],
         ha="left",
         va="center",
         arrowprops=dict(
-            arrowstyle="->", color="#aaaaaa", lw=0.7, connectionstyle="arc3,rad=-0.15"
+            arrowstyle="->",
+            color=NEUTRAL["faint"],
+            lw=0.7,
+            connectionstyle="arc3,rad=-0.15",
         ),
     )
     _logx(ax)

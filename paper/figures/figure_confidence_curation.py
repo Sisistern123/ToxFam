@@ -25,6 +25,7 @@ from paper._paths import curated_verdicts_tsv, curation_key_tsv
 from paper.figures._common import (
     ADJUDICATION,
     DOUBLE_COL,
+    NEUTRAL,
     apply_style,
     load_preds,
     panel_label,
@@ -37,7 +38,7 @@ BLUE, AMBER, RED = (
     ADJUDICATION["partial"],
     ADJUDICATION["incorrect"],
 )
-GREY = "#BBBBBB"
+GREY = NEUTRAL["faint"]  # furniture; NOT METHOD["hbi"], which is also grey
 COL = {"correct": BLUE, "partial": AMBER, "incorrect": RED}
 MARK = {"correct": "o", "partial": "^", "incorrect": "s"}
 ORDER = ["correct", "partial", "incorrect"]

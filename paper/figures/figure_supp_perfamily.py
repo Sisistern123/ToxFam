@@ -22,6 +22,7 @@ from paper.figures._common import (
     DOUBLE_COL,
     METHOD_DARK,
     METHODS,
+    NEUTRAL,
     apply_style,
     load_preds,
     save_fig,
@@ -64,7 +65,9 @@ def main() -> None:
     hbi_lbl, hbi_col = METHODS["hbi"]
     nn_lbl, nn_col = METHODS["nn_combined_run"]
     # connector first, then HBI, then ToxFam on top; uniform marker size (support is in labels).
-    ax.hlines(y, fam["mcc_b"], fam["mcc_a"], color="#cccccc", lw=0.9, zorder=1)
+    ax.hlines(
+        y, fam["mcc_b"], fam["mcc_a"], color=NEUTRAL["backdrop"], lw=0.9, zorder=1
+    )
     ax.scatter(
         fam["mcc_b"],
         y,

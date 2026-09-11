@@ -23,6 +23,7 @@ import matplotlib.pyplot as plt
 
 from paper.figures._common import (
     METHODS,
+    NEUTRAL,
     SINGLE_COL,
     apply_style,
     deployed_binary_threshold,
@@ -63,7 +64,7 @@ def main() -> None:
         color=METHODS["nn_combined_run"][1],
         edgecolor="white",
     )
-    ax.axvline(threshold, color="#333333", ls=":", lw=1.0)
+    ax.axvline(threshold, color=NEUTRAL["ink"], ls=":", lw=1.0)
     ax.annotate(
         f"deployed threshold {threshold:.3f}",
         xy=(threshold, ax.get_ylim()[1]),
@@ -72,7 +73,7 @@ def main() -> None:
         ha="left",
         va="top",
         fontsize=7,
-        color="#333333",
+        color=NEUTRAL["ink"],
     )
     ax.set_xlabel("Predicted P(toxic)")
     ax.set_ylabel("Proteins")

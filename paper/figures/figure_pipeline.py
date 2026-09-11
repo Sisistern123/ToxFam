@@ -49,7 +49,13 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import FancyArrowPatch, FancyBboxPatch
 
 from paper._paths import figures_output_dir
-from paper.figures._common import CLASSES, DOUBLE_COL, apply_style, save_fig
+from paper.figures._common import (
+    CLASSES,
+    DOUBLE_COL,
+    NEUTRAL,
+    apply_style,
+    save_fig,
+)
 
 # --- Okabe-Ito semantic colours (same hex as the method palette in _common) ---
 # Lane colours come from _common.CLASSES, which is deliberately disjoint from METHODS:
@@ -59,12 +65,11 @@ TOX = CLASSES["toxin"]  # green = toxins (the focus)
 NON = CLASSES["nontoxin"]  # slate = non-toxins (recessive majority)
 TOX_DK = CLASSES["toxin_dark"]  # darker green for text on white
 NON_DK = CLASSES["nontoxin_dark"]
-DROP = "#B0455A"  # muted red = removed (never paired with green)
-OUT = "#6B5B73"  # muted plum = final ML-ready splits. Was slate, which is now the
-# non-toxin lane; the splits hold BOTH classes and must not read as one of them.
-INK = "#1f1f1f"
-MUTE = "#5f5f5f"
-FAINT = "#9a9a9a"  # faint track/gloss notes
+DROP = CLASSES["removed"]  # removal labels (a filter step, not a verdict)
+OUT = CLASSES["splits"]  # the splits hold BOTH classes, so they look like neither
+INK = NEUTRAL["ink"]
+MUTE = NEUTRAL["muted"]
+FAINT = NEUTRAL["faint"]  # faint track/gloss notes
 MONO = {"family": "monospace"}
 
 
@@ -120,8 +125,8 @@ def _build() -> plt.Figure:
             17.5,
             9.0,
             boxstyle="round,pad=0.2,rounding_size=0.7",
-            fc="#f6f4ef",
-            ec="#d9d2c4",
+            fc=NEUTRAL["card"],
+            ec=NEUTRAL["card_edge"],
             lw=0.7,
         )
     )
@@ -139,7 +144,13 @@ def _build() -> plt.Figure:
         ["taxonomy:Metazoa", "AND reviewed:true", "AND fragment:false"]
     ):
         ax.text(
-            2.6, 1.3 - j * 1.9, t, fontsize=5.9, color="#444444", va="center", **MONO
+            2.6,
+            1.3 - j * 1.9,
+            t,
+            fontsize=5.9,
+            color=NEUTRAL["muted"],
+            va="center",
+            **MONO,
         )
 
     # clean straight fork: one query splits on the KW-0800 keyword into two streams
