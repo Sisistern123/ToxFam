@@ -423,6 +423,7 @@ from paper.stats import (  # noqa: E402
     micro_mcc,
     overall_mcc,
     per_family_mcc_difference,
+    wilson_ci,
 )
 
 
@@ -819,3 +820,48 @@ def test_nontoxin_best_hit_rate_accepts_nontoxin_label_variants():
     r = nontoxin_best_hit_rate(df)
     assert r["n_nontoxin"] == 2
     assert r["frac"] == pytest.approx(0.5)
+
+
+def test_wilson_ci_stays_inside_unit_interval_where_wald_does_not():
+    """The reason this helper exists: at the figure's own denominators the symmetric
+    +-2 SE interval leaves [0, 1] and Wilson does not.
+    """
+    for n_correct, n_total in ((7, 8), (61, 63), (8, 8), (0, 5)):
+        ci = wilson_ci(n_correct, n_total)
+        assert 0.0 <= ci["low"] <= ci["point"] <= ci["high"] <= 1.0
+        assert ci["n"] == n_total
+        assert ci["n_correct"] == n_correct
+
+    # ... and the Wald interval it replaces really does escape, so the test is not
+    # asserting something vacuous.
+    p_hat = 7 / 8
+    wald_high = p_hat + 2 * np.sqrt(p_hat * (1 - p_hat) / 8)
+    assert wald_high > 1.0
+    assert wilson_ci(7, 8)["high"] < 1.0
+
+
+def test_wilson_ci_is_asymmetric_about_the_point():
+    """Asymmetry is the whole mechanism -- a symmetric bar cannot respect a bound."""
+    ci = wilson_ci(61, 63)
+    below = ci["point"] - ci["low"]
+    above = ci["high"] - ci["point"]
+    assert below > above  # near the upper bound the interval leans down
+
+
+def test_wilson_ci_matches_closed_form():
+    """Pin the values the figure prints, independent of the scipy call."""
+    z = 1.959963984540054
+    for k, n in ((7, 8), (61, 63), (30, 100)):
+        p_hat = k / n
+        d = 1 + z * z / n
+        centre = (p_hat + z * z / (2 * n)) / d
+        half = z * np.sqrt(p_hat * (1 - p_hat) / n + z * z / (4 * n * n)) / d
+        ci = wilson_ci(k, n)
+        assert ci["low"] == pytest.approx(centre - half, abs=1e-12)
+        assert ci["high"] == pytest.approx(centre + half, abs=1e-12)
+
+
+def test_wilson_ci_empty_denominator_is_nan_not_a_crash():
+    ci = wilson_ci(0, 0)
+    assert ci["n"] == 0
+    assert np.isnan(ci["point"]) and np.isnan(ci["low"]) and np.isnan(ci["high"])

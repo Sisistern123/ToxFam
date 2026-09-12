@@ -33,6 +33,7 @@ from paper.figures._common import (
     MCC_CI_N_BOOT,
     METHOD_DARK,
     METHOD_LINESTYLE,
+    METHOD_MARKER,
     METHOD_ORDER,
     METHODS,
     NEUTRAL,
@@ -85,7 +86,23 @@ def _logx(ax):
 
 
 def _panel_mcc(ax):
-    """(A) Multiclass (Gorodkin) MCC bars, HBI / emb / emb+tax, +-2 bootstrap SE."""
+    """(A) Multiclass (Gorodkin) MCC, HBI / emb / emb+tax, +-2 bootstrap SE.
+
+    Drawn as a dot-and-interval, not a bar. A bar encodes its value as length from
+    the baseline, so the 0.75-0.95 window this panel needs makes drawn length
+    non-proportional to MCC -- and the exaggeration that follows survives both the
+    visible axis start and the printed values (Correll, Bertini & Franconeri, CHI
+    2020). Widening to 0-1 is not the way out either: measured on the rendered panel
+    it shrinks a full +-2 SE interval to ~2.5 mm and the emb+tax/HBI clearance to
+    ~0.2 mm, thinner than a hairline, so the panel would stop answering its own
+    question. A point is read by position, owes nothing to a zero baseline, and keeps
+    the window that makes the uncertainty legible.
+
+    Note what the intervals here are and are not: they are *marginal*, so the near
+    touch between HBI and ToxFam (emb+tax) understates the separation. All three
+    methods score the same 9,779 proteins, and the paired bootstrap difference is
+    +0.049 (95% CI +0.025 to +0.075) -- see the caption.
+    """
     for i, k in enumerate(METHOD_ORDER):
         _, color = METHODS[k]
         d = load_preds("test_set", k)
@@ -95,16 +112,22 @@ def _panel_mcc(ax):
             overall_mcc,
             n_boot=MCC_CI_N_BOOT,
         )
-        ax.bar(
+        # Stroke colour, not fill colour: as a 5 pt dot the pale HBI grey that reads
+        # fine as a filled bar all but vanishes. METHOD_DARK is exactly the shade
+        # panel B already strokes its lines with, so the two panels agree.
+        ax.errorbar(
             i,
             ci["point"],
-            0.62,
             yerr=ci["two_se"],
+            fmt=METHOD_MARKER[k],
+            ms=5,
+            color=METHOD_DARK.get(k, color),
+            mec="white",
+            mew=0.5,
+            elinewidth=1.0,
             capsize=3,
-            color=color,
-            edgecolor="white",
-            linewidth=0.0,
-            error_kw={"elinewidth": 0.8, "capthick": 0.8},
+            capthick=0.9,
+            zorder=3,
         )
         ax.text(
             i,
@@ -119,8 +142,48 @@ def _panel_mcc(ax):
     ax.set_xticklabels(
         [METHODS[k][0].replace(" (", "\n(") for k in METHOD_ORDER], fontsize=7
     )
+    ax.set_xlim(-0.55, len(METHOD_ORDER) - 0.45)
     ax.set_ylim(0.75, 0.95)
+    ax.set_yticks([0.75, 0.80, 0.85, 0.90, 0.95])
     ax.set_ylabel("Multiclass MCC")
+    # Gridlines do the work the bar baselines used to: they carry the eye across to
+    # the y-scale, which is what a point mark needs and a bar did not.
+    ax.grid(axis="y", color="#e8e8e8", lw=0.4, zorder=0)
+    ax.set_axisbelow(True)
+
+
+def _end_labels(ax, x, items, dx=11.0, gap=6.0):
+    """Direct end-labels for the curves, guaranteed not to collide.
+
+    The two curves converge at the long-length end -- their final accuracies differ by
+    <0.005, roughly 1 pt on this axis -- so anchoring each label to its own curve's y
+    in DATA units (what a plain ``ax.text`` does) stacked the two boxes on top of each
+    other. Offsetting in POINTS from each anchor instead fixes the separation at
+    ``2 * gap`` however close the curves run, and the leader line keeps each label tied
+    to its own curve rather than leaving the reader to guess which is which.
+
+    Labels are ordered by their anchor y, so the label order always matches the curve
+    order even if a re-run flips which method ends on top.
+    """
+    for (label, y, color), dy in zip(sorted(items, key=lambda it: it[1]), (-gap, gap)):
+        ax.annotate(
+            label,
+            xy=(x, y),
+            xytext=(dx, dy),
+            textcoords="offset points",
+            color=color,
+            fontsize=8,
+            fontweight="bold",
+            ha="left",
+            va="center",
+            arrowprops={
+                "arrowstyle": "-",
+                "color": color,
+                "lw": 0.6,
+                "shrinkA": 0.5,
+                "shrinkB": 1.5,
+            },
+        )
 
 
 def _panel_length(ax, axtop, hbi, nn, lengths, rng):
@@ -187,28 +250,8 @@ def _panel_length(ax, axtop, hbi, nn, lengths, rng):
             va="bottom",
         )
 
-    # direct end-labels in the empty right region (data ends ~400 aa, axis runs to 1900)
-    xr = gk[-1] * 1.25
-    ax.text(
-        xr,
-        yN[-1] + 0.005,
-        "ToxFam",
-        color=ORANGE_D,
-        fontsize=8,
-        fontweight="bold",
-        ha="left",
-        va="center",
-    )
-    ax.text(
-        xr,
-        yH[-1] - 0.005,
-        "HBI",
-        color=GREY_D,
-        fontsize=8,
-        fontweight="bold",
-        ha="left",
-        va="center",
-    )
+    # Direct end-labels in the empty right region (data ends ~480 aa, axis runs to 1900).
+    _end_labels(ax, gk[-1], [("ToxFam", yN[-1], ORANGE_D), ("HBI", yH[-1], GREY_D)])
     ax.annotate(
         "homology degrades\non the shortest toxins",
         xy=(11, 0.45),
@@ -232,30 +275,44 @@ def _panel_length(ax, axtop, hbi, nn, lengths, rng):
 def _panel_coverage(ax, hbi, nn):
     """(C) ToxFam coverage where HBI returns no hit (HBI = 0% by construction).
 
-    Labelled with raw counts, not accuracy +- 2 SE. The toxin group is eight proteins,
-    where a bootstrap SE is +-0.23 -- wider than any difference the panel could show,
-    and it invited the reader to treat 0.88 as an estimate rather than as 7 of 8. The
-    whole panel is three errors out of 71, and the counts say so directly.
+    Labelled with raw counts, and with no interval at all.
+
+    Accuracy here is a proportion over 8 and 63 proteins. The ``+-2`` bootstrap SE that
+    used to be drawn *is* the Wald interval on a Bernoulli mean, whose documented
+    failure modes are limits outside [0, 1] and poor coverage at small n (NCHS Series 2
+    No. 175; Brown, Cai & DasGupta 2001). Both bit: the drawn limits were 1.10 and 1.01,
+    outside the range a proportion can take, which is what forced the old ``ylim`` of
+    1.14. A Wilson interval would fix that arithmetic, and ``paper.stats.wilson_ci``
+    exists for panels where it is the right answer -- but at n=8 any honest interval is
+    +-0.2 or wider, which is broader than anything this panel could show, and it invites
+    the reader to treat 0.88 as an estimate rather than as 7 of 8. The whole panel is
+    three errors out of 71, so it states the counts and draws no interval.
+
+    The percentile bootstrap ``bootstrap_accuracy_ci`` returns is not an alternative
+    either: at 8 and 63 trials it pins the upper limit at exactly 1.000.
+
+    The bar is kept here, unlike panel A: this axis is zero-based, accuracy is a true
+    proportion, and 0 is the panel's whole point -- it is where HBI sits by
+    construction -- so bar length stays proportional to what it encodes.
     """
     nohit_ids = hbi.loc[hbi["predicted_label"] == NO_HIT_LABEL, "identifier"]
     nn_nh = nn[nn["identifier"].isin(nohit_ids)]
     tox_m = toxin_mask(nn_nh)
     groups = [("toxin\nno-hit", nn_nh[tox_m]), ("non-toxin\nno-hit", nn_nh[~tox_m])]
-    labels, acc, counts = [], [], []
+    labels, acc = [], []
     for gname, g in groups:
         c = correctness(g)
-        labels.append(gname)
+        # Raw counts, not n: at these denominators "7/8" tells the reader at a glance
+        # what "0.88" only implies.
+        labels.append(f"{gname}\n({int(c.sum())}/{len(c)})")
         acc.append(float(c.mean()))
-        counts.append((int(c.sum()), int(len(g))))
     x = np.arange(len(groups))
     _, orange = METHODS["nn_combined_run"]
     ax.bar(x, acc, 0.55, color=orange, edgecolor="white", linewidth=0.0)
-    for xi, a, (k, n) in zip(x, acc, counts):
-        ax.text(xi, a + 0.015, f"{k}/{n}", ha="center", va="bottom", fontsize=8)
     ax.set_xlim(-0.6, 1.6)
     ax.set_xticks(x)
     ax.set_xticklabels(labels, fontsize=7)
-    ax.set_ylim(0, 1.14)
+    ax.set_ylim(0, 1.0)
     ax.set_ylabel("Accuracy")
 
 
