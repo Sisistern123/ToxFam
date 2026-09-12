@@ -267,10 +267,18 @@ def main() -> None:
                 label="train/val",
             ),
         ],
-        loc="lower right",
-        fontsize=6,
-        handletextpad=0.3,
-        borderpad=0.3,
+        # BELOW the axes, under the tick labels. Inside, "lower right" sat on the
+        # densest part of the vindicated column; on the title row it ran into the
+        # title. The strip under the x labels is the only space in this panel that
+        # no mark can ever occupy.
+        loc="upper center",
+        bbox_to_anchor=(0.5, -0.145),
+        ncol=2,
+        frameon=False,
+        fontsize=6.5,
+        handletextpad=0.25,
+        columnspacing=1.4,
+        borderpad=0.0,
     )
 
     save_fig(fig, "figure_confidence_curation")
