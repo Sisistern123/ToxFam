@@ -148,7 +148,9 @@ def _panel_mcc(ax):
     ax.set_ylabel("Multiclass MCC")
     # Gridlines do the work the bar baselines used to: they carry the eye across to
     # the y-scale, which is what a point mark needs and a bar did not.
-    ax.grid(axis="y", color="#e8e8e8", lw=0.4, zorder=0)
+    # NEUTRAL["rule"] is the palette's hairline; the branch this came from predates
+    # the palette module, so it carried a near-identical literal instead.
+    ax.grid(axis="y", color=NEUTRAL["rule"], lw=0.4, zorder=0)
     ax.set_axisbelow(True)
 
 
